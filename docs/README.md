@@ -1,19 +1,16 @@
 # 文档
 
-OpenAster 的公开文档用于帮助读者运行、理解与修改项目。当前版本是采用 Vibe Coding 方式开发的个人学习探索项目，不是商业稳定版。
-
-| 目的 | 文档 |
+| 想做什么 | 从这里开始 |
 | --- | --- |
-| 首次在本机体验 | [快速开始](GETTING_STARTED.md) |
-| 准备开发和测试环境 | [开发指南](DEVELOPMENT.md) |
-| 理解代码结构 | [架构概览](../ARCHITECTURE.md) |
-| 了解不同平台的范围与限制 | [平台现状](PLATFORMS.md) |
-| 理解工具、模型与数据边界 | [安全模型](SECURITY_MODEL.md) |
-| 备份和恢复本机数据 | [备份与恢复](BACKUP.md) |
-| 报告漏洞 | [安全策略](../SECURITY.md) |
-| 提交改动与参与讨论 | [贡献指南](../CONTRIBUTING.md)、[行为准则](../CODE_OF_CONDUCT.md) |
-| 查看许可和依赖信息 | [第三方说明](THIRD_PARTY.md) |
+| 安装本地网页版 | [README](../README.md#在电脑上运行网页版) |
+| 完成第一条任务 | [第一次使用](GETTING_STARTED.md) |
+| 从零理解 Agent | [OpenAster 开发教程](TUTORIAL.md) |
+| 修改代码与运行测试 | [开发指南](DEVELOPMENT.md) |
+| 查看模块职责 | [架构说明](../ARCHITECTURE.md) |
+| 构建桌面与移动端 | [平台说明](PLATFORMS.md) |
+| 了解执行权限与数据流向 | [安全模型](SECURITY_MODEL.md) |
+| 迁移本地数据 | [备份与恢复](BACKUP.md) |
+| 查许可证和依赖来源 | [第三方说明](THIRD_PARTY.md) |
+| 提交代码、问题或漏洞报告 | [贡献指南](../CONTRIBUTING.md)、[安全策略](../SECURITY.md) |
 
-历史本机诊断、原生构建日志、截图、交付清单和逐轮测试流水账保留在维护者的本地记录中，不随公开源码分发。公开文档不依赖这些记录中的绝对路径或临时服务地址。
-
-测试结果只能说明指定版本与环境的观察。新增平台或版本需要重新验证，不能从已有配置推断已经验收。
+版本变化见 [CHANGELOG](../CHANGELOG.md)。本机诊断日志、测试账号和临时截图不属于公开文档。

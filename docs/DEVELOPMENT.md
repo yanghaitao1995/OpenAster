@@ -1,40 +1,43 @@
 # 开发指南
 
-从[贡献指南](../CONTRIBUTING.md)了解项目范围，使用 Node.js 24 和项目指定的 pnpm 版本。以下命令以项目根目录为工作目录。
-
-## 常用命令
+使用 Node.js 24 和根目录 `package.json` 指定的 pnpm。以下命令都在仓库根目录执行。
 
 | 命令 | 用途 |
 | --- | --- |
 | `pnpm install --frozen-lockfile` | 按锁文件安装依赖 |
-| `pnpm dev` | 监听服务代码变化并运行本地服务 |
-| `pnpm check` | 执行项目静态检查 |
-| `pnpm test` | 运行核心、服务、桌面与移动模块测试 |
-| `pnpm test:e2e` | 运行 Playwright 浏览器测试 |
-| `pnpm build` | 生成本地应用分发目录 |
-| `pnpm desktop` | 运行 Electron 桌面开发入口 |
-| `pnpm desktop:pack` | 生成本机平台的桌面目录包 |
-| `pnpm desktop:dist` | 构建桌面分发包，脚本配置为不发布 |
-| `pnpm mobile:prepare` | 准备移动端 Web 资源 |
-| `pnpm mobile:android` | 准备 Android 原生项目 |
-| `pnpm mobile:ios` | 准备 iOS 原生项目 |
+| `pnpm dev` | 监听服务代码并启动本地网页 |
+| `pnpm check` | 检查 JavaScript 语法和 JSON |
+| `pnpm test` | 运行 Node 测试 |
+| `pnpm test:e2e` | 运行浏览器测试 |
+| `pnpm build` | 生成桌面与移动端共用资源 |
+| `pnpm desktop` | 启动 Electron 开发入口 |
+| `pnpm desktop:pack` | 构建当前平台的桌面目录包 |
+| `pnpm desktop:dist` | 构建当前平台安装包，不自动发布 |
+| `pnpm mobile:prepare` | 生成移动端网页资源 |
+| `pnpm mobile:android` | 生成并同步 Android 工程 |
+| `pnpm mobile:ios` | 在 macOS 上生成并同步 iOS 工程 |
+| `pnpm source:pack` | 按公开清单导出源码到新的 release 子目录 |
 
-浏览器测试需要相应的 Playwright 浏览器。按测试配置准备浏览器，例如 `pnpm exec playwright install chromium`；这会下载测试运行时。原生构建还需要各自平台的工具链，见[平台现状](PLATFORMS.md)。
+浏览器测试在 Windows 上使用已安装的 Microsoft Edge；macOS、Linux 使用 Chromium，首次可运行 `pnpm exec playwright install chromium`。原生构建工具见[平台说明](PLATFORMS.md)。
 
-## 验证与报告
+## 修改与验证
 
-先运行与改动直接相关的检查。修改协议、权限、存储或任务状态时，验证失败、拒绝、取消与恢复路径；修改界面时检查实际浏览器呈现，而不仅是 DOM 字符串。
+从 [ARCHITECTURE.md](../ARCHITECTURE.md) 找到负责该行为的模块，再缩小到一个可复现的问题。任务状态、审批、存储和模型协议的改动，需要检查成功、失败、取消及恢复路径。界面改动需要在浏览器中看实际排版与交互。
 
-提交前通常运行 `pnpm check`、`pnpm test` 和 `pnpm build`，根据改动补充浏览器或平台测试。记录实际命令和环境；未验证的平台保持未验证状态。不要将历史测试数量作为当前版本的保证。
+提交前运行 `pnpm check`、`pnpm test`、`pnpm build`。只对受影响的行为增加验证；不必为文字修改运行原生安装测试。测试默认使用合成数据与本机模拟模型，不需要贡献者提供付费账号。
 
-测试优先使用本机模拟服务与合成数据。真实模型验证应单独授权并控制请求规模，不应成为其他贡献者运行测试的前提。
+## 版本与构建
 
-## 仓库边界
+根目录 `package.json` 是应用版本来源；移动包版本须与其一致。`mobile/android-version.json` 的整数构建号用于原生升级，发布时递增。iOS 同步脚本把相同的应用版本和构建号写入 Debug、Release 配置。
 
-`core/`、`server/`、`public/`、`desktop/`、`mobile/`、`skills/`、`scripts/` 和测试源属于项目实现。目录责任见[架构概览](../ARCHITECTURE.md)。
+`pnpm build` 在 `dist/public/build-info.json` 和 `mobile/www/build-info.json` 写入共享资源摘要。版本相同、共享摘要相同，表示两端由同一组界面源码生成；这不能替代安装测试。
 
-依赖、工具链、应用数据、生成的 Android/iOS 工程、构建产物和临时诊断不属于源码贡献。公开文档采用明确的文件清单；新增公开文档时，同时检查 `.gitignore` 中的文档例外和文档导航，避免误加入本机证据。
+桌面打包使用 `dist/`。Android/iOS 工程与 `mobile/www/` 都是生成物，源码仓库只保存生成它们的配置、资源和脚本。
 
-GitHub 工作流配置存在并不表示它们已在你的仓库运行。启用远程构建、添加签名凭据或发布制品前，应由仓库维护者检查权限、来源和平台条件。
+## 发布范围
 
-受组织管理的设备应遵循其代码、数据和加密规则。应用能读取文件，不代表该文件已获准以明文导出；发布前使用组织认可的审查与导出流程。
+`config/release-policy.json` 列出了公开源码、文档及资源。新增公开文档时同步更新该文件、`.gitignore` 和文档导航。导出器会拒绝链接、凭据文件和未审查的文件类型，且不覆盖旧导出目录。
+
+发布前核对文件清单、差异、密钥扫描结果和截图，再用独立文件读取程序验证导出内容。在受组织管理的设备上，只使用获准的明文导出流程。
+
+GitHub Actions 负责不同操作系统上的独立检查。安装包与签名状态以具体 Release 为准；工作流存在不代表某个版本已经构建成功。

@@ -1,17 +1,14 @@
 # 许可证与第三方材料
 
-OpenAster 原创源码采用根目录的 [Apache License 2.0](../LICENSE)。[NOTICE](../NOTICE) 记录项目归属说明。第三方依赖、运行时和工具链保留各自许可证，不因被本项目使用而改变授权条件。
+OpenAster 原创源码使用 [Apache License 2.0](../LICENSE)，归属说明见 [NOTICE](../NOTICE)。依赖、运行时和构建工具保留各自许可证。
 
-依赖信息入口：
+| 材料 | 用途 |
+| --- | --- |
+| [dependency-licenses.json](dependency-licenses.json) | 依赖名称、版本与许可证清单 |
+| [sbom.cdx.json](sbom.cdx.json) | 机器可读的 CycloneDX 组件清单 |
+| `package.json`、`pnpm-lock.yaml` | 直接依赖与锁定版本 |
+| 安装包内的第三方声明 | 对应平台运行时的许可证与归属文本 |
 
-- [依赖许可证清单](dependency-licenses.json)。
-- [CycloneDX SBOM](sbom.cdx.json)。
-- 根目录 `package.json` 与 `pnpm-lock.yaml` 中的依赖版本。
+修改依赖后重新生成并检查清单。Electron、Chromium、Node.js、Capacitor 及原生依赖需要的许可文本随相应产物保留，不能只用项目许可证代替。
 
-这些清单是生成时的快照；修改依赖或发布不同平台产物时，应重新核对。桌面包和移动包还需要保留 Electron、Chromium、Node.js、Capacitor 及其原生依赖要求的许可与归属说明，不能只附上项目根许可证。
-
-模型服务的 API 使用条款、账户权限和数据政策独立于本项目许可证。应用提供协议适配器，不表示取得任何服务的账号、内容或品牌授权。
-
-引用其他项目的设计思路与公开接口资料时，应自行实现、清楚注明来源，并遵守相应材料的许可。不要复制闭源代码、未授权图标、私有模板或受限数据，也不要把第三方作品标为原创。
-
-OpenAster 的名称与图标不表示与其他产品的关联。本项目文档不构成商标清查或对任何使用场景的法律结论。
+模型服务的账户权限、API 条款和数据政策独立于项目许可证。协议兼容不代表获得第三方的品牌或内容授权。OpenAster 的名称与图标不表示与其他产品存在关联。
