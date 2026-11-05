@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, writeFile, readdir, rm, symlink } from 'node:fs/promises';
+import { mkdtemp, realpath, readFile, writeFile, readdir, rm, symlink } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,7 +19,7 @@ const chromiumFixture = '<!doctype html><html><head><title>Fixture credits</titl
 const context = directory => ({ electronPlatformName: 'win32', appOutDir: directory, packager: { info: { framework: { version: electronVersion } } } });
 
 async function fixture(t) {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'openaster-public-notices-'));
+  const directory = await realpath(await mkdtemp(path.join(os.tmpdir(), 'openaster-public-notices-')));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await writeFile(path.join(directory, 'LICENSE.electron.txt'), electronLicense);
   await writeFile(path.join(directory, 'LICENSES.chromium.html'), chromiumFixture);

@@ -30,7 +30,7 @@ function simulatedCrypto() {
   };
 }
 async function fixture(t, overrides = {}) {
-  const parent = await fs.mkdtemp(path.join(tmpdir(), 'openaster-drafts-'));
+  const parent = await fs.realpath(await fs.mkdtemp(path.join(tmpdir(), 'openaster-drafts-')));
   t.after(() => fs.rm(parent, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 }));
   const profile = path.join(parent, 'profile'); await fs.mkdir(profile);
   const directory = path.join(profile, 'drafts'), crypto = simulatedCrypto(), id = randomUUID();
