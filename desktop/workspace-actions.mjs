@@ -4,6 +4,12 @@ import { createWorkspaceSwitcher } from './workspace-switch.mjs';
 /** Main-process-only actions. The renderer receives no filesystem privileges. */
 export function createWorkspaceActions({ profiles, activeProfile, lifecycle, dialogs, validateWorkspace, backupIdentity, runJob, openDirectory, copyPath }) {
   return {
+    commitPreparedProject(commit) {
+      return lifecycle.run('switch', async context => {
+        if (!context.active || !await context.stopService()) return false;
+        return commit();
+      });
+    },
     createProject() {
       return lifecycle.run('create', async context => {
         const location = await dialogs.chooseProjectLocation();

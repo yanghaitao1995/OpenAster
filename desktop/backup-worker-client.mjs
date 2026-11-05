@@ -54,7 +54,7 @@ function reply(value, operation) {
     return { error: fail(error.code, error.message, Object.fromEntries(['status', 'orphanPath'].filter(key => has(error, key)).map(key => [key, error[key]]))) };
   }
   if (has(envelope, 'error') || !has(envelope, 'result')) throw invalid();
-  const common = ['path', 'sessions', 'runHistory', 'toolArtifacts', 'summaryJobs', 'audit', 'workspaceEntries'];
+  const common = ['path', 'sessions', 'runHistory', 'toolArtifacts', 'summaryJobs', 'steeringInputs', 'audit', 'workspaceEntries'];
   const fields = operation === 'backup' ? [...common, 'sha256', 'payloadSha256', 'bytes'] : [...common, 'disabledProviders'];
   const result = record(envelope.result, fields);
   absolute(result.path);

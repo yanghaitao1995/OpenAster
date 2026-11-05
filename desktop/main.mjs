@@ -9,6 +9,7 @@ import { readFile, copyFile } from 'node:fs/promises';
 import { randomBytes, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { startServer } from '../server/index.mjs';
+import { createWorkspaceManager } from '../server/workspace-manager.mjs';
 import { createSecretStore } from './secret-store.mjs';
 import { createDesktopDraftRepository } from './composer-drafts.mjs';
 import { createWorkspaceProfiles } from './workspace-profiles.mjs';
@@ -286,10 +287,15 @@ async function startProfileService() {
   const skillsDirectory=path.join(activeProfile.workspace,'skills');
   await initializeSkillDirectory(DEFAULT_SKILLS_ROOT,skillsDirectory);
   const deviceDraftStore = createDesktopDraftRepository({ directory: path.join(activeProfile.dataDir, 'device-drafts'), crypto: safeStorage });
+  const workspaceManager = createWorkspaceManager({ profiles, getCurrent: async () => activeProfile,
+    projectsRoot: path.join(app.getPath('home'), 'OpenAster Projects'), homeDirectory: app.getPath('home'),
+    protectedRoots: [app.getPath('userData'), ...appRoots],
+    transition: commit => workspaceActions.commitPreparedProject(commit),
+  });
   try {
     return await startServer({ port: 0, host: '127.0.0.1', dataDir: activeProfile.dataDir,
       workspace: activeProfile.workspace, workspaceId: activeProfile.id, workspaceName: activeProfile.label,
-      workspaceOptions: workspaceOptions(activeProfile), deviceDraftStore, skillsDirectory,
+      workspaceOptions: workspaceOptions(activeProfile), deviceDraftStore, skillsDirectory, workspaceManager,
       workspaceActions: {
         open: () => runMenuAction('open-workspace', () => workspaceActions.chooseWorkspace()),
         create: () => runMenuAction('create-project', () => workspaceActions.createProject()),

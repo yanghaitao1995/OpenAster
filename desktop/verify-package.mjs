@@ -7,6 +7,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyThirdPartyNotices } from './third-party-notices.mjs';
+import { sharedBuildInfo } from '../scripts/lib/build-info.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(import.meta.url);
@@ -38,6 +39,7 @@ export async function verifyBundledSkillResource(relative, bytes) {
 
 export async function verifyWindowsPackage(executable) {
   const packageInfo = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+  const expectedBuildInfo = { ...await sharedBuildInfo(root), mode: 'desktop-web' };
   const config = JSON.parse(await readFile(path.join(root, 'desktop/electron-builder.json'), 'utf8'));
   const binary = await readFile(executable);
   const resources = resedit.NtExecutableResource.from(resedit.NtExecutable.from(binary));
@@ -99,7 +101,9 @@ export async function verifyWindowsPackage(executable) {
       if (bytes.length === 0) blocks.push(sha256(bytes));
       assert.deepEqual(entry.integrity.blocks, blocks, `ASAR block hash mismatch ${relative}`);
       assert.ok(BUNDLED_SKILL_FILES.includes(relative) || /^(core|server|public)\//.test(relative) || ['desktop/main.mjs', 'desktop/secret-store.mjs', 'desktop/composer-drafts.mjs', 'desktop/workspace-profiles.mjs', 'desktop/workspace-errors.mjs', 'desktop/workspace-switch.mjs', 'desktop/workspace-actions.mjs', 'desktop/workspace-navigation.mjs', 'desktop/lifecycle.mjs', 'desktop/native-leave.mjs', 'desktop/backup-worker.mjs', 'desktop/backup-worker-client.mjs', 'desktop/relaunch-smoke.mjs', 'desktop/draft-relaunch-ui.mjs', 'desktop/draft-relaunch-proof.mjs', 'desktop/relaunch-smoke-state.mjs', 'desktop/smoke-diagnostics.mjs', 'desktop/smoke-readiness.mjs', 'desktop/resources/icon.png', 'package.json', 'LICENSE', 'NOTICE', 'docs/THIRD_PARTY.md', 'docs/sbom.cdx.json'].includes(relative), `Unexpected bundled file ${relative}`);
-      if (/^(core|server|public|desktop)\//.test(relative)) {
+      if (relative === 'public/build-info.json') {
+        assert.deepEqual(JSON.parse(bytes.toString('utf8')), expectedBuildInfo, 'Generated shared build identity differs from source');
+      } else if (/^(core|server|public|desktop)\//.test(relative)) {
         assert.equal(sha256(await readFile(path.join(root, relative))), sha256(bytes), `Bundled runtime differs from source ${relative}`);
         sourceMatches++;
       } else if (BUNDLED_SKILL_FILES.includes(relative)) {
@@ -112,7 +116,10 @@ export async function verifyWindowsPackage(executable) {
     }
   }
   await inspect(raw.header.files);
-  for (const required of [...BUNDLED_SKILL_FILES, 'server/manual-file-edit.mjs', 'public/file-editor-ui.mjs', 'public/file-editor-text.mjs', 'core/windows-command.mjs', 'core/windows-command-host.cs', 'core/command-runner.mjs', 'core/command-schema.mjs']) {
+  for (const required of ['core/web-tools.mjs', 'core/web-fetch.mjs', 'core/web-text.mjs']) {
+    assert.ok(packagedFiles.has(required), 'Missing required web tool module ' + required);
+  }
+  for (const required of [...BUNDLED_SKILL_FILES, 'public/build-info.json', 'core/app-version.mjs', 'core/command-authorization.mjs', 'core/steering-input.mjs', 'server/command-authorization.mjs', 'server/steering-store.mjs', 'server/workspace-host.mjs', 'server/workspace-manager.mjs', 'public/code-block.mjs', 'public/command-policy-ui.mjs', 'public/task-input-ui.mjs', 'public/workspace-ui.mjs', 'public/workspace-ui.css', 'server/manual-file-edit.mjs', 'public/file-editor-ui.mjs', 'public/file-editor-text.mjs', 'core/windows-command.mjs', 'core/windows-command-host.cs', 'core/command-runner.mjs', 'core/command-schema.mjs']) {
     assert.ok(packagedFiles.has(required), 'Missing required runtime module ' + required);
   }
   const packagedInfo = JSON.parse(asar.extractFile(archivePath, 'package.json').toString('utf8'));

@@ -15,6 +15,7 @@
     "grantFileProtocolExtraPrivileges": false
   },
   "directories": {
+    "app": "dist",
     "output": "release",
     "buildResources": "desktop/resources"
   },

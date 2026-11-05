@@ -123,6 +123,18 @@ test('create action uses the departure guard and stopped-service lifecycle befor
   assert.deepEqual(a.errors, []);
 });
 
+test('web-prepared desktop projects retain the native departure and idle gates before committing', async t => {
+  const f = await fixture(t), candidate = await f.profiles.prepareProject(f.project);
+  const busy = actions(f, { lifecycle: { closeService: async () => { throw Object.assign(new Error(), { code: 'WORKSPACE_BUSY' }); } } });
+  let commits = 0;
+  assert.equal(await busy.api.commitPreparedProject(async () => { commits++; return f.profiles.createProject(candidate); }), false);
+  assert.equal(commits, 0); await missing(f.project); assert.equal((await f.profiles.getActive()).id, 'default');
+  const success = actions(f);
+  const selected = await success.api.commitPreparedProject(async () => { commits++; return f.profiles.createProject(candidate); });
+  assert.equal(selected.workspace, f.project); assert.equal(commits, 1);
+  assert.deepEqual(success.calls, ['leave-check', 'stop', 'relaunch', 'quit']);
+});
+
 test('cancel, dirty-page refusal and busy service cannot create or change the selected workspace', async t => {
   const f = await fixture(t);
   const cancelled = actions(f, { dialogs: { confirmCreateProject: async () => false } });

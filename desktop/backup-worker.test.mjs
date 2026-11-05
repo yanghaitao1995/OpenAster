@@ -32,14 +32,14 @@ test('fixed worker performs a real SQLite backup and restore and returns only af
   const expectedDataIdentity = await createWorkspace(dataDir, { createRoot: false }).getIdentity();
   const expectedWorkspaceIdentity = await createWorkspace(workspace, { createRoot: false }).getIdentity();
   const result = await runBackupJob('backup', { dataDir, workspace, output, expectedDataIdentity, expectedWorkspaceIdentity, denySensitivePaths: true });
-  assert.equal(result.sessions, 1); assert.equal(result.path, output); assert.equal(result.summaryJobs, 2);
+  assert.equal(result.sessions, 1); assert.equal(result.path, output); assert.equal(result.summaryJobs, 2); assert.equal(result.steeringInputs, 0);
   assert.equal(result.sha256, createHash('sha256').update(await fs.readFile(output)).digest('hex'));
-  const archive = JSON.parse(await fs.readFile(output, 'utf8')); assert.equal(archive.version, 8); assert.equal(archive.payload.summaryJobs.length, 2);
+  const archive = JSON.parse(await fs.readFile(output, 'utf8')); assert.equal(archive.version, 9); assert.equal(archive.payload.summaryJobs.length, 2); assert.deepEqual(archive.payload.steeringInputs, []);
   assert.deepEqual(archive.payload.summaryJobs.find(value => value.id === completed.id), completed);
   assert.deepEqual(archive.payload.summaryJobs.find(value => value.id === active.id), active);
   const restored = path.join(root, 'restored');
   const summary = await runBackupJob('restore', { input: output, dataDir: restored });
-  assert.equal(summary.sessions, 1); assert.equal(summary.summaryJobs, 2);
+  assert.equal(summary.sessions, 1); assert.equal(summary.summaryJobs, 2); assert.equal(summary.steeringInputs, 0);
   const reopened = new Store(restored);
   assert.deepEqual(reopened.getSession(original.id), original);
   assert.deepEqual(reopened.getSummaryDraft(original.id, completed.id), completed);
@@ -71,14 +71,16 @@ test('worker independently rejects a malformed envelope and exits normally after
   assert.equal(exit, 0); assert.equal(messages.length, 1); assert.equal(messages[0].ok, false); assert.equal(messages[0].error.code, 'INVALID_BACKUP_JOB');
 });
 
-test('worker client requires summaryJobs counts and still rejects unknown or malformed success fields', async () => {
+test('worker client requires summaryJobs and steeringInputs counts and rejects malformed success fields', async () => {
   const builtin = createRequire(import.meta.url)('node:worker_threads'), originalWorker = builtin.Worker;
-  const common = { path: path.resolve('not-created'), sessions: 1, runHistory: 0, toolArtifacts: 0, summaryJobs: 1, audit: 0, workspaceEntries: 0 };
+  const common = { path: path.resolve('not-created'), sessions: 1, runHistory: 0, toolArtifacts: 0, summaryJobs: 1, steeringInputs: 0, audit: 0, workspaceEntries: 0 };
   try {
     for (const operation of ['backup', 'restore']) {
       const base = operation === 'backup' ? { ...common, sha256: 'a'.repeat(64), payloadSha256: 'b'.repeat(64), bytes: 1 } : { ...common, disabledProviders: 0 };
       for (const change of [value => delete value.summaryJobs, value => value.summaryJobs = -1, value => value.summaryJobs = 1.5,
-        value => value.summaryJobs = Number.MAX_SAFE_INTEGER + 1, value => value.summaryJobs = '1', value => value.extra = 'untrusted']) {
+        value => value.summaryJobs = Number.MAX_SAFE_INTEGER + 1, value => value.summaryJobs = '1',
+        value => delete value.steeringInputs, value => value.steeringInputs = -1, value => value.steeringInputs = 1.5,
+        value => value.steeringInputs = Number.MAX_SAFE_INTEGER + 1, value => value.steeringInputs = '1', value => value.extra = 'untrusted']) {
         const result = structuredClone(base); change(result);
         builtin.Worker = class extends EventEmitter { constructor() { super(); queueMicrotask(() => { this.emit('message', { version: 1, ok: true, result }); this.emit('exit', 0); }); } };
         syncBuiltinESMExports();
