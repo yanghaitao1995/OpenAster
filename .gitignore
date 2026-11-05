@@ -34,3 +34,5 @@ __pycache__/
 !/docs/THIRD_PARTY.md
 !/docs/dependency-licenses.json
 !/docs/sbom.cdx.json
+!/docs/TUTORIAL.md
+!/docs/assets/

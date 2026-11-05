@@ -1,6 +1,6 @@
 {
   "name": "openaster",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "An open, local-first agent workspace",
   "type": "module",
@@ -24,7 +24,8 @@
     "mobile:android": "node mobile/native.mjs android",
     "mobile:ios": "node mobile/native.mjs ios",
     "check": "node scripts/check.mjs",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "source:pack": "node scripts/package-source.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
