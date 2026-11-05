@@ -1,0 +1,11 @@
+OpenAster
+Copyright 2026 OpenAster contributors
+
+The original project source is distributed under Apache License 2.0.
+Third-party dependencies retain their own licenses and notices.
+See docs/THIRD_PARTY.md and the license notices shipped with Electron,
+Chromium, Node.js and Capacitor when distributing native binaries.
+
+OpenAster is a provisional project name. No trademark clearance or
+affiliation with other AI products is asserted. References to external
+products in documentation identify interoperability or research sources.

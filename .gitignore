@@ -1,0 +1,36 @@
+# Local state, credentials, dependencies, and generated output.
+node_modules/
+.openaster/
+.diagnostics/
+.toolchains/
+.gradle-cache/
+.pnpm-store/
+dist/
+release/
+coverage/
+test-results/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+
+# Native projects are generated from the reviewed templates.
+/mobile/www/
+/mobile/android/
+/mobile/ios/
+
+# Public documentation is curated. Historical local evidence stays untracked.
+/docs/*
+!/docs/README.md
+!/docs/GETTING_STARTED.md
+!/docs/DEVELOPMENT.md
+!/docs/PLATFORMS.md
+!/docs/SECURITY_MODEL.md
+!/docs/BACKUP.md
+!/docs/THIRD_PARTY.md
+!/docs/dependency-licenses.json
+!/docs/sbom.cdx.json
