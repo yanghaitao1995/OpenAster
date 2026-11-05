@@ -1,0 +1,11 @@
+{
+  "appId": "org.openaster.preview",
+  "appName": "OpenAster",
+  "webDir": "www",
+  "loggingBehavior": "none",
+  "backgroundColor": "#f7f8fa",
+  "server": { "hostname": "localhost", "androidScheme": "https", "iosScheme": "capacitor", "cleartext": false },
+  "android": { "allowMixedContent": false, "webContentsDebuggingEnabled": false },
+  "ios": { "contentInset": "automatic", "webContentsDebuggingEnabled": false },
+  "includePlugins": []
+}

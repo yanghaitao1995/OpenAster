@@ -1,0 +1,12 @@
+{
+  "name": "openaster-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenAster companion native shell",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  }
+}
