@@ -116,6 +116,75 @@ test('Conversation process: compact disclosures keep their open state and keyboa
   await page.screenshot({ path: info.outputPath('conversation-process-desktop.png'), animations: 'disabled' });
 });
 
+test('Markdown code controls: wrap preserves exact source and failed clipboard access stays recoverable', async ({ page, local }, info) => {
+  await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new DOMException('Fixture denied', 'NotAllowedError'); } } }));
+  await open(page, local);
+  const code = page.locator('#messages .code-block').nth(2), wrap = code.getByRole('button', { name: '自动换行', exact: true });
+  await expect(code.locator('.code-language')).toHaveText('JavaScript');
+  await expect(code.locator('.code-lines')).toHaveText('1 行');
+  expect(await code.locator('pre code').textContent()).toBe(longCode);
+  await wrap.focus(); await page.keyboard.press('Enter');
+  await expect(wrap).toHaveAttribute('aria-pressed', 'true'); await expect(wrap).toBeFocused();
+  await expect(code.locator('pre')).toHaveCSS('white-space', 'pre-wrap');
+  expect(await code.locator('pre code').textContent()).toBe(longCode);
+  await code.getByRole('button', { name: '复制代码', exact: true }).click();
+  await expect(code.getByRole('status')).toHaveText('无法访问剪贴板，请选中文本后复制。');
+  await expect(code.getByRole('button', { name: '复制代码', exact: true })).toBeEnabled();
+  await wrap.click(); await expect(wrap).toHaveAttribute('aria-pressed', 'false');
+  await expect(code.locator('pre')).toHaveCSS('white-space', 'pre');
+  expect(await code.locator('pre code').textContent()).toBe(longCode);
+  await expect(page.locator('#messages .code-block').nth(1).getByRole('button', { name: '复制文本', exact: true })).toBeVisible();
+  await audit(page, info, 'code-controls-recoverable');
+});
+
+test.describe('Code surfaces and bounded local syntax presentation', () => {
+  const visualCode = 'const message = "Hello, OpenAster";\n// 原始字符会完整保留\nconsole.log(message);\n';
+  const jsonCode = '{\n  "ready": true,\n  "count": 42\n}\n';
+  const plainText = '任务完成后，审批记录保留在任务详情中。\n可复制完整内容，也可以打开自动换行。\n';
+  test.use({ markdownAnswer: ['### 实现说明', '这里是可直接核对和复制的实现片段。', '```javascript', visualCode.trimEnd(), '```', '', '```json', jsonCode.trimEnd(), '```', '', '```text', plainText.trimEnd(), '```', '', '| 项目 | 状态 |', '| --- | --- |', '| 内容 | 原样保留 |'].join('\n') });
+  test('Markdown code surfaces: local lexical color, plain text and tables remain readable in desktop and mobile themes', async ({ page, local }, info) => {
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    await page.goto(local.app.url); await expect(page.locator('#top-status')).toHaveText('本地已连接');
+    await page.locator(`.session-link[data-id="${local.session.id}"]`).click();
+    if (await page.locator('#context-toggle').getAttribute('aria-expanded') === 'true') await page.locator('#context-toggle').click();
+    const blocks = page.locator('#messages .message.assistant .code-block'); await expect(blocks).toHaveCount(3);
+    await expect(blocks.nth(0).locator('.syntax-keyword')).toHaveText(['const']);
+    await expect(blocks.nth(0).locator('.syntax-comment')).toHaveText('// 原始字符会完整保留');
+    await expect(blocks.nth(1).locator('.syntax-property')).toHaveText(['"ready"', '"count"']);
+    await expect(blocks.nth(2).locator('code span')).toHaveCount(0);
+    for (const [index, expected] of [visualCode, jsonCode, plainText].entries()) expect(await blocks.nth(index).locator('pre code').textContent()).toBe(expected);
+    await expect(page.locator('#messages table tbody td')).toHaveText(['内容', '原样保留']);
+    await blocks.first().scrollIntoViewIfNeeded();
+    await audit(page, info, 'code-surfaces-desktop');
+    await page.screenshot({ path: info.outputPath('v42-code-surfaces-desktop.png'), animations: 'disabled' });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => { localStorage.setItem('openaster.theme', 'dark'); }); await page.reload();
+    await expect(blocks).toHaveCount(3); await blocks.first().scrollIntoViewIfNeeded();
+    await expect(page.locator('body')).toHaveClass(/dark/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await audit(page, info, 'code-surfaces-mobile-dark');
+    await page.screenshot({ path: info.outputPath('v42-code-surfaces-mobile-dark.png'), animations: 'disabled' });
+  });
+});
+
+test.describe('Untrusted and oversized code blocks', () => {
+  const inert = 'const sample = "</code><img src=x onerror=globalThis.codeExecuted=true>";\n';
+  const longText = ('row: "<svg onload=globalThis.codeExecuted=true>"\n').repeat(1800);
+  test.use({ markdownAnswer: ['```javascript', inert.trimEnd(), '```', '', '```unknown-language', inert.trimEnd(), '```', '', '```json', longText.trimEnd(), '```'].join('\n') });
+  test('Markdown code bounds: oversized and unknown languages keep all text without executable markup or excessive token nodes', async ({ page, local }) => {
+    await page.goto(local.app.url); await expect(page.locator('#top-status')).toHaveText('本地已连接');
+    await page.locator(`.session-link[data-id="${local.session.id}"]`).click();
+    const blocks = page.locator('#messages .message.assistant .code-block'); await expect(blocks).toHaveCount(3);
+    expect(await blocks.nth(0).locator('pre code').textContent()).toBe(inert);
+    expect(await blocks.nth(1).locator('pre code').textContent()).toBe(inert);
+    expect(await blocks.nth(2).locator('pre code').textContent()).toBe(longText);
+    await expect(blocks.nth(1).locator('code span')).toHaveCount(0); await expect(blocks.nth(2).locator('code span')).toHaveCount(0);
+    await expect(blocks.locator('img,svg,script,iframe,style')).toHaveCount(0);
+    expect(await page.evaluate(() => globalThis.codeExecuted)).toBeUndefined();
+    expect(await blocks.nth(2).locator('pre').evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+  });
+});
+
 for (const theme of ['light', 'dark']) test(`Markdown: mobile ${theme} keeps wide tables and code locally scrollable with keyboard access`, async ({ page, local }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(value => localStorage.setItem('openaster.theme', value), theme);

@@ -108,6 +108,31 @@ test('optional usage getters, inherited fields and descriptor failures cannot re
   assert.equal(getterReads, 0);
 });
 
+test('optional explanation accessors and inherited text are never executed or displayed', async t => {
+  let getterReads = 0;
+  const accessor = Object.defineProperty({ content: '有效正文', toolCalls: [] }, 'publicReasoning', { get() { getterReads++; throw new Error('must not execute'); } });
+  const inherited = Object.assign(Object.create({ publicReasoning: 'unvalidated inherited text' }), { content: '有效正文', toolCalls: [] });
+  for (const reply of [accessor, inherited]) {
+    const f = await fixture(t, { providerCall: async () => reply });
+    await f.start('开始'); await f.done();
+    assert.equal(f.get().run.status, 'completed');
+    assert.equal(f.get().run.steps[0].publicReasoning, undefined);
+    assert.equal(f.get().messages.at(-1).content, '有效正文');
+  }
+  assert.equal(getterReads, 0);
+});
+
+test('explicit malformed explanation data remains a terminal validation error', async t => {
+  for (const value of [null, { signature: 'never-display' }, 'invalid\0text']) {
+    let calls = 0;
+    const f = await fixture(t, { providerCall: async () => { calls++; return { content: '有效正文', toolCalls: [], publicReasoning: value }; } });
+    await f.start('开始'); await f.done();
+    assert.equal(f.get().run.status, 'failed'); assert.equal(f.get().run.error.code, 'INVALID_PROVIDER_PROGRESS');
+    assert.equal(calls, 1); assert.equal(f.get().run.steps[0].publicReasoning, undefined);
+    assert.equal(f.get().messages.length, 1);
+  }
+});
+
 test('cancelling an in-flight request keeps unknown usage unless the provider actually returns counters', async t => {
   for (const returnsUsage of [false, true]) {
     const requested = gate();

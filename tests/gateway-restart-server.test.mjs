@@ -120,7 +120,7 @@ test('gateway restart preserves Bearer reads but rejects stale CSRF until a new 
   }
   const untouched = await request(`/api/sessions/${id}`);
   assert.equal(untouched.status, 200);
-  assert.deepEqual(untouched.data.session, created.data.session, 'Rejected writes do not alter the task, run, messages, or approvals');
+  assert.deepEqual(untouched.data.session, { ...created.data.session, queuedInputs: [] }, 'Rejected writes do not alter the task, run, messages, or approvals');
   assert.deepEqual((await request('/api/state')).data.sessions.map(session => session.id), [id]);
   t.diagnostic('Restart reproduced: same Bearer and workspace, SSE/state 200, old-CSRF writes 403 with no task side effects.');
 
@@ -139,6 +139,6 @@ test('gateway restart preserves Bearer reads but rejects stale CSRF until a new 
   const finalState = await request('/api/state');
   assert.equal(finalState.status, 200);
   assert.deepEqual(new Set(finalState.data.sessions.map(session => session.id)), new Set([id, explicit.data.session.id]));
-  assert.deepEqual((await request(`/api/sessions/${id}`)).data.session, created.data.session);
+  assert.deepEqual((await request(`/api/sessions/${id}`)).data.session, { ...created.data.session, queuedInputs: [] });
   t.diagnostic('A new authenticated bootstrap renews CSRF; exactly one explicit later POST succeeds. TLS/mobile/browser recovery is outside this test.');
 });

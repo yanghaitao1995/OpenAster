@@ -64,11 +64,11 @@ async function populated(t) {
 
 test('v2 roundtrip preserves terminal runs, usage, errors, partial output and non-executable approval metadata exactly once', async t => {
   const f = await populated(t), summary = await createBackup(f), envelope = await archive(f.output);
-  assert.equal(envelope.version, 8); assert.equal(summary.runHistory, 3);
+  assert.equal(envelope.version, 9); assert.equal(summary.runHistory, 3);
   assert.deepEqual(envelope.payload.runHistory, histories(f.dataDir));
   assert.ok(envelope.payload.runHistory.every(value => value.run.connection.providerId === 'deleted-connection'));
   assert.ok(envelope.payload.runHistory.every(value => value.approvals.every(approval => !('args' in approval) && !('preview' in approval))));
-  envelope.version = 2; delete envelope.payload.summaryJobs; delete envelope.payload.toolArtifacts; await rewrite(f.output, envelope);
+  envelope.version = 2; delete envelope.payload.summaryJobs; delete envelope.payload.steeringInputs; delete envelope.payload.toolArtifacts; await rewrite(f.output, envelope);
   const restoredSummary = await restoreBackup({ input: f.output, dataDir: f.restored });
   assert.equal(restoredSummary.runHistory, 3);
   assert.deepEqual(histories(f.restored), histories(f.dataDir));
@@ -87,7 +87,7 @@ test('v2 permits a same run id in different sessions and keeps explicit history 
   first.approvals[0].resolvedAt = '2026-10-28T00:01:00.000Z'; store.putRunHistory(first);
   const second = store.createSession({ title: '另一任务' }); second.messages = [{ ...f.session.messages[0], id: randomUUID() }];
   const secondRecord = record(second); second.run = structuredClone(secondRecord.run); store.putSession(second); store.putRunHistory(secondRecord); store.close();
-  await createBackup(f); const legacy = await archive(f.output); legacy.version = 2; delete legacy.payload.summaryJobs; delete legacy.payload.toolArtifacts; await rewrite(f.output, legacy);
+  await createBackup(f); const legacy = await archive(f.output); legacy.version = 2; delete legacy.payload.summaryJobs; delete legacy.payload.steeringInputs; delete legacy.payload.toolArtifacts; await rewrite(f.output, legacy);
   await restoreBackup({ input: f.output, dataDir: f.restored });
   const restored = histories(f.restored); assert.equal(restored.length, 2);
   assert.deepEqual(restored.find(value => value.sessionId === f.session.id).approvals, first.approvals);
@@ -109,7 +109,7 @@ test('an active current run is stopped on restore and pending approval cannot be
 
 test('v1 archives without history still restore sparse terminal runs without inventing connection or usage', async t => {
   const f = await fixture(t); await createBackup(f); const envelope = await archive(f.output);
-  envelope.version = 1; delete envelope.payload.summaryJobs; delete envelope.payload.toolArtifacts; delete envelope.payload.runHistory;
+  envelope.version = 1; delete envelope.payload.summaryJobs; delete envelope.payload.steeringInputs; delete envelope.payload.toolArtifacts; delete envelope.payload.runHistory;
   envelope.payload.sessions[0].run = { id: 'legacy-completed', status: 'completed' };
   await rewrite(f.output, envelope); await restoreBackup({ input: f.output, dataDir: f.restored });
   const values = histories(f.restored); assert.equal(values.length, 1);
@@ -124,7 +124,7 @@ test('offline schema v1 export backfills its latest terminal run while leaving t
   db.exec('DROP TABLE run_history; PRAGMA user_version=1;'); db.close();
   const before = hash(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')));
   await createBackup(f); const envelope = await archive(f.output);
-  assert.equal(envelope.version, 8); assert.equal(envelope.payload.runHistory.length, 1);
+  assert.equal(envelope.version, 9); assert.equal(envelope.payload.runHistory.length, 1);
   assert.deepEqual(envelope.payload.runHistory[0].run, f.session.run);
   assert.equal(hash(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'))), before);
   const reader = new DatabaseSync(path.join(f.dataDir, 'openaster.sqlite'), { readOnly: true });
@@ -135,7 +135,7 @@ test('v2 history accepts sparse legacy steps and dangling legacy output without 
   const f = await fixture(t), store = new Store(f.dataDir);
   const sparse = { sessionId: f.session.id, run: { id: 'legacy-sparse', status: 'failed', steps: [{ detail: '旧版本仅保存说明' }, {}], output: { stepId: 'unavailable-step', content: '旧部分输出', status: 'interrupted' } }, approvals: [] };
   store.putRunHistory(sparse); store.close(); await createBackup(f);
-  const legacy = await archive(f.output); legacy.version = 2; delete legacy.payload.summaryJobs; delete legacy.payload.toolArtifacts; await rewrite(f.output, legacy);
+  const legacy = await archive(f.output); legacy.version = 2; delete legacy.payload.summaryJobs; delete legacy.payload.steeringInputs; delete legacy.payload.toolArtifacts; await rewrite(f.output, legacy);
   await restoreBackup({ input: f.output, dataDir: f.restored });
   assert.deepEqual(histories(f.restored), [sparse]);
 });
@@ -215,7 +215,7 @@ test('recomputed checksums cannot admit malformed history fields, associations, 
     const input = path.join(f.root, `bad-${index}.json`), dataDir = path.join(f.root, `bad-target-${index}`); await rewrite(input, envelope);
     await assert.rejects(restoreBackup({ input, dataDir }), undefined, label); await missing(dataDir);
   }
-  const fakeV1 = structuredClone(valid); fakeV1.version = 1; delete fakeV1.payload.summaryJobs;
+  const fakeV1 = structuredClone(valid); fakeV1.version = 1; delete fakeV1.payload.summaryJobs; delete fakeV1.payload.steeringInputs;
   await rewrite(path.join(f.root, 'v1-smuggling.json'), fakeV1);
   await assert.rejects(restoreBackup({ input: path.join(f.root, 'v1-smuggling.json'), dataDir: f.restored }), { code: 'INVALID_BACKUP' }); await missing(f.restored);
 });
@@ -234,7 +234,7 @@ test('history byte and count budgets reject the entire import instead of truncat
 test('v1 and v2 refuse contradictory pending approvals with recorded write effects before creating a target', async t => {
   const f = await populated(t); await createBackup(f); const valid = await archive(f.output);
   for (const version of [1, 2]) {
-    const envelope = structuredClone(valid); envelope.version = version; delete envelope.payload.summaryJobs; delete envelope.payload.toolArtifacts;
+    const envelope = structuredClone(valid); envelope.version = version; delete envelope.payload.summaryJobs; delete envelope.payload.steeringInputs; delete envelope.payload.toolArtifacts;
     if (version === 1) delete envelope.payload.runHistory;
     envelope.payload.sessions[0].approvals = [{ id: 'impossible-pending-write', runId: envelope.payload.sessions[0].run.id, status: 'pending', appliedAt: now }];
     const input = path.join(f.root, `contradictory-v${version}.json`), dataDir = path.join(f.root, `contradictory-v${version}`);
@@ -247,7 +247,7 @@ test('v1 and v2 refuse contradictory pending approvals with recorded write effec
 test('future database versions and inconsistent history SQL metadata fail read-only export', async t => {
   for (const kind of ['version', 'association', 'sort', 'summary', 'malformed-json', 'null-approvals', 'extra-column', 'view']) {
     const f = await populated(t), db = new DatabaseSync(path.join(f.dataDir, 'openaster.sqlite'));
-    if (kind === 'version') db.exec('PRAGMA user_version=7;');
+    if (kind === 'version') db.exec('PRAGMA user_version=8;');
     if (kind === 'association') db.exec("UPDATE run_history SET run_id='wrong-' || run_id;");
     if (kind === 'sort') db.exec("UPDATE run_history SET started_at='1900-01-01T00:00:00.000Z';");
     if (kind === 'summary') db.exec("UPDATE run_history SET summary_json='{}';");

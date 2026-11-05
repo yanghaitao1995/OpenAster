@@ -54,7 +54,7 @@ function branchIn(envelope, f) { return envelope.payload.sessions.find(session =
 for (const mode of ['prefix', 'message']) test(`v7 roundtrips ${mode} branch provenance and exact snapshots without duplicating source usage`, async t => {
   const f = await fixture(t, mode), before = await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'));
   await createBackup(f); const value = await archive(f.output);
-  assert.equal(value.version, 8); assert.equal(value.payload.runHistory.length, 2);
+  assert.equal(value.version, 9); assert.equal(value.payload.runHistory.length, 2);
   assert.deepEqual(branchIn(value, f), f.branch);
   assert.deepEqual(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')), before);
   await restoreBackup({ input: f.output, dataDir: f.restored });
@@ -62,7 +62,7 @@ for (const mode of ['prefix', 'message']) test(`v7 roundtrips ${mode} branch pro
   try {
     assert.deepEqual(store.getSession(f.source.id), f.source); assert.deepEqual(store.getSession(f.branch.id), f.branch);
     assert.deepEqual(store.getUsageOverview().summary, f.expectedUsage);
-    assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 6);
+    assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 7);
     assert.equal(store.db.prepare('SELECT count(*) AS n FROM run_history').get().n, 2);
   } finally { store.close(); }
   assert.equal(await fs.readFile(path.join(f.restored, 'workspace', 'note.txt'), 'utf8'), 'new disk content\r\n');
@@ -100,7 +100,7 @@ test('restoring an active branch cancels execution and revokes approvals while p
 test('v1 through v4 reject branch fields even with valid checksums', async t => {
   const f = await fixture(t); await createBackup(f); const original = await archive(f.output);
   for (const version of [1, 2, 3, 4]) {
-    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs;
+    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs; delete value.payload.steeringInputs;
     if (version < 4) delete value.payload.toolArtifacts;
     if (version < 3) for (const session of value.payload.sessions) for (const message of session.messages) delete message.contextFiles;
     if (version === 1) delete value.payload.runHistory;

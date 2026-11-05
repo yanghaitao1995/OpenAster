@@ -43,12 +43,12 @@ async function absent(file) { await assert.rejects(fs.stat(file), { code: 'ENOEN
 test('v7 restores exact independent tool bodies, refs and plans without replay or file replacement', async t => {
   const f = await fixture(t); const before = await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'));
   const made = await createBackup(f); assert.equal(made.toolArtifacts, 2);
-  const value = await archive(f.output); assert.equal(value.version, 8); assert.deepEqual(value.payload.toolArtifacts, f.artifacts);
+  const value = await archive(f.output); assert.equal(value.version, 9); assert.deepEqual(value.payload.toolArtifacts, f.artifacts);
   const result = await restoreBackup({ input: f.output, dataDir: f.restored }); assert.equal(result.toolArtifacts, 2);
   assert.deepEqual(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')), before);
   const store = new Store(f.restored);
   try {
-    assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 6);
+    assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 7);
     for (const artifact of f.artifacts) assert.deepEqual(store.getToolArtifact(artifact.sessionId, artifact.runId, artifact.id), artifact);
     const session = store.getSession(f.session.id); assert.equal(session.run.status, 'cancelled'); assert.equal(session.approvals[0].status, 'denied'); assert.equal(session.approvals[0].revoked, true);
     assert.equal(store.getProvider('external').enabled, false); assert.equal(store.listRunHistory(session.id).runs.length, 2);
@@ -62,7 +62,7 @@ test('v7 restores exact independent tool bodies, refs and plans without replay o
 test('legacy v1/v2/v3 restore without artifacts and refuse new fields in either current or archived runs', async t => {
   const f = await fixture(t); await createBackup(f); const original = await archive(f.output);
   for (const version of [1, 2, 3]) {
-    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs; delete value.payload.toolArtifacts;
+    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs; delete value.payload.steeringInputs; delete value.payload.toolArtifacts;
     for (const session of value.payload.sessions) {
       if (version < 3) for (const message of session.messages) delete message.contextFiles;
       for (const step of session.run.steps) { delete step.toolResultRef; delete step.contextPlan; }
@@ -122,7 +122,7 @@ test('source schema 6 malformed artifact hash, schema and size fail export witho
     if (kind === 'hash') db.exec("UPDATE tool_artifacts SET sha256=printf('%064d',0)");
     if (kind === 'schema') db.exec('ALTER TABLE tool_artifacts ADD COLUMN unknown TEXT');
     if (kind === 'oversized') db.exec('UPDATE tool_artifacts SET content=zeroblob(2097153)');
-    if (kind === 'future') db.exec('PRAGMA user_version=7');
+    if (kind === 'future') db.exec('PRAGMA user_version=8');
     db.close(); const before = await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'));
     await assert.rejects(createBackup(f), { code: 'INVALID_BACKUP' }, kind); await absent(f.output); assert.deepEqual(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')), before);
   }

@@ -33,17 +33,17 @@ test('schema6 backup excludes derived cache and rebuilds exact usage from canoni
   const before = await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'));
   await createBackup(f); assert.deepEqual(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')), before);
   const text = await fs.readFile(f.output, 'utf8'), archive = JSON.parse(text);
-  assert.equal(archive.version, 8); assert.ok(!text.includes('POISONED_DERIVED_CACHE')); assert.ok(!text.includes('usage_runs')); assert.ok(!text.includes('usage_meta'));
+  assert.equal(archive.version, 9); assert.ok(!text.includes('POISONED_DERIVED_CACHE')); assert.ok(!text.includes('usage_runs')); assert.ok(!text.includes('usage_meta'));
   await restoreBackup({ input: f.output, dataDir: f.restored });
   assert.deepEqual(overview(f.restored).summary, f.expected);
   const restored = new DatabaseSync(path.join(f.restored, 'openaster.sqlite'), { readOnly: true });
-  try { assert.equal(restored.prepare('PRAGMA user_version').get().user_version, 6); assert.equal(restored.prepare('SELECT count(*) AS n FROM usage_runs').get().n, 2); }
+  try { assert.equal(restored.prepare('PRAGMA user_version').get().user_version, 7); assert.equal(restored.prepare('SELECT count(*) AS n FROM usage_runs').get().n, 2); }
   finally { restored.close(); }
 });
 
 for (const version of [1, 2, 3, 4, 5]) test(`backup format v${version} restores usage projections without trusting a cache or fabricating sparse history`, async t => {
   const f = await fixture(t); await createBackup(f);
-  const archive = JSON.parse(await fs.readFile(f.output, 'utf8')); archive.version = version; delete archive.payload.summaryJobs;
+  const archive = JSON.parse(await fs.readFile(f.output, 'utf8')); archive.version = version; delete archive.payload.summaryJobs; delete archive.payload.steeringInputs;
   if (version < 4) delete archive.payload.toolArtifacts;
   if (version === 1) delete archive.payload.runHistory;
   archive.sha256 = createHash('sha256').update(JSON.stringify(archive.payload)).digest('hex'); await fs.writeFile(f.output, JSON.stringify(archive));

@@ -116,13 +116,13 @@ test('history import strictly validates metadata, consent shape, usage and bound
   assert.throws(() => validateRunHistoryRecord(record('session-one', 'huge', { steps: [{ detail: 'x'.repeat(RUN_HISTORY_MAX_BYTES) }] })), { code: 'RUN_HISTORY_LIMIT', status: 413 });
 });
 
-for (const version of [0, 1]) test(`schema ${version} migrates atomically to 6 and backfills sparse terminal history`, async t => {
+for (const version of [0, 1]) test(`schema ${version} migrates atomically to 7 and backfills sparse terminal history`, async t => {
   const root = await directory(t);
   const terminal = { id: 'legacy-session', providerId: 'unknown-old-provider', updatedAt: time, run: { id: 'legacy-run', status: 'completed', steps: [{ status: 'running' }] }, approvals: [] };
   seedLegacy(root, version, [terminal]);
   const store = new Store(root);
   try {
-    assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 6);
+    assert.equal(store.db.prepare('PRAGMA user_version').get().user_version, 7);
     const archived = store.getRunHistory(terminal.id, terminal.run.id);
     assert.deepEqual(archived, createRunHistoryRecord(terminal));
     assert.deepEqual(store.getSession(terminal.id), terminal);
@@ -134,13 +134,13 @@ for (const version of [0, 1]) test(`schema ${version} migrates atomically to 6 a
 
 test('future schema is refused without modifying the database bytes or creating tables', async t => {
   const root = await directory(t);
-  seedLegacy(root, 7, []);
+  seedLegacy(root, 8, []);
   const file = path.join(root, 'openaster.sqlite'), before = await readFile(file);
   assert.throws(() => new Store(root), { code: 'UNSUPPORTED_DATABASE_VERSION', status: 503 });
   assert.deepEqual(await readFile(file), before);
   const db = new DatabaseSync(file, { readOnly: true });
   try {
-    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
+    assert.equal(db.prepare('PRAGMA user_version').get().user_version, 8);
     assert.equal(db.prepare("SELECT name FROM sqlite_master WHERE name='run_history'").get(), undefined);
     assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, 'delete');
   } finally { db.close(); }

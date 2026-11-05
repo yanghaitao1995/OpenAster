@@ -51,7 +51,7 @@ async function rewrite(file, value) { value.sha256 = hash(JSON.stringify(value.p
 test('schema5 migrates transactionally to schema6 without rewriting task/history/usage records', async t => {
   const f = await fixture(t), before = f.store.exportSessionsWithHistory();
   f.store.db.exec('DROP TABLE summary_jobs; PRAGMA user_version=5;'); f.close(f.store);
-  const reopened = f.open(); assert.equal(reopened.db.prepare('PRAGMA user_version').get().user_version, 6);
+  const reopened = f.open(); assert.equal(reopened.db.prepare('PRAGMA user_version').get().user_version, 7);
   assert.deepEqual(reopened.exportSessionsWithHistory(), before); assert.equal(reopened.getUsageOverview().summary.runs.total, 0);
   assert.equal(reopened.db.prepare("PRAGMA foreign_key_list('summary_jobs')").get().on_delete, 'CASCADE');
 });
@@ -59,7 +59,7 @@ test('schema5 migrates transactionally to schema6 without rewriting task/history
 test('future schema7 and missing schema6 job table refuse before writable database changes', async t => {
   for (const kind of ['future', 'missing', 'shape']) {
     const f = await fixture(t); f.close(f.store); const file = path.join(f.dataDir, 'openaster.sqlite'), db = new DatabaseSync(file);
-    if (kind === 'future') db.exec('PRAGMA user_version=7;');
+    if (kind === 'future') db.exec('PRAGMA user_version=8;');
     if (kind === 'missing') db.exec('DROP TABLE summary_jobs;');
     if (kind === 'shape') db.exec('ALTER TABLE summary_jobs ADD COLUMN unexpected TEXT;');
     db.close(); const before = await fs.readFile(file);
@@ -209,7 +209,7 @@ test('startup rejects oversized and excessive SQL job records before any recover
 test('v8 backup preserves terminal drafts and cancels active ones while rebuilding usage without network or replay', async t => {
   const f = await fixture(t), completed = await complete(f), { draft } = initial(f.session); f.store.putSummaryDraft(draft); f.close(f.store);
   const before = await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')); const backup = await createBackup(f), archive = await readArchive(f.output);
-  assert.equal(archive.version, 8); assert.equal(backup.summaryJobs, 2); assert.equal(archive.payload.summaryJobs.length, 2);
+  assert.equal(archive.version, 9); assert.equal(backup.summaryJobs, 2); assert.equal(archive.payload.summaryJobs.length, 2);
   assert.deepEqual(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')), before);
   const result = await restoreBackup({ input: f.output, dataDir: f.restored }); assert.equal(result.summaryJobs, 2);
   const restored = f.open(f.restored); assert.deepEqual(restored.getSummaryDraft(f.session.id, completed.id), completed);
@@ -222,7 +222,7 @@ test('v8 backup preserves terminal drafts and cancels active ones while rebuildi
 test('v1 through v6 archives remain compatible but strictly reject a smuggled summaryJobs field', async t => {
   const f = await fixture(t); f.close(f.store); await createBackup(f); const original = await readArchive(f.output);
   for (let version = 1; version <= 6; version++) {
-    const archive = structuredClone(original); archive.version = version; delete archive.payload.summaryJobs;
+    const archive = structuredClone(original); archive.version = version; delete archive.payload.summaryJobs; delete archive.payload.steeringInputs;
     if (version < 2) delete archive.payload.runHistory; if (version < 4) delete archive.payload.toolArtifacts;
     const input = path.join(f.root, `legacy-${version}.json`), target = path.join(f.root, `legacy-${version}`);
     await rewrite(input, archive); await restoreBackup({ input, dataDir: target }); const restored = f.open(target); assert.deepEqual(restored.listSummaryDrafts(f.session.id).drafts, []); f.close(restored);

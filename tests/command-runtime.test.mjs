@@ -251,7 +251,7 @@ test('shutdown while waiting revokes the command and backup restore cannot repla
   const output = path.join(f.root, 'backup.json'); await f.close();
   await createBackup({ dataDir: f.dataDir, workspace: f.workspace, output });
   const envelope = JSON.parse(await fs.readFile(output, 'utf8'));
-  assert.equal(envelope.version, 8); assert.equal(envelope.payload.sessions[0].approvals[0].command.command, 'echo never-run');
+  assert.equal(envelope.version, 9); assert.equal(envelope.payload.sessions[0].approvals[0].command.command, 'echo never-run');
   assert.equal(envelope.payload.runHistory[0].approvals[0].command.sha256, sha('echo never-run'));
   const restoredDir = path.join(f.root, 'restored'); await restoreBackup({ input: output, dataDir: restoredDir });
   const restored = new Store(restoredDir);

@@ -66,7 +66,7 @@ test('invalid images, forged canonical fields and unauthenticated input do not p
   for (const images of [null, {}, [prepareImages([fixtures.png_rgb])[0]], [{ ...fixtures.png_rgb, data: 'PHN2Zz48L3N2Zz4=' }], [{ ...fixtures.png_rgb, url: 'https://fixture.invalid/file.png' }]]) assert.equal((await f.send(session.id, '无效图片', images)).status, 400);
   assert.equal((await f.send(session.id, '', [])).status, 400);
   assert.equal((await f.send(session.id, '过多图片', Array(5).fill(fixtures.png_rgb))).status, 413);
-  assert.deepEqual((await f.request(base)).session, session); assert.equal(f.calls.length, 0); assert.equal((await f.request(base + '/runs')).runs.length, 0);
+  assert.deepEqual((await f.request(base)).session, { ...session, queuedInputs: [] }); assert.equal(f.calls.length, 0); assert.equal((await f.request(base + '/runs')).runs.length, 0);
 });
 
 test('demo reports unsupported image input before creating a turn and request budgets never silently omit images', async t => {
@@ -110,15 +110,16 @@ test('store rejects tampered image identity and assistant images before changing
   const store = new Store(f.dataDir);
   try {
     for (const mutate of [session => { session.messages[0].images[0].sha256 = '0'.repeat(64); }, session => { session.messages[0].images[0].width = 999; }, session => { session.messages[1].images = session.messages[0].images; }]) {
-      const changed = structuredClone(original); mutate(changed); assert.throws(() => store.putSession(changed), { code: 'INVALID_IMAGES' }); assert.deepEqual(store.getSession(source.id), original);
+      const changed = structuredClone(original); delete changed.queuedInputs; mutate(changed); assert.throws(() => store.putSession(changed), { code: 'INVALID_IMAGES' });
+      const { queuedInputs, ...canonical } = original; assert.deepEqual(queuedInputs, []); assert.deepEqual(store.getSession(source.id), canonical);
     }
   } finally { store.close(); }
 });
 
-test('offline backup v8 roundtrips image messages and rejects tampered image content before restore creation', async t => {
+test('offline backup v9 roundtrips image messages and rejects tampered image content before restore creation', async t => {
   const f = await fixture(t), source = await f.session(); const started = await f.send(source.id, '', [fixtures.png_rgb, fixtures.jpeg_progressive, fixtures.webp_lossless]); const original = await f.terminal(source.id, started.runId); await f.close();
   const output = path.join(f.root, 'backup.json'), restored = path.join(f.root, 'restored');
-  await createBackup({ dataDir: f.dataDir, workspace: f.workspace, output }); const archive = JSON.parse(await fs.readFile(output, 'utf8')); assert.equal(archive.version, 8);
+  await createBackup({ dataDir: f.dataDir, workspace: f.workspace, output }); const archive = JSON.parse(await fs.readFile(output, 'utf8')); assert.equal(archive.version, 9);
   assert.deepEqual(archive.payload.sessions.find(session => session.id === source.id).messages[0].images, original.messages[0].images);
   await restoreBackup({ input: output, dataDir: restored }); const restoredStore = new Store(restored);
   try { assert.deepEqual(restoredStore.getSession(source.id).messages[0].images, original.messages[0].images); } finally { restoredStore.close(); }

@@ -162,7 +162,7 @@ for (const type of ['openai', 'responses', 'anthropic', 'ollama']) test(`${type}
   const output = path.join(f.root, 'approved-backup.json'), restored = path.join(f.root, 'approved-restored');
   await createBackup({ dataDir: f.dataDir, output });
   const envelope = JSON.parse(await fs.readFile(output, 'utf8'));
-  assert.equal(envelope.version, 8); assert.equal(envelope.payload.sessions[0].approvals[0].tool, 'edit_file');
+  assert.equal(envelope.version, 9); assert.equal(envelope.payload.sessions[0].approvals[0].tool, 'edit_file');
   await restoreBackup({ input: output, dataDir: restored });
   const restoredData = stored(restored, f.sessionId);
   assert.deepEqual(restoredData.session.approvals, completed.approvals);
@@ -296,7 +296,7 @@ test('v1 write approvals and legacy missing-tool records remain recoverable with
   const original = JSON.parse(await fs.readFile(output, 'utf8'));
   for (const variant of ['write_file', 'missing']) {
     const envelope = structuredClone(original), approval = envelope.payload.sessions[0].approvals[0];
-    envelope.version = 1; delete envelope.payload.summaryJobs; delete envelope.payload.toolArtifacts; delete envelope.payload.runHistory;
+    envelope.version = 1; delete envelope.payload.summaryJobs; delete envelope.payload.steeringInputs; delete envelope.payload.toolArtifacts; delete envelope.payload.runHistory;
     for (const value of envelope.payload.sessions) for (const step of value.run?.steps ?? []) { delete step.toolResultRef; delete step.contextPlan; }
     if (variant === 'missing') delete approval.tool; else approval.tool = variant;
     envelope.sha256 = hash(JSON.stringify(envelope.payload));

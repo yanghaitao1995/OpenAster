@@ -26,7 +26,7 @@ async function ownedDirectory(t) {
 async function client(app) {
   const boot = await fetch(app.url + '/api/bootstrap');
   const cookie = boot.headers.get('set-cookie').split(';')[0], bootstrap = await boot.json();
-  assert.deepEqual(bootstrap.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, progressiveSkills: 1, images: 1 });
+  assert.deepEqual(bootstrap.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, commandPolicy: 1, taskInput: 1, webTools: 1, progressiveSkills: 1, images: 1 });
   const { csrfToken } = bootstrap;
   return async (route, { method = 'GET', body, auth = true, headers = {} } = {}) => {
     const response = await fetch(app.url + route, {
@@ -97,7 +97,7 @@ for (const type of ['openai', 'responses', 'anthropic', 'ollama']) {
       assert.equal(supplied.attached_files[0].sha256, hash(content));
       assert.equal(supplied.attached_files[0].content, content);
       assert.ok(!JSON.stringify(calls[0]).includes('NOT_SELECTED_PRIVATE_TEXT'));
-      const currentState = await request('/api/state'); assert.deepEqual(currentState.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, progressiveSkills: 1, images: 1 });
+      const currentState = await request('/api/state'); assert.deepEqual(currentState.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, commandPolicy: 1, taskInput: 1, webTools: 1, progressiveSkills: 1, images: 1 });
       assert.ok(!JSON.stringify(currentState).includes('<script>not executable</script>'));
       assert.deepEqual((await request('/api/export')).sessions.find(item => item.id === session.id).messages[0].contextFiles, done.messages[0].contextFiles);
       await fs.writeFile(path.join(root, 'workspace', 'src', '资料.md'), 'NEW_DISK_TEXT_NOT_SELECTED');
@@ -138,7 +138,7 @@ test('context selection errors are rejected before persisting a new message or i
     const bigB = await imported(request, 'b.txt', 'b'.repeat(140 * 1024));
     const oversized = await request(base + '/messages', { method: 'POST', body: { content: '使用资料', files: [bigA, bigB] } });
     assert.equal(oversized.status, 413); assert.equal(oversized.error.code, 'CONTEXT_FILES_LIMIT');
-    assert.deepEqual((await request(base)).session, session); assert.equal(calls, 0);
+    assert.deepEqual((await request(base)).session, { ...session, queuedInputs: [] }); assert.equal(calls, 0);
     assert.equal((await request(base + '/runs')).runs.length, 0);
     const valid = await request(base + '/messages', { method: 'POST', body: { content: '不附带文件', files: [] } });
     assert.equal(valid.status, 202); assert.equal((await terminal(request, base, valid.runId)).run.status, 'completed');
@@ -161,7 +161,7 @@ test('selected context uses the current workspace access checks and never reads 
       const denied = await request(base + '/messages', { method: 'POST', body: { content: '使用文件', files: [{ path: name, sha256: hash(text) }] } });
       assert.equal(denied.status, 403); assert.ok(!JSON.stringify(denied).includes(text));
     }
-    assert.deepEqual((await request(base)).session, session); assert.equal(calls, 0);
+    assert.deepEqual((await request(base)).session, { ...session, queuedInputs: [] }); assert.equal(calls, 0);
   } finally { await app.close(); }
 });
 

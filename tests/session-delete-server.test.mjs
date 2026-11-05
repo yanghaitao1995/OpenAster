@@ -94,7 +94,7 @@ for (const stage of ['insert', 'prune']) test(`session DELETE rolls back all ret
     usageRevisionBefore: before.usage_meta[0].revision, usageRevisionAfter: after.usage_meta[0].revision }));
   assert.equal(deleted.status, 500); assert.equal(deleted.body.error.code, 'INTERNAL_ERROR');
   assert.equal(current.status, 200, 'failed deletion must leave the task available');
-  assert.deepEqual(current.body.session, f.session);
+  assert.deepEqual(current.body.session, { ...f.session, queuedInputs: [] });
   assert.deepEqual(after, before, 'task/history/artifact/summary/usage/revision/audit rollback together');
   const usageAfter = await f.request('/api/usage');
   const { generatedAt: beforeGeneratedAt, ...beforeUsage } = overview.body;

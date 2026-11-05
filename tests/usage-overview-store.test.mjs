@@ -114,7 +114,7 @@ for (const version of [2, 3]) test(`schema ${version} migration backfills all hi
   session.run = run('legacy-current', { steps: [model(null)] }); f.store.putSession(session);
   f.store.db.prepare('DELETE FROM run_history WHERE run_id=?').run('legacy-current');
   f.store.db.exec(`DROP TABLE usage_runs; DROP TABLE usage_meta; PRAGMA user_version=${version};`); f.close();
-  const upgraded = f.open(); assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version, 6);
+  const upgraded = f.open(); assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version, 7);
   const before = upgraded.getUsageOverview(); assert.equal(before.summary.runs.total, 2); assert.equal(before.summary.modelSteps, 2);
   assert.equal(before.summary.tokens.inputTokens.knownSum, '5'); f.close();
   assert.deepEqual(f.open().getUsageOverview().summary, before.summary);

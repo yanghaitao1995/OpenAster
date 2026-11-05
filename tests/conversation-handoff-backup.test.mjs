@@ -62,7 +62,7 @@ test('schema4 migrates to schema6 without rewriting messages, provenance, histor
   const before = store.exportSessionsWithHistory(), usage = store.getUsageOverview();
   store.db.exec('PRAGMA user_version=4;'); f.close(store);
   const upgraded = f.open();
-  assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version, 7);
   assert.deepEqual(upgraded.exportSessionsWithHistory(), before);
   const { generatedAt: _beforeTime, ...priorUsage } = usage, { generatedAt: _afterTime, ...currentUsage } = upgraded.getUsageOverview();
   assert.deepEqual(currentUsage, priorUsage);
@@ -72,7 +72,7 @@ test('schema4 migrates to schema6 without rewriting messages, provenance, histor
 test('future schema7 is rejected before writable pragmas or table creation', async t => {
   const f = await fixture(t), directory = path.join(f.root, 'future'); await fs.mkdir(directory);
   const file = path.join(directory, 'openaster.sqlite'), db = new DatabaseSync(file);
-  db.exec("CREATE TABLE sentinel(value TEXT); INSERT INTO sentinel VALUES('unchanged'); PRAGMA user_version=7;"); db.close();
+  db.exec("CREATE TABLE sentinel(value TEXT); INSERT INTO sentinel VALUES('unchanged'); PRAGMA user_version=8;"); db.close();
   const before = await fs.readFile(file);
   assert.throws(() => new Store(directory), { code: 'UNSUPPORTED_DATABASE_VERSION', status: 503 });
   assert.deepEqual(await fs.readFile(file), before);
@@ -80,7 +80,7 @@ test('future schema7 is rejected before writable pragmas or table creation', asy
   try {
     assert.equal(reader.prepare('PRAGMA journal_mode').get().journal_mode, 'delete');
     assert.deepEqual(reader.prepare("SELECT name FROM sqlite_schema WHERE type='table'").all().map(row => row.name), ['sentinel']);
-    assert.equal(reader.prepare('PRAGMA user_version').get().user_version, 7);
+    assert.equal(reader.prepare('PRAGMA user_version').get().user_version, 8);
   } finally { reader.close(); }
 });
 
@@ -162,12 +162,12 @@ test('first-save transaction failure leaves no continuation, history or usage an
 test('v7 exports and restores exact handoff text and independent source records with source bytes unchanged', async t => {
   const f = await fixture(t), before = await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'));
   await createBackup(f); const envelope = await readArchive(f.output);
-  assert.equal(envelope.version, 8); assert.deepEqual(envelope.payload.runHistory, []); assert.deepEqual(envelope.payload.toolArtifacts, []);
+  assert.equal(envelope.version, 9); assert.deepEqual(envelope.payload.runHistory, []); assert.deepEqual(envelope.payload.toolArtifacts, []);
   assert.deepEqual(envelope.payload.sessions.find(session => session.id === f.session.id), f.session);
   assert.deepEqual(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')), before);
   await restoreBackup({ input: f.output, dataDir: f.restored }); const restored = f.open(f.restored);
   assert.deepEqual(restored.getSession(f.session.id), f.session); assert.deepEqual(restored.getSession(f.source.id), f.source);
-  assert.equal(restored.db.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(restored.db.prepare('PRAGMA user_version').get().user_version, 7);
   assert.equal(restored.getUsageOverview().summary.runs.total, 0);
   assert.equal(await fs.readFile(path.join(f.restored, 'workspace', 'note.txt'), 'utf8'), 'current file remains unchanged\r\n');
   await missing(path.join(f.restored, 'workspace', 'gone.txt'));
@@ -221,7 +221,7 @@ test('active continuation restore cancels its own run, revokes pending approval 
 test('v1 through v5 remain restorable without handoff fields and reject any smuggled handoff field', async t => {
   const f = await fixture(t); await createBackup(f); const current = await readArchive(f.output);
   for (const version of [1, 2, 3, 4, 5]) {
-    const envelope = structuredClone(current); envelope.version = version; delete envelope.payload.summaryJobs;
+    const envelope = structuredClone(current); envelope.version = version; delete envelope.payload.summaryJobs; delete envelope.payload.steeringInputs;
     for (const session of envelope.payload.sessions) for (const message of session.messages) { delete message.contextHandoff; if (version < 3) delete message.contextFiles; }
     if (version < 2) delete envelope.payload.runHistory;
     if (version < 4) delete envelope.payload.toolArtifacts;

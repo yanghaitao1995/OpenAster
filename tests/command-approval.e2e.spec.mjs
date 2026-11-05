@@ -107,6 +107,7 @@ async function propose(page, local, session, text) {
 test('Command approval: exact proposal stays inert until approval, persists start and original result, and a separate denial never executes', async ({ page, local }, info) => {
   await ready(page, local);
   const card = await propose(page, local, local.approved, '批准验证：在自有临时目录写入测试标记。');
+  await expect(card.getByRole('button', { name: '批准并授权本轮…', exact: true })).toHaveCount(0);
   const exactCommand = commandFor('approved-marker.txt');
   expect(await card.locator('.approval-command').textContent()).toBe(exactCommand);
   await expect(card).toContainText(shell === 'powershell' ? 'PowerShell' : 'POSIX sh');
@@ -133,8 +134,16 @@ test('Command approval: exact proposal stays inert until approval, persists star
   expect(record.result).toMatchObject({ shell, cwd, exitCode: 0, timedOut: false, cancelled: false });
   expect(record.result.stdout).toContain('owned-command-complete');
   await page.reload(); await expect(page.locator('#chat-title')).toHaveText(local.approved.title);
+  await expect(page.locator('#approval-list')).toBeHidden();
+  await expect(page.locator('.conversation-scroll .approval-history')).toHaveCount(0);
+  if (await page.locator('#context-toggle').getAttribute('aria-expanded') !== 'true') await page.locator('#context-toggle').click();
+  await expect(page.locator('#run-panel>.approval-history')).toHaveCount(1);
   await page.locator('.approval-history>summary').click();
   await expect(page.locator('.approval-history')).toContainText('已记录进程启动');
+  await page.screenshot({ path: info.outputPath('resolved-approval-task-details.png'), animations: 'disabled' });
+  await page.locator('#context-toggle').click();
+  await expect(page.locator('#messages')).toContainText('已取得命令结果，请核对原始记录。');
+  await page.screenshot({ path: info.outputPath('completed-answer-without-approval-tail.png'), animations: 'disabled' });
   expect((await local.read(local.approved.id)).approvals.at(-1)).toEqual(approval);
   const refused = await propose(page, local, local.denied, '拒绝验证：这次不能写入测试标记。');
   await expect(access(join(local.workspace, cwd, 'denied-marker.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
@@ -247,6 +256,9 @@ test('Command approval: control characters are visible in command and cwd previe
   const result = JSON.parse(await original.locator('pre').textContent());
   expect(result.result).toMatchObject({ cwd: controlsCwd, shell, exitCode: 0, timedOut: false, cancelled: false });
   await page.reload(); await expect(page.locator('#chat-title')).toHaveText(local.controls.title);
+  await expect(page.locator('#approval-list')).toBeHidden();
+  await expect(page.locator('.conversation-scroll .approval-history')).toHaveCount(0);
+  if (await page.locator('#context-toggle').getAttribute('aria-expanded') !== 'true') await page.locator('#context-toggle').click();
   await page.locator('.approval-history>summary').click();
   await page.locator('.approval-history').getByText('查看当时的命令', { exact: true }).click();
   const history = page.locator('.approval-history');

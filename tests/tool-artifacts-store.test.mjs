@@ -49,7 +49,7 @@ test('artifact, reference and terminal history commit together and bodies stay o
   assert.ok(!JSON.stringify(f.store.getSession(f.session.id)).includes('中文'));
   assert.ok(!JSON.stringify(f.store.getSessionOutput(f.session.id)).includes('中文'));
   assert.ok(!JSON.stringify(f.store.listRunHistory(f.session.id)).includes('中文'));
-  assert.equal(f.store.db.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(f.store.db.prepare('PRAGMA user_version').get().user_version, 7);
   assert.deepEqual(f.store.exportSessionsWithHistory().toolArtifacts, [value]);
   f.close(); const reopened = new Store(f.root);
   try { assert.deepEqual(reopened.getToolArtifact(f.session.id, value.runId, value.id), value); reopened.deleteSession(f.session.id); assert.equal(reopened.getToolArtifact(f.session.id, value.runId, value.id), null); }
@@ -173,6 +173,6 @@ test('schema 2 adds an empty artifact table without replacing explicit history',
   const record = f.store.getRunHistory(f.session.id, f.session.run.id); record.run.requestPreview = 'explicit older archive'; f.store.putRunHistory(record);
   f.store.db.exec('DROP TABLE tool_artifacts; PRAGMA user_version=2;'); f.close();
   const upgraded = new Store(f.root);
-  try { assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version, 6); assert.deepEqual(upgraded.getRunHistory(f.session.id, record.run.id), record); assert.equal(upgraded.db.prepare('SELECT count(*) AS n FROM tool_artifacts').get().n, 0); }
+  try { assert.equal(upgraded.db.prepare('PRAGMA user_version').get().user_version, 7); assert.deepEqual(upgraded.getRunHistory(f.session.id, record.run.id), record); assert.equal(upgraded.db.prepare('SELECT count(*) AS n FROM tool_artifacts').get().n, 0); }
   finally { upgraded.close(); }
 });

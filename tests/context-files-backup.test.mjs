@@ -57,7 +57,7 @@ test('v7 preserves exact context snapshots across runs without rereading, recrea
   store.putSession(session); store.close();
   const before = hash(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')));
   await createBackup(f); const value = await archive(f.output);
-  assert.equal(value.version, 8); assert.deepEqual(value.payload.sessions[0].messages, session.messages);
+  assert.equal(value.version, 9); assert.deepEqual(value.payload.sessions[0].messages, session.messages);
   assert.equal(value.payload.runHistory.length, 1);
   assert.equal(hash(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'))), before);
   await restoreBackup({ input: f.output, dataDir: f.restored });
@@ -67,7 +67,7 @@ test('v7 preserves exact context snapshots across runs without rereading, recrea
   assert.equal(await fs.readFile(path.join(f.restored, 'workspace', 'note.txt'), 'utf8'), 'current workspace text\r\n');
   await missing(path.join(f.restored, 'workspace', 'no-longer-present.txt'));
   const db = new DatabaseSync(path.join(f.restored, 'openaster.sqlite'), { readOnly: true });
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 6);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 7);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM run_history').get().n, 2); db.close();
   const app = await startServer({ dataDir: f.restored });
   try {
@@ -93,7 +93,7 @@ test('five context files at the exact raw UTF-8 byte limit roundtrip with BOM an
 test('v1 and v2 without context files remain accepted, while any contextFiles field is rejected in both legacy formats', async t => {
   const f = await fixture(t, false); await createBackup(f); const original = await archive(f.output);
   for (const version of [1, 2]) {
-    const legacy = structuredClone(original); legacy.version = version; delete legacy.payload.summaryJobs; delete legacy.payload.toolArtifacts;
+    const legacy = structuredClone(original); legacy.version = version; delete legacy.payload.summaryJobs; delete legacy.payload.steeringInputs; delete legacy.payload.toolArtifacts;
     if (version === 1) delete legacy.payload.runHistory;
     const input = path.join(f.root, `legacy-${version}.json`), dataDir = path.join(f.root, `legacy-${version}`);
     await rewrite(input, legacy); await restoreBackup({ input, dataDir });
@@ -113,7 +113,7 @@ test('old schema 1 and schema 2 sessions export valid v7 without inventing conte
     { const db = new DatabaseSync(path.join(f.dataDir, 'openaster.sqlite')); db.exec('DROP TABLE tool_artifacts;'); if(version===1)db.exec('DROP TABLE run_history;'); db.exec('PRAGMA user_version='+version+';'); db.close(); }
     const before = hash(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite')));
     await createBackup(f); const value = await archive(f.output);
-    assert.equal(value.version, 8); assert.ok(Array.isArray(value.payload.runHistory));
+    assert.equal(value.version, 9); assert.ok(Array.isArray(value.payload.runHistory));
     assert.equal(Object.hasOwn(value.payload.sessions[0].messages[0], 'contextFiles'), false);
     assert.equal(hash(await fs.readFile(path.join(f.dataDir, 'openaster.sqlite'))), before);
     await restoreBackup({ input: f.output, dataDir: f.restored });
@@ -172,12 +172,12 @@ test('invalid snapshots in the actual source database fail export without alteri
 test('format version boundaries do not weaken legacy history or strict future-version rejection', async t => {
   const f = await fixture(t, false); await createBackup(f); const original = await archive(f.output);
   for (const [index, version] of [0, 9, '8', 2.5].entries()) {
-    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs;
+    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs; delete value.payload.steeringInputs;
     const input = path.join(f.root, `unknown-${index}.json`), dataDir = path.join(f.root, `unknown-${index}`); await rewrite(input, value);
     await assert.rejects(restoreBackup({ input, dataDir }), { code: 'INVALID_BACKUP' }); await missing(dataDir);
   }
   for (const version of [2, 3]) {
-    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs; delete value.payload.toolArtifacts; delete value.payload.runHistory;
+    const value = structuredClone(original); value.version = version; delete value.payload.summaryJobs; delete value.payload.steeringInputs; delete value.payload.toolArtifacts; delete value.payload.runHistory;
     const input = path.join(f.root, `missing-history-${version}.json`), dataDir = path.join(f.root, `missing-history-${version}`); await rewrite(input, value);
     await assert.rejects(restoreBackup({ input, dataDir }), { code: 'INVALID_BACKUP' }); await missing(dataDir);
   }
