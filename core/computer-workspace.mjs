@@ -77,7 +77,7 @@ export function createComputerWorkspace({ workspace, getFileAccess, protectedRoo
   return Object.freeze({
     ...workspace,
     pathKey(value) { return target(value).location; },
-    permissionSummary() { return `Current workspace: ${workspace.root}. Human-granted file access: ${getFileAccess() === 'computer' ? 'computer: absolute local file paths are allowed, excluding credentials/application data; global directory listings show direct children' : 'workspace: file tools are limited to this directory'}. Every write and shell command still requires explicit approval. Python, git and other installed programs can be invoked with run_command. Permission changes are available only to the human, never through tools.`; },
+    permissionSummary() { return `Current workspace: ${workspace.root}. Human-granted file access: ${getFileAccess() === 'computer' ? 'computer: absolute local file paths are allowed, excluding credentials/application data; global directory listings show direct children' : 'workspace: file tools are limited to this directory'}. Every write requires explicit approval. Shell commands follow the separate human-controlled task command policy; granting file access never grants shell approval. Python, git and other installed programs can be invoked with run_command. Permission changes are available only to the human, never through tools.`; },
     list: browse,
     async read(value, options) { const resolved = await fileTarget(value); const result = await resolved.adapter.read(resolved.path, options); if (resolved.external) await recheck(resolved.location); return { ...result, path: resolved.external ? resolved.location : resolved.path }; },
     async search(query, options = {}) {

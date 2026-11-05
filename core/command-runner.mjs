@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process';
 import { CoreError, checkAbort } from './errors.mjs';
 import { COMMAND_LIMITS, validateCommand } from './command-schema.mjs';
+import { prepareReadOnlyCommand, isReadOnlyCandidate } from './read-only-command.mjs';
 
 // Explicit environment projection: provider/gateway credentials and arbitrary
 // inherited shell configuration are not passed to the child. This is not an OS
@@ -94,18 +95,35 @@ export function createCommandRunner({ workspace }) {
       checkAbort(signal);
       const directory = await workspace.commandDirectory(value.cwd, { signal });
       checkAbort(signal);
-      const proposal = Object.freeze(value); proposals.set(proposal, directory); return proposal;
+      const readOnly = await prepareReadOnlyCommand(value, { root: workspace.root, directory, signal });
+      const proposal = Object.freeze(value); proposals.set(proposal, { directory, readOnly }); return proposal;
     },
-    async execute(proposal, { signal, onStarted } = {}) {
-      const original = proposals.get(proposal);
-      if (!original) throw new CoreError('INVALID_COMMAND_PROPOSAL', '命令提案不存在、已使用或已撤销。', 409);
+    describe(proposal) {
+      const value = proposals.get(proposal);
+      if (!value) throw new CoreError('INVALID_COMMAND_PROPOSAL', '命令提案不存在、已使用或已撤销。', 409);
+      return { root: workspace.root, directory: { ...value.directory }, readOnly: Boolean(value.readOnly), readOnlyCandidate: isReadOnlyCandidate(proposal) };
+    },
+    async execute(proposal, { signal, onStarted, authorize, readOnly = false } = {}) {
+      const prepared = proposals.get(proposal);
+      if (!prepared) throw new CoreError('INVALID_COMMAND_PROPOSAL', '命令提案不存在、已使用或已撤销。', 409);
       proposals.delete(proposal);
       checkAbort(signal);
       const directory = await workspace.commandDirectory(proposal.cwd, { signal });
-      if (JSON.stringify(original) !== JSON.stringify(directory)) throw new CoreError('COMMAND_DIRECTORY_CHANGED', '批准前后的命令工作目录已变化；命令未执行。', 409);
+      if (JSON.stringify(prepared.directory) !== JSON.stringify(directory)) throw new CoreError('COMMAND_DIRECTORY_CHANGED', '批准前后的命令工作目录已变化；命令未执行。', 409);
+      const plan = readOnly ? prepared.readOnly : null;
+      if (readOnly && !plan) throw new CoreError('COMMAND_READ_ONLY_CHANGED', '命令没有有效只读执行计划。', 409);
+      if (plan) await plan.verify();
+      await authorize?.();
       checkAbort(signal);
       const run = process.platform === 'win32' ? (await import('./windows-command.mjs')).runWindowsCommand : runPosixCommand;
-      const result = await run({ command: proposal.command, cwd: directory.canonical, env: commandEnvironment(), timeoutMs: proposal.timeoutMs, signal, onStarted });
+      const result = await run({ command: plan?.command ?? proposal.command, cwd: directory.canonical, env: { ...commandEnvironment(), ...(plan?.environment ?? {}) }, timeoutMs: proposal.timeoutMs, signal, onStarted: async () => {
+        await onStarted?.();
+        // The gate remains closed across durable approval/audit writes. Revoke
+        // and re-check immediately before the supervisor releases command code.
+        if (plan) await plan.verify();
+        await authorize?.();
+        checkAbort(signal);
+      } });
       const stdout = boundCommandOutput(result.stdout), stderr = boundCommandOutput(result.stderr);
       return { shell: proposal.shell, cwd: proposal.cwd, ...result, stdout: stdout.text, stderr: stderr.text, truncated: result.truncated || stdout.truncated || stderr.truncated };
     },
