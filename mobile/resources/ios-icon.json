@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "source": {
+    "file": "public/icon.svg",
+    "sha256": "f8da62ef19da388889987dda1f426e41b760ef7d893c3df6e64799ff7b4d69f3"
+  },
+  "asset": {
+    "file": "mobile/resources/ios-icon-1024.png",
+    "sha256": "b848d207f4b8894996e1bc470ae022d1b86533b3a6f11aa89f60fdd62fbd9c2b",
+    "bytes": 29704,
+    "width": 1024,
+    "height": 1024,
+    "colorType": 2
+  },
+  "generator": "mobile/generate-ios-icon.py",
+  "appearance": "Original project mark on its opaque square background; native system supplies the icon shape."
+}
