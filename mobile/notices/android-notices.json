@@ -1,0 +1,2005 @@
+{
+  "schemaVersion": 1,
+  "title": "第三方开源许可",
+  "platform": "android",
+  "variant": "debug",
+  "summary": "此离线页收录已确认的 46 个 Maven 组件和 Capacitor Android/Core 的 Apache 2.0、MIT 许可全文，保留本地可核对的声明与来源。",
+  "scope": {
+    "description": "生成时 Android debug 运行依赖闭包及显式补充的 Capacitor Core 网页桥接许可。",
+    "sourceInventory": "release/native-notices/third-party/android-native-inventory.json",
+    "componentSnapshotSha256": "521ab1eb56379cab05f489c3a181699a77716f5ff778ac0cd99daa27660d74b1",
+    "metadataEvidence": [
+      {
+        "path": "mobile/android/app/build/intermediates/lint_report_lint_model/debug/generateDebugLintReportModel/debug-artifact-dependencies.xml",
+        "bytes": 15887,
+        "sha256": "a2149d0e378b9f0fe875f18958f5e05274fa7cbd7e84579a366215a9ced9738a"
+      },
+      {
+        "path": "mobile/android/app/build/intermediates/lint_report_lint_model/debug/generateDebugLintReportModel/debug-artifact-libraries.xml",
+        "bytes": 27448,
+        "sha256": "9dff8829f65d6e2e1cd98703ddc01f008fc12f4be078a7134adf172a4f6ee9d8"
+      },
+      {
+        "path": "mobile/android/app/build/intermediates/lint_report_lint_model/debug/generateDebugLintReportModel/debug.xml",
+        "bytes": 1619,
+        "sha256": "afa28f7a4d0167834714a856875c66f3789c027882f74b2516b578464cca5f88"
+      }
+    ],
+    "limitations": [
+      "范围是本地 AGP MAIN debug package 运行依赖闭包中的 46 个 Maven 组件，以及 Capacitor Android/Core 8.5.3 的许可；不是所有平台或所有构建变体的清单。",
+      "组件与元数据哈希绑定生成时的本地输入快照，不构成对 Gradle 调用或最终 APK 字节的密码学证明；未包含 APK 自身哈希，以免循环构建。",
+      "运行依赖输入不证明每个类都经过 D8/R8 后留在 APK 中或在运行时被使用。",
+      "除显式列出的 Capacitor 包外，其他网页/JavaScript 依赖、远程服务、Android SDK、系统 WebView、构建及测试工具不在本清单范围内。",
+      "命名 LICENSE/NOTICE/COPYING/COPYRIGHT 文件检查不是对嵌入版权信息的穷尽分析；未发现 NOTICE 不能证明上游没有通知义务。",
+      "POM 是发布者的许可声明；通用 Apache 2.0 全文不补造各组件的版权或 NOTICE。此页提供可核对的许可材料，不宣称完成法律合规认证。"
+    ]
+  },
+  "counts": {
+    "maven": 46,
+    "npm": 2,
+    "components": 48
+  },
+  "licenses": [
+    {
+      "id": "Apache-2.0",
+      "name": "Apache License, Version 2.0",
+      "text": "\n                                 Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "sources": [
+        {
+          "path": "LICENSE",
+          "bytes": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "corroboratingSources": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.activity/activity/1.11.0/e190d032356d2f9781c92e12e100559042c630f7/activity-1.11.0.aar",
+          "entry": "META-INF/androidx/activity/activity/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.coordinatorlayout/coordinatorlayout/1.3.0/a82c29c04c8dfc905b2431c065fd7ecd42d3f541/coordinatorlayout-1.3.0.aar",
+          "entry": "META-INF/androidx/coordinatorlayout/coordinatorlayout/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-ktx/1.17.0/77d65388760e55bd6336907eec271607afb6c62f/core-ktx-1.17.0.aar",
+          "entry": "META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-splashscreen/1.2.0/b7dc7bed429d377b7674f18a58bf687b58005d3a/core-splashscreen-1.2.0.aar",
+          "entry": "META-INF/androidx/core/core-splashscreen/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-viewtree/1.0.0/449ba4f495b4d10d18edd01f32f9328be40d5749/core-viewtree-1.0.0.aar",
+          "entry": "META-INF/androidx/core/core-viewtree/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core/1.17.0/1eb461d3499f5bb832dd45edd3982471a11a3f95/core-1.17.0.aar",
+          "entry": "META-INF/androidx/core/core/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.profileinstaller/profileinstaller/1.4.0/6b6262e9ca50d1f75a496f3b64ebeb092a9d42eb/profileinstaller-1.4.0.aar",
+          "entry": "META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.webkit/webkit/1.14.0/14e62c02878c853523a4e466bd3231684efc79bd/webkit-1.14.0.aar",
+          "entry": "META-INF/androidx/webkit/webkit/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "sourceDescription": "全文取自仓库已有标准 Apache 2.0 LICENSE；第 1–9 条与 8 个 AndroidX AAR 的 LICENSE.txt 一致，附录中的版权占位符是许可应用示例，不是组件版权声明。"
+    },
+    {
+      "id": "MIT",
+      "name": "MIT License",
+      "text": "MIT License\n\nCopyright (c) 2017-present Drifty Co.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+      "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd",
+      "sources": [
+        {
+          "path": "node_modules/.pnpm/@capacitor+android@8.5.3_@capacitor+core@8.5.3/node_modules/@capacitor/android/LICENSE",
+          "bytes": 1075,
+          "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+        },
+        {
+          "path": "node_modules/.pnpm/@capacitor+core@8.5.3/node_modules/@capacitor/core/LICENSE",
+          "bytes": 1075,
+          "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "@capacitor/android@8.5.3",
+      "name": "@capacitor/android",
+      "version": "8.5.3",
+      "kind": "npm",
+      "licenseIds": [
+        "MIT"
+      ],
+      "declarations": [
+        {
+          "name": "MIT",
+          "source": {
+            "path": "node_modules/.pnpm/@capacitor+android@8.5.3_@capacitor+core@8.5.3/node_modules/@capacitor/android/package.json",
+            "bytes": 811,
+            "sha256": "8e9f15b7d7af7314428fc03046ac17a942ebca9f2893c60aae954f091f0db298"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "node_modules/.pnpm/@capacitor+android@8.5.3_@capacitor+core@8.5.3/node_modules/@capacitor/android/package.json",
+          "bytes": 811,
+          "sha256": "8e9f15b7d7af7314428fc03046ac17a942ebca9f2893c60aae954f091f0db298"
+        },
+        {
+          "path": "node_modules/.pnpm/@capacitor+android@8.5.3_@capacitor+core@8.5.3/node_modules/@capacitor/android/capacitor/src/main/assets/native-bridge.js",
+          "bytes": 53118,
+          "sha256": "44ae55c944c91d5ebeb1ca2374e831d7920d1af6464faef8f0001a96252109bc"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": "node_modules/.pnpm/@capacitor+android@8.5.3_@capacitor+core@8.5.3/node_modules/@capacitor/android/LICENSE",
+          "bytes": 1075,
+          "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+        }
+      ],
+      "licenseTextBasis": "package-license-text",
+      "noticeStatus": "包根目录未发现独立 NOTICE 文件；MIT 原文中的版权声明已保留。",
+      "notices": []
+    },
+    {
+      "id": "@capacitor/core@8.5.3",
+      "name": "@capacitor/core",
+      "version": "8.5.3",
+      "kind": "npm",
+      "licenseIds": [
+        "MIT"
+      ],
+      "declarations": [
+        {
+          "name": "MIT",
+          "source": {
+            "path": "node_modules/.pnpm/@capacitor+core@8.5.3/node_modules/@capacitor/core/package.json",
+            "bytes": 1953,
+            "sha256": "49d6df3edabbeac89e4689aab3c652d7148304899473a2337613ff50742eccc2"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "node_modules/.pnpm/@capacitor+core@8.5.3/node_modules/@capacitor/core/package.json",
+          "bytes": 1953,
+          "sha256": "49d6df3edabbeac89e4689aab3c652d7148304899473a2337613ff50742eccc2"
+        },
+        {
+          "path": "node_modules/.pnpm/@capacitor+core@8.5.3/node_modules/@capacitor/core/dist/capacitor.js",
+          "bytes": 8726,
+          "sha256": "3333389c8cccd266c26399aaf7fc2a695c110684dd6340aea47935416be86a0c"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": "node_modules/.pnpm/@capacitor+core@8.5.3/node_modules/@capacitor/core/LICENSE",
+          "bytes": 1075,
+          "sha256": "9c6ebf3e5ab832ba4d5af38f340978e1fedbfee6e3d23662dfdb8917a9d864dd"
+        }
+      ],
+      "licenseTextBasis": "package-license-text",
+      "noticeStatus": "包根目录未发现独立 NOTICE 文件；MIT 原文中的版权声明已保留。",
+      "notices": []
+    },
+    {
+      "id": "androidx.activity:activity:1.11.0@aar",
+      "name": "androidx.activity:activity",
+      "version": "1.11.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.activity/activity/1.11.0/87efc503be5883f0105ef68f69f54e838e022cb4/activity-1.11.0.pom",
+            "bytes": 4565,
+            "sha256": "a92d1319bd69ac0b088605928de544542d342f0fb4402267e27b1364ae754960"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.activity/activity/1.11.0/e190d032356d2f9781c92e12e100559042c630f7/activity-1.11.0.aar",
+          "bytes": 221073,
+          "sha256": "26726186b34f90b0fe55bbf0ebbf640ade99915bc35f4cb0153ddcf751499bd3"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.activity/activity/1.11.0/87efc503be5883f0105ef68f69f54e838e022cb4/activity-1.11.0.pom",
+          "bytes": 4565,
+          "sha256": "a92d1319bd69ac0b088605928de544542d342f0fb4402267e27b1364ae754960"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.activity/activity/1.11.0/e190d032356d2f9781c92e12e100559042c630f7/activity-1.11.0.aar",
+          "entry": "META-INF/androidx/activity/activity/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.annotation:annotation-experimental:1.4.1@aar",
+      "name": "androidx.annotation:annotation-experimental",
+      "version": "1.4.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.annotation/annotation-experimental/1.4.1/9e57caeeb7f02cecfe51c27d11352284b5161276/annotation-experimental-1.4.1.pom",
+            "bytes": 2031,
+            "sha256": "fe57b228417f4d7c677903dc61fb4a7cf993d603499de26d8d8113e477cc4f1b"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.annotation/annotation-experimental/1.4.1/7851235e2a16ce50270a74b555edaf9209b42864/annotation-experimental-1.4.1.aar",
+          "bytes": 39841,
+          "sha256": "6bd4c7c7476f8260cd3bdbb81183583e93fc9f790c27dea7dc314181cbf87aa0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.annotation/annotation-experimental/1.4.1/9e57caeeb7f02cecfe51c27d11352284b5161276/annotation-experimental-1.4.1.pom",
+          "bytes": 2031,
+          "sha256": "fe57b228417f4d7c677903dc61fb4a7cf993d603499de26d8d8113e477cc4f1b"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.annotation:annotation-jvm:1.8.1@jar",
+      "name": "androidx.annotation:annotation-jvm",
+      "version": "1.8.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.annotation/annotation-jvm/1.8.1/f948f21604453ee47039d125280c6cbc3f7e3a62/annotation-jvm-1.8.1.pom",
+            "bytes": 1826,
+            "sha256": "d49203733aa6fae046c3a3de4e796eed347595755486a64273989844759750b4"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.annotation/annotation-jvm/1.8.1/b8a16fe526014b7941c1debaccaf9c5153692dbb/annotation-jvm-1.8.1.jar",
+          "bytes": 56126,
+          "sha256": "9aab326d9492800991854360ac248f493ce7f7c3183519309b78ace9e240f6f6"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.annotation/annotation-jvm/1.8.1/f948f21604453ee47039d125280c6cbc3f7e3a62/annotation-jvm-1.8.1.pom",
+          "bytes": 1826,
+          "sha256": "d49203733aa6fae046c3a3de4e796eed347595755486a64273989844759750b4"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.appcompat:appcompat:1.7.1@aar",
+      "name": "androidx.appcompat:appcompat",
+      "version": "1.7.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.appcompat/appcompat/1.7.1/b03a9adbcce3c54f15e0d0be60c7afe4d0060870/appcompat-1.7.1.pom",
+            "bytes": 5366,
+            "sha256": "1f79910cc20de198acf3867b1e93f9ed59ddb643585b2e9c28ee55518af1bc00"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.appcompat/appcompat/1.7.1/6c5b56046c7b08e7bf94b6dd14cb616453e6be11/appcompat-1.7.1.aar",
+          "bytes": 1148656,
+          "sha256": "2ad334a323b28046e89b738c77d184cb3dcca32a551ab048851b2fda23a3ba26"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.appcompat/appcompat/1.7.1/b03a9adbcce3c54f15e0d0be60c7afe4d0060870/appcompat-1.7.1.pom",
+          "bytes": 5366,
+          "sha256": "1f79910cc20de198acf3867b1e93f9ed59ddb643585b2e9c28ee55518af1bc00"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.appcompat:appcompat-resources:1.7.1@aar",
+      "name": "androidx.appcompat:appcompat-resources",
+      "version": "1.7.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.appcompat/appcompat-resources/1.7.1/31130db4e028b10fed8dd2c38eb0a3785348b730/appcompat-resources-1.7.1.pom",
+            "bytes": 2993,
+            "sha256": "2faf922e8c3d706f29d862b3fbb3aa1347705c21c6eae18586d2bb1f7366ea01"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.appcompat/appcompat-resources/1.7.1/a0696fa573503263c7d5570ecd5e6032d397a287/appcompat-resources-1.7.1.aar",
+          "bytes": 63997,
+          "sha256": "8e2db31224ca53b108c784da2b361959062716d416b210cfef3d5a3828306df0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.appcompat/appcompat-resources/1.7.1/31130db4e028b10fed8dd2c38eb0a3785348b730/appcompat-resources-1.7.1.pom",
+          "bytes": 2993,
+          "sha256": "2faf922e8c3d706f29d862b3fbb3aa1347705c21c6eae18586d2bb1f7366ea01"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.arch.core:core-common:2.2.0@jar",
+      "name": "androidx.arch.core:core-common",
+      "version": "2.2.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.2.0/9627f64db0ba64e3c2432a274b83d23e1c0c627e/core-common-2.2.0.pom",
+            "bytes": 1704,
+            "sha256": "1e17d4af8d6425be2a69f8af4d654a87e0456259a9eef1542869bcb023547e28"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.2.0/5e1b8b81dfd5f52c56a8d53b18ca759c19a301f3/core-common-2.2.0.jar",
+          "bytes": 11657,
+          "sha256": "65308a06b1c00ee186cb9e19321383f043b993813f1522c47f4a3e3303bdba41"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.arch.core/core-common/2.2.0/9627f64db0ba64e3c2432a274b83d23e1c0c627e/core-common-2.2.0.pom",
+          "bytes": 1704,
+          "sha256": "1e17d4af8d6425be2a69f8af4d654a87e0456259a9eef1542869bcb023547e28"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.arch.core:core-runtime:2.2.0@aar",
+      "name": "androidx.arch.core:core-runtime",
+      "version": "2.2.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.arch.core/core-runtime/2.2.0/d9cb0beb2de910cd9922535b6028054786fea928/core-runtime-2.2.0.pom",
+            "bytes": 1920,
+            "sha256": "0f953706598140d9d8735cdd5aeb1fa35933f4e2f31c0bf3eb81a053a4c8c1a5"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.arch.core/core-runtime/2.2.0/39705982680d78556b679ef9d5400d4f17509b0b/core-runtime-2.2.0.aar",
+          "bytes": 7577,
+          "sha256": "a1be5e0caa2b07623862af6ae21b3ab0718123245184d0e30dea81b53f990a47"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.arch.core/core-runtime/2.2.0/d9cb0beb2de910cd9922535b6028054786fea928/core-runtime-2.2.0.pom",
+          "bytes": 1920,
+          "sha256": "0f953706598140d9d8735cdd5aeb1fa35933f4e2f31c0bf3eb81a053a4c8c1a5"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.collection:collection-jvm:1.4.2@jar",
+      "name": "androidx.collection:collection-jvm",
+      "version": "1.4.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.collection/collection-jvm/1.4.2/2ee54d139ec5d569288dc61b6b3f54a88f7243c/collection-jvm-1.4.2.pom",
+            "bytes": 2414,
+            "sha256": "adbb379e2b160f08e63e341ad04bbcc7033f6d868ec51ac11e4334642a4e39ef"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.collection/collection-jvm/1.4.2/bc60b5568a66d765a9fe8e266fd0c6c727e0b50b/collection-jvm-1.4.2.jar",
+          "bytes": 775789,
+          "sha256": "984ce9bd780055eafb8a105aca3f514686bf7b1b6272ec7c645a98ce40fc7db4"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.collection/collection-jvm/1.4.2/2ee54d139ec5d569288dc61b6b3f54a88f7243c/collection-jvm-1.4.2.pom",
+          "bytes": 2414,
+          "sha256": "adbb379e2b160f08e63e341ad04bbcc7033f6d868ec51ac11e4334642a4e39ef"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.concurrent:concurrent-futures:1.1.0@jar",
+      "name": "androidx.concurrent:concurrent-futures",
+      "version": "1.1.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.concurrent/concurrent-futures/1.1.0/1a2c7df73a77c58e30bd0b20cbc23e9854515438/concurrent-futures-1.1.0.pom",
+            "bytes": 1888,
+            "sha256": "748a34eb5d13d19d187adecaea82667fded5f1b0b98a655e13ed2e4a8b3d8ae6"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.concurrent/concurrent-futures/1.1.0/50b7fb98350d5f42a4e49704b03278542293ba48/concurrent-futures-1.1.0.jar",
+          "bytes": 25987,
+          "sha256": "0ce067c514a0d1049d1bebdf709e344ed3266fe9744275682937cdcb13334e9e"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.concurrent/concurrent-futures/1.1.0/1a2c7df73a77c58e30bd0b20cbc23e9854515438/concurrent-futures-1.1.0.pom",
+          "bytes": 1888,
+          "sha256": "748a34eb5d13d19d187adecaea82667fded5f1b0b98a655e13ed2e4a8b3d8ae6"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.coordinatorlayout:coordinatorlayout:1.3.0@aar",
+      "name": "androidx.coordinatorlayout:coordinatorlayout",
+      "version": "1.3.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.coordinatorlayout/coordinatorlayout/1.3.0/ae66b68905025c70160851a27764d5465424ad29/coordinatorlayout-1.3.0.pom",
+            "bytes": 2840,
+            "sha256": "f5f1092883ddac1d1e7a877bf167e84f67fa76be8661e8606ebb30dabb1e557e"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.coordinatorlayout/coordinatorlayout/1.3.0/a82c29c04c8dfc905b2431c065fd7ecd42d3f541/coordinatorlayout-1.3.0.aar",
+          "bytes": 52682,
+          "sha256": "3041e69a1784a7e0994d89256b5b545dda81b565bc0a60b27ec0595d923e0ed8"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.coordinatorlayout/coordinatorlayout/1.3.0/ae66b68905025c70160851a27764d5465424ad29/coordinatorlayout-1.3.0.pom",
+          "bytes": 2840,
+          "sha256": "f5f1092883ddac1d1e7a877bf167e84f67fa76be8661e8606ebb30dabb1e557e"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.coordinatorlayout/coordinatorlayout/1.3.0/a82c29c04c8dfc905b2431c065fd7ecd42d3f541/coordinatorlayout-1.3.0.aar",
+          "entry": "META-INF/androidx/coordinatorlayout/coordinatorlayout/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.core:core:1.17.0@aar",
+      "name": "androidx.core:core",
+      "version": "1.17.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core/1.17.0/e4d8420f30c51508efaeee5a449c1a479f6a5d9a/core-1.17.0.pom",
+            "bytes": 4908,
+            "sha256": "8b63b18ff4e3474ef1e9428ed022d7994e9e69adfcdaee7e59c7e52dc3cf75b0"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core/1.17.0/1eb461d3499f5bb832dd45edd3982471a11a3f95/core-1.17.0.aar",
+          "bytes": 1409473,
+          "sha256": "e1bd22bbcf5cee3a992dedb7d2d3c3b31c9f761c01e56d00ea443c8aaa981182"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core/1.17.0/e4d8420f30c51508efaeee5a449c1a479f6a5d9a/core-1.17.0.pom",
+          "bytes": 4908,
+          "sha256": "8b63b18ff4e3474ef1e9428ed022d7994e9e69adfcdaee7e59c7e52dc3cf75b0"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core/1.17.0/1eb461d3499f5bb832dd45edd3982471a11a3f95/core-1.17.0.aar",
+          "entry": "META-INF/androidx/core/core/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.core:core-ktx:1.17.0@aar",
+      "name": "androidx.core:core-ktx",
+      "version": "1.17.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-ktx/1.17.0/b1ee25e500db480c0f97dbb967f5d3b4b9b0a531/core-ktx-1.17.0.pom",
+            "bytes": 2586,
+            "sha256": "0233d8d0a2ce8ff383502c8c64a42fc1673016402c923795465b6444eacd9939"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-ktx/1.17.0/77d65388760e55bd6336907eec271607afb6c62f/core-ktx-1.17.0.aar",
+          "bytes": 172506,
+          "sha256": "4d23190b8623b8abb3c5247a0a7727eca347062d026335c427a09e82711b15f8"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-ktx/1.17.0/b1ee25e500db480c0f97dbb967f5d3b4b9b0a531/core-ktx-1.17.0.pom",
+          "bytes": 2586,
+          "sha256": "0233d8d0a2ce8ff383502c8c64a42fc1673016402c923795465b6444eacd9939"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-ktx/1.17.0/77d65388760e55bd6336907eec271607afb6c62f/core-ktx-1.17.0.aar",
+          "entry": "META-INF/androidx/core/core-ktx/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.core:core-splashscreen:1.2.0@aar",
+      "name": "androidx.core:core-splashscreen",
+      "version": "1.2.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-splashscreen/1.2.0/660b53f5203e728d72809e06323234e224d0582f/core-splashscreen-1.2.0.pom",
+            "bytes": 2545,
+            "sha256": "351c49fa60702a1635749dc1d24c6c02450af874fb67852cbdb0ade06beac66a"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-splashscreen/1.2.0/b7dc7bed429d377b7674f18a58bf687b58005d3a/core-splashscreen-1.2.0.aar",
+          "bytes": 42293,
+          "sha256": "5ace865c4eb7e0f24369790d2c76eddafd0dbb1ebea3288f55c18d9605ea0ee0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-splashscreen/1.2.0/660b53f5203e728d72809e06323234e224d0582f/core-splashscreen-1.2.0.pom",
+          "bytes": 2545,
+          "sha256": "351c49fa60702a1635749dc1d24c6c02450af874fb67852cbdb0ade06beac66a"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-splashscreen/1.2.0/b7dc7bed429d377b7674f18a58bf687b58005d3a/core-splashscreen-1.2.0.aar",
+          "entry": "META-INF/androidx/core/core-splashscreen/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.core:core-viewtree:1.0.0@aar",
+      "name": "androidx.core:core-viewtree",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-viewtree/1.0.0/4867db2b46b603ace8f822e6d476977300c98c21/core-viewtree-1.0.0.pom",
+            "bytes": 2107,
+            "sha256": "d4f2ed1176fa8c5612b80f74c952a8799142a9ed36022a1a238fde5b140580d9"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-viewtree/1.0.0/449ba4f495b4d10d18edd01f32f9328be40d5749/core-viewtree-1.0.0.aar",
+          "bytes": 6980,
+          "sha256": "dc1b678d58ebcf2bfa1587be68ff826694ce3d221251b9ef30d4d4b36297e6de"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-viewtree/1.0.0/4867db2b46b603ace8f822e6d476977300c98c21/core-viewtree-1.0.0.pom",
+          "bytes": 2107,
+          "sha256": "d4f2ed1176fa8c5612b80f74c952a8799142a9ed36022a1a238fde5b140580d9"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.core/core-viewtree/1.0.0/449ba4f495b4d10d18edd01f32f9328be40d5749/core-viewtree-1.0.0.aar",
+          "entry": "META-INF/androidx/core/core-viewtree/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.cursoradapter:cursoradapter:1.0.0@aar",
+      "name": "androidx.cursoradapter:cursoradapter",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.cursoradapter/cursoradapter/1.0.0/b1d8c36333871395c98e157e903881d44a509899/cursoradapter-1.0.0.pom",
+            "bytes": 1611,
+            "sha256": "62d95c89850af21030b19f14d5f7ecd6d8bcc9a3014c59002ec99624caac8100"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.cursoradapter/cursoradapter/1.0.0/74014983a86b83cbce534dec4e7aa9312f5f5d82/cursoradapter-1.0.0.aar",
+          "bytes": 10591,
+          "sha256": "a81c8fe78815fa47df5b749deb52727ad11f9397da58b16017f4eb2c11e28564"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.cursoradapter/cursoradapter/1.0.0/b1d8c36333871395c98e157e903881d44a509899/cursoradapter-1.0.0.pom",
+          "bytes": 1611,
+          "sha256": "62d95c89850af21030b19f14d5f7ecd6d8bcc9a3014c59002ec99624caac8100"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.customview:customview:1.0.0@aar",
+      "name": "androidx.customview:customview",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.customview/customview/1.0.0/53c54220d41f17dcb79d4d7f39432a328df544b2/customview-1.0.0.pom",
+            "bytes": 1795,
+            "sha256": "ce9e47b87184f5bd5e139e9becd5b26476d42d78c31bf2fdedc37acb41b9ad49"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.customview/customview/1.0.0/30f5ff6075d112f8076e733b24410e68159735b6/customview-1.0.0.aar",
+          "bytes": 33238,
+          "sha256": "20e5b8f6526a34595a604f56718da81167c0b40a7a94a57daa355663f2594df2"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.customview/customview/1.0.0/53c54220d41f17dcb79d4d7f39432a328df544b2/customview-1.0.0.pom",
+          "bytes": 1795,
+          "sha256": "ce9e47b87184f5bd5e139e9becd5b26476d42d78c31bf2fdedc37acb41b9ad49"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.drawerlayout:drawerlayout:1.0.0@aar",
+      "name": "androidx.drawerlayout:drawerlayout",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.drawerlayout/drawerlayout/1.0.0/436d14f0b503b411431a0c38e5368ba4ec4b1e62/drawerlayout-1.0.0.pom",
+            "bytes": 2006,
+            "sha256": "da6733425a83f5ce850878fa7201082345fed7c668dd58550fdd19c0396c6fa4"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.drawerlayout/drawerlayout/1.0.0/dd02c7e207136e1272b33815cc61e57676ed13a2/drawerlayout-1.0.0.aar",
+          "bytes": 32470,
+          "sha256": "9402442cdc5a43cf62fb14f8cf98c63342d4d9d9b805c8033c6cf7e802749ac1"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.drawerlayout/drawerlayout/1.0.0/436d14f0b503b411431a0c38e5368ba4ec4b1e62/drawerlayout-1.0.0.pom",
+          "bytes": 2006,
+          "sha256": "da6733425a83f5ce850878fa7201082345fed7c668dd58550fdd19c0396c6fa4"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.emoji2:emoji2:1.3.0@aar",
+      "name": "androidx.emoji2:emoji2",
+      "version": "1.3.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.emoji2/emoji2/1.3.0/ed727398c81d0c60b769905a0264cee48b319914/emoji2-1.3.0.pom",
+            "bytes": 3702,
+            "sha256": "14ebbea8234f013211965fdd08b42ee907ce0075af321018c8c2865c2e5db0eb"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.emoji2/emoji2/1.3.0/37ed42991ddf77924510472dba632314aab1c9d9/emoji2-1.3.0.aar",
+          "bytes": 143474,
+          "sha256": "2bf23818b23a996ddaa1b5fd5bb32129daff6bbb2dce15166e2fccdd2010b1a5"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.emoji2/emoji2/1.3.0/ed727398c81d0c60b769905a0264cee48b319914/emoji2-1.3.0.pom",
+          "bytes": 3702,
+          "sha256": "14ebbea8234f013211965fdd08b42ee907ce0075af321018c8c2865c2e5db0eb"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.emoji2:emoji2-views-helper:1.3.0@aar",
+      "name": "androidx.emoji2:emoji2-views-helper",
+      "version": "1.3.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.emoji2/emoji2-views-helper/1.3.0/ec7e94eb1e8f4a33d0fe0b092d52b654494987fe/emoji2-views-helper-1.3.0.pom",
+            "bytes": 3230,
+            "sha256": "2673b0f5859d4361a4e9a30457852a6745d0c3c85b5e0412070483f3963ef526"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.emoji2/emoji2-views-helper/1.3.0/7bef7c1117bb40ef41ee0641cd1d2d605e2d607c/emoji2-views-helper-1.3.0.aar",
+          "bytes": 22075,
+          "sha256": "9a1351295a4f739df0efe8344adaa9afb34856c3af584d4a9afbec105a45b90b"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.emoji2/emoji2-views-helper/1.3.0/ec7e94eb1e8f4a33d0fe0b092d52b654494987fe/emoji2-views-helper-1.3.0.pom",
+          "bytes": 3230,
+          "sha256": "2673b0f5859d4361a4e9a30457852a6745d0c3c85b5e0412070483f3963ef526"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.fragment:fragment:1.8.9@aar",
+      "name": "androidx.fragment:fragment",
+      "version": "1.8.9",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.fragment/fragment/1.8.9/43a5b2cf3b755e1e6c870efbd2200dfc58863b3c/fragment-1.8.9.pom",
+            "bytes": 5416,
+            "sha256": "8135a58b3ec9379c8afb4acce863f35e7654fddf1c602191f8d3feec13afed36"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.fragment/fragment/1.8.9/4e56c58068ca1c53f37e2081cc0b7ff0f1aa1ca9/fragment-1.8.9.aar",
+          "bytes": 382986,
+          "sha256": "12de5b89ab6641c1d8da82b63dc816652622b06d2781b949b6fbd2dff9fac492"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.fragment/fragment/1.8.9/43a5b2cf3b755e1e6c870efbd2200dfc58863b3c/fragment-1.8.9.pom",
+          "bytes": 5416,
+          "sha256": "8135a58b3ec9379c8afb4acce863f35e7654fddf1c602191f8d3feec13afed36"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.interpolator:interpolator:1.0.0@aar",
+      "name": "androidx.interpolator:interpolator",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.interpolator/interpolator/1.0.0/dfa9c6b5826fbf2f910e1720ce2b0421d7aafec3/interpolator-1.0.0.pom",
+            "bytes": 1608,
+            "sha256": "0ddc07cc39699f48ecd9ec894b5830c0f09e22e82959294edf37217224c88b7b"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.interpolator/interpolator/1.0.0/8a01fa254a23b9388571eb6334b03707c7d122d7/interpolator-1.0.0.aar",
+          "bytes": 7669,
+          "sha256": "33193135a64fe21fa2c35eec6688f1a76e512606c0fc83dc1b689e37add7732a"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.interpolator/interpolator/1.0.0/dfa9c6b5826fbf2f910e1720ce2b0421d7aafec3/interpolator-1.0.0.pom",
+          "bytes": 1608,
+          "sha256": "0ddc07cc39699f48ecd9ec894b5830c0f09e22e82959294edf37217224c88b7b"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-common:2.6.2@jar",
+      "name": "androidx.lifecycle:lifecycle-common",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.6.2/d7d9a39defa00b6c6d3f9a83734a025840b58640/lifecycle-common-2.6.2.pom",
+            "bytes": 6581,
+            "sha256": "57304cdac4da289a6ecdd0738e16b1d8858f1ef8e9fabe2d65a963719fd81dba"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.6.2/10f354fdb64868baecd67128560c5a0d6312c495/lifecycle-common-2.6.2.jar",
+          "bytes": 52314,
+          "sha256": "f34831b6c71cd844e1d35d1be49d5e79447c5ab856346531b1e8676fda7374b1"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.6.2/d7d9a39defa00b6c6d3f9a83734a025840b58640/lifecycle-common-2.6.2.pom",
+          "bytes": 6581,
+          "sha256": "57304cdac4da289a6ecdd0738e16b1d8858f1ef8e9fabe2d65a963719fd81dba"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-livedata:2.6.2@aar",
+      "name": "androidx.lifecycle:lifecycle-livedata",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-livedata/2.6.2/f580539c364992999aa142f4638e37f32059d475/lifecycle-livedata-2.6.2.pom",
+            "bytes": 6510,
+            "sha256": "d7c9e019cf68779387481877878f6c499d1786b85f2c0480e9264dd5097c51c0"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-livedata/2.6.2/e7f6d9e232bf035af69c030917c1ccda8e840b57/lifecycle-livedata-2.6.2.aar",
+          "bytes": 18971,
+          "sha256": "67359f609dfc2bf65da1270b23033f856064ec279f058e0a70c715f7c9003031"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-livedata/2.6.2/f580539c364992999aa142f4638e37f32059d475/lifecycle-livedata-2.6.2.pom",
+          "bytes": 6510,
+          "sha256": "d7c9e019cf68779387481877878f6c499d1786b85f2c0480e9264dd5097c51c0"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-livedata-core:2.6.2@aar",
+      "name": "androidx.lifecycle:lifecycle-livedata-core",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-livedata-core/2.6.2/c4e92a29b4a97220adea00883a7956846383bd56/lifecycle-livedata-core-2.6.2.pom",
+            "bytes": 6490,
+            "sha256": "1faf8ebf53f28b2f0ae2c2095371ae67d0ca16ac328fce7f163609a43214b5a4"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-livedata-core/2.6.2/23f66885a260f0a2cd6540927ea8795484afd2da/lifecycle-livedata-core-2.6.2.aar",
+          "bytes": 11345,
+          "sha256": "2256780a3cff4a1e57fbb3d442557c17dc363ab8af105bcaf5261d8e2d5db949"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-livedata-core/2.6.2/c4e92a29b4a97220adea00883a7956846383bd56/lifecycle-livedata-core-2.6.2.pom",
+          "bytes": 6490,
+          "sha256": "1faf8ebf53f28b2f0ae2c2095371ae67d0ca16ac328fce7f163609a43214b5a4"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-process:2.6.2@aar",
+      "name": "androidx.lifecycle:lifecycle-process",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-process/2.6.2/7cb73deb70afa64b2c03c10820689c575219127c/lifecycle-process-2.6.2.pom",
+            "bytes": 6503,
+            "sha256": "1f14396ec764b44d37c143adacee01e5b68cb5f35a21bcd9cdebd7c83ea7d2e9"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-process/2.6.2/1cda99630dfe13ea65f63d05821187bfe87a5967/lifecycle-process-2.6.2.aar",
+          "bytes": 16105,
+          "sha256": "0f33b1bd017f965a6afb2e7bf3e3bd343c624061c1986dea8ba2469d04349437"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-process/2.6.2/7cb73deb70afa64b2c03c10820689c575219127c/lifecycle-process-2.6.2.pom",
+          "bytes": 6503,
+          "sha256": "1f14396ec764b44d37c143adacee01e5b68cb5f35a21bcd9cdebd7c83ea7d2e9"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-runtime:2.6.2@aar",
+      "name": "androidx.lifecycle:lifecycle-runtime",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-runtime/2.6.2/215a04540686cebedbcc96d6ba95cf413f2ab9dd/lifecycle-runtime-2.6.2.pom",
+            "bytes": 6877,
+            "sha256": "8175255546e2a5f510865f84ace680660954730240b1905d9175b4345beda977"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-runtime/2.6.2/f0ef27053faa89b3ec06c4f118cea0a15edde35b/lifecycle-runtime-2.6.2.aar",
+          "bytes": 21738,
+          "sha256": "4867fd5279742fba8388821930cb2affe06d81a52814e7e41e70392ea0ef887c"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-runtime/2.6.2/215a04540686cebedbcc96d6ba95cf413f2ab9dd/lifecycle-runtime-2.6.2.pom",
+          "bytes": 6877,
+          "sha256": "8175255546e2a5f510865f84ace680660954730240b1905d9175b4345beda977"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-viewmodel:2.6.2@aar",
+      "name": "androidx.lifecycle:lifecycle-viewmodel",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel/2.6.2/d94e5e6915788e7be05cf1aeb05d588625afea8e/lifecycle-viewmodel-2.6.2.pom",
+            "bytes": 6087,
+            "sha256": "a9fb0b39a8360beef7bdc8f3953d4d78f3d85304fc80adac3c8eaf530d758050"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel/2.6.2/fa35bfdbbe0e7df1573e377cbdd15de35176141d/lifecycle-viewmodel-2.6.2.aar",
+          "bytes": 39793,
+          "sha256": "e4ff4338999e1c6c9c724719f5d4aa7dd61bf6f545d5256a27a9d375df9f2330"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel/2.6.2/d94e5e6915788e7be05cf1aeb05d588625afea8e/lifecycle-viewmodel-2.6.2.pom",
+          "bytes": 6087,
+          "sha256": "a9fb0b39a8360beef7bdc8f3953d4d78f3d85304fc80adac3c8eaf530d758050"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2@aar",
+      "name": "androidx.lifecycle:lifecycle-viewmodel-savedstate",
+      "version": "2.6.2",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel-savedstate/2.6.2/ccfa104fed1b486a1c3228b9fef199cfe51bd2e6/lifecycle-viewmodel-savedstate-2.6.2.pom",
+            "bytes": 7139,
+            "sha256": "7fc854440644cf52c35894d58d946b208e42769e8517d71a5efcba17865432de"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel-savedstate/2.6.2/483115c35b2926c3780dfdaf3f5d0342855e73b1/lifecycle-viewmodel-savedstate-2.6.2.aar",
+          "bytes": 39786,
+          "sha256": "7bc7dcbab17636ec076f12afe4d02671265c389457b1b366b37a0e8cb91e2da0"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-viewmodel-savedstate/2.6.2/ccfa104fed1b486a1c3228b9fef199cfe51bd2e6/lifecycle-viewmodel-savedstate-2.6.2.pom",
+          "bytes": 7139,
+          "sha256": "7fc854440644cf52c35894d58d946b208e42769e8517d71a5efcba17865432de"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.loader:loader:1.0.0@aar",
+      "name": "androidx.loader:loader",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.loader/loader/1.0.0/4b1418669a3392afe77045f85ba870f0c3148f67/loader-1.0.0.pom",
+            "bytes": 2207,
+            "sha256": "c978d550808b47434aa49a63164110a50b55b0bcc6160a93a2e37d5110df8c5e"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.loader/loader/1.0.0/8af8b6cec0da85c207d03e15840e0722cbc71e70/loader-1.0.0.aar",
+          "bytes": 33445,
+          "sha256": "11f735cb3b55c458d470bed9e25254375b518b4b1bad6926783a7026db0f5025"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.loader/loader/1.0.0/4b1418669a3392afe77045f85ba870f0c3148f67/loader-1.0.0.pom",
+          "bytes": 2207,
+          "sha256": "c978d550808b47434aa49a63164110a50b55b0bcc6160a93a2e37d5110df8c5e"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.profileinstaller:profileinstaller:1.4.0@aar",
+      "name": "androidx.profileinstaller:profileinstaller",
+      "version": "1.4.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.profileinstaller/profileinstaller/1.4.0/ce5ab72a997e0ddfb08e1cbdc39f77ac5ed315cf/profileinstaller-1.4.0.pom",
+            "bytes": 2477,
+            "sha256": "d5fe39981a3b4b7c39585130da0bfc93835054c834a438d3e63e065e5f78be55"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.profileinstaller/profileinstaller/1.4.0/6b6262e9ca50d1f75a496f3b64ebeb092a9d42eb/profileinstaller-1.4.0.aar",
+          "bytes": 53890,
+          "sha256": "d502141fcce902430f62b674c32aecd0f75262e7ee2cd15c74adb617cd13130a"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.profileinstaller/profileinstaller/1.4.0/ce5ab72a997e0ddfb08e1cbdc39f77ac5ed315cf/profileinstaller-1.4.0.pom",
+          "bytes": 2477,
+          "sha256": "d5fe39981a3b4b7c39585130da0bfc93835054c834a438d3e63e065e5f78be55"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.profileinstaller/profileinstaller/1.4.0/6b6262e9ca50d1f75a496f3b64ebeb092a9d42eb/profileinstaller-1.4.0.aar",
+          "entry": "META-INF/androidx/profileinstaller/profileinstaller/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.resourceinspection:resourceinspection-annotation:1.0.1@jar",
+      "name": "androidx.resourceinspection:resourceinspection-annotation",
+      "version": "1.0.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.resourceinspection/resourceinspection-annotation/1.0.1/2c264bd97530601a68f3952fe040e2f7786ebc60/resourceinspection-annotation-1.0.1.pom",
+            "bytes": 1808,
+            "sha256": "b8eb4938ed95d7fcdaa2712ebca363e46a0f9228b8be7f23154def56846815dc"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.resourceinspection/resourceinspection-annotation/1.0.1/8c21f8ff5d96d5d52c948707f7e4d6ca6773feef/resourceinspection-annotation-1.0.1.jar",
+          "bytes": 2336,
+          "sha256": "8cff870ec6fb31db48a52f4a792335b4bf8de07e03bd37823181526433ccd5cb"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.resourceinspection/resourceinspection-annotation/1.0.1/2c264bd97530601a68f3952fe040e2f7786ebc60/resourceinspection-annotation-1.0.1.pom",
+          "bytes": 1808,
+          "sha256": "b8eb4938ed95d7fcdaa2712ebca363e46a0f9228b8be7f23154def56846815dc"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.savedstate:savedstate:1.2.1@aar",
+      "name": "androidx.savedstate:savedstate",
+      "version": "1.2.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.savedstate/savedstate/1.2.1/5e0129ba74cc5915d14be13f07790b4a2470d7ea/savedstate-1.2.1.pom",
+            "bytes": 2549,
+            "sha256": "0d33bc285df1e12f22780f1624a6f0b38ea2a6181b0955ec6641caf620c50cbf"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.savedstate/savedstate/1.2.1/e364fc9dec32aa569d855f85864e50250318a093/savedstate-1.2.1.aar",
+          "bytes": 20217,
+          "sha256": "21a7d4bcf6bdb94ad7b9283801529300b4fbb8808ca4f191e0cdce6fd8e4705a"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.savedstate/savedstate/1.2.1/5e0129ba74cc5915d14be13f07790b4a2470d7ea/savedstate-1.2.1.pom",
+          "bytes": 2549,
+          "sha256": "0d33bc285df1e12f22780f1624a6f0b38ea2a6181b0955ec6641caf620c50cbf"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.startup:startup-runtime:1.1.1@aar",
+      "name": "androidx.startup:startup-runtime",
+      "version": "1.1.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.startup/startup-runtime/1.1.1/1ee5722679a9f73d27bb12d0ed4711745d4345b9/startup-runtime-1.1.1.pom",
+            "bytes": 1949,
+            "sha256": "f4114b5c6859bb1bc3caf281cb6d6f25998fa7f7292c64ceaea74a93210e746b"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.startup/startup-runtime/1.1.1/9d4ba67056aff98b69eadc1477c19a1e67cb9470/startup-runtime-1.1.1.aar",
+          "bytes": 19371,
+          "sha256": "e0a6329a371262fe4c450372b70fdaf33b769ef6917094723787cfce896b1dd3"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.startup/startup-runtime/1.1.1/1ee5722679a9f73d27bb12d0ed4711745d4345b9/startup-runtime-1.1.1.pom",
+          "bytes": 1949,
+          "sha256": "f4114b5c6859bb1bc3caf281cb6d6f25998fa7f7292c64ceaea74a93210e746b"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.tracing:tracing:1.2.0@aar",
+      "name": "androidx.tracing:tracing",
+      "version": "1.2.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.tracing/tracing/1.2.0/141eea2b77be286c2f1821af2c5b4992aaef964a/tracing-1.2.0.pom",
+            "bytes": 1968,
+            "sha256": "f34bec4eb58871d31002901377108aaa1ebfe77fa6d882b8b86200b158e26ea1"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.tracing/tracing/1.2.0/a6ac2cc501278fdc99c56b428548e0cd1e9300f7/tracing-1.2.0.aar",
+          "bytes": 6060,
+          "sha256": "6faa90390d1fdbf0adb9a99bf99de67b94c6c6f35aea9510593a9d17973736a2"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.tracing/tracing/1.2.0/141eea2b77be286c2f1821af2c5b4992aaef964a/tracing-1.2.0.pom",
+          "bytes": 1968,
+          "sha256": "f34bec4eb58871d31002901377108aaa1ebfe77fa6d882b8b86200b158e26ea1"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.vectordrawable:vectordrawable:1.1.0@aar",
+      "name": "androidx.vectordrawable:vectordrawable",
+      "version": "1.1.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.vectordrawable/vectordrawable/1.1.0/8b15e03d94f7d9a07cbea653ad7f524315d1d507/vectordrawable-1.1.0.pom",
+            "bytes": 1726,
+            "sha256": "5b0e2d5b2179e54804785cbc21ce5f473b5e1ddd55a57da482e94dcd39492bb2"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.vectordrawable/vectordrawable/1.1.0/eac7a364fff534035a2a6cb17770a1288315f69f/vectordrawable-1.1.0.aar",
+          "bytes": 33236,
+          "sha256": "46fd633ac01b49b7fcabc263bf098c5a8b9e9a69774d234edcca04fb02df8e26"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.vectordrawable/vectordrawable/1.1.0/8b15e03d94f7d9a07cbea653ad7f524315d1d507/vectordrawable-1.1.0.pom",
+          "bytes": 1726,
+          "sha256": "5b0e2d5b2179e54804785cbc21ce5f473b5e1ddd55a57da482e94dcd39492bb2"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.vectordrawable:vectordrawable-animated:1.1.0@aar",
+      "name": "androidx.vectordrawable:vectordrawable-animated",
+      "version": "1.1.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.vectordrawable/vectordrawable-animated/1.1.0/2c40e16427f4e94ea471526868ba5ac4bd13de6d/vectordrawable-animated-1.1.0.pom",
+            "bytes": 1798,
+            "sha256": "276a20116b705fb75b9003ee9496c56f6fd3b32375fb232472811eba60a040bd"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.vectordrawable/vectordrawable-animated/1.1.0/fcda1161354501471c30a4e077af6b5c4d4eddc6/vectordrawable-animated-1.1.0.aar",
+          "bytes": 34496,
+          "sha256": "76da2c502371d9c38054df5e2b248d00da87809ed058f3363eae87ce5e2403f8"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.vectordrawable/vectordrawable-animated/1.1.0/2c40e16427f4e94ea471526868ba5ac4bd13de6d/vectordrawable-animated-1.1.0.pom",
+          "bytes": 1798,
+          "sha256": "276a20116b705fb75b9003ee9496c56f6fd3b32375fb232472811eba60a040bd"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.versionedparcelable:versionedparcelable:1.1.1@aar",
+      "name": "androidx.versionedparcelable:versionedparcelable",
+      "version": "1.1.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.versionedparcelable/versionedparcelable/1.1.1/301263729256e9f19b144ce00f83d600ba14c38b/versionedparcelable-1.1.1.pom",
+            "bytes": 1643,
+            "sha256": "5f51e65873ca612de3838fa90d2ee95b8d040efd31b9c390a19bf94d615cdb2f"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.versionedparcelable/versionedparcelable/1.1.1/18e18071e7715679e0593c570217edeb5ca48b9e/versionedparcelable-1.1.1.aar",
+          "bytes": 31061,
+          "sha256": "57e8d93260d18d5b9007c9eed3c64ad159de90c8609ebfc74a347cbd514535a4"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.versionedparcelable/versionedparcelable/1.1.1/301263729256e9f19b144ce00f83d600ba14c38b/versionedparcelable-1.1.1.pom",
+          "bytes": 1643,
+          "sha256": "5f51e65873ca612de3838fa90d2ee95b8d040efd31b9c390a19bf94d615cdb2f"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.viewpager:viewpager:1.0.0@aar",
+      "name": "androidx.viewpager:viewpager",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.viewpager/viewpager/1.0.0/42452223b3d46c0e3bf2c67f226144ce64551be9/viewpager-1.0.0.pom",
+            "bytes": 1997,
+            "sha256": "1f72f836339d03c6eb013f65075e76ca87075a577578eb4f95f74a3a5d253128"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.viewpager/viewpager/1.0.0/1f90e13820f96c2fb868f9674079a551678d68b2/viewpager-1.0.0.aar",
+          "bytes": 53513,
+          "sha256": "147af4e14a1984010d8f155e5e19d781f03c1d70dfed02a8e0d18428b8fc8682"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.viewpager/viewpager/1.0.0/42452223b3d46c0e3bf2c67f226144ce64551be9/viewpager-1.0.0.pom",
+          "bytes": 1997,
+          "sha256": "1f72f836339d03c6eb013f65075e76ca87075a577578eb4f95f74a3a5d253128"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "androidx.webkit:webkit:1.14.0@aar",
+      "name": "androidx.webkit:webkit",
+      "version": "1.14.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.webkit/webkit/1.14.0/e293210e423352ae1c9c19235e21e5a6fbfdc54e/webkit-1.14.0.pom",
+            "bytes": 2534,
+            "sha256": "230b7ba1631c5f6baad08f3915f9db6d550d215b3658c82eb38ceb2dff72cad1"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.webkit/webkit/1.14.0/14e62c02878c853523a4e466bd3231684efc79bd/webkit-1.14.0.aar",
+          "bytes": 228280,
+          "sha256": "265604786ea1c9679e3f860f7f13072375c141f46db9092ed8ef5ecd599a516d"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.webkit/webkit/1.14.0/e293210e423352ae1c9c19235e21e5a6fbfdc54e/webkit-1.14.0.pom",
+          "bytes": 2534,
+          "sha256": "230b7ba1631c5f6baad08f3915f9db6d550d215b3658c82eb38ceb2dff72cad1"
+        }
+      ],
+      "licenseEvidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/androidx.webkit/webkit/1.14.0/14e62c02878c853523a4e466bd3231684efc79bd/webkit-1.14.0.aar",
+          "entry": "META-INF/androidx/webkit/webkit/LICENSE.txt",
+          "bytes": 10175,
+          "sha256": "809fa1ed21450f59827d1e9aec720bbc4b687434fa22283c6cb5dd82a47ab9c0"
+        }
+      ],
+      "licenseTextBasis": "artifact-license-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "com.google.guava:listenablefuture:1.0@jar",
+      "name": "com.google.guava:listenablefuture",
+      "version": "1.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/com.google.guava/guava-parent/26.0-android/a2c0df489614352b7e8e503e274bd1dee5c42a64/guava-parent-26.0-android.pom",
+            "bytes": 10180,
+            "sha256": "f8698ab46ca996ce889c1afc8ca4f25eb8ac6b034dc898d4583742360016cc04"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/com.google.guava/listenablefuture/1.0/c949a840a6acbc5268d088e47b04177bf90b3cad/listenablefuture-1.0.jar",
+          "bytes": 3149,
+          "sha256": "e4ad7607e5c0477c6f890ef26a49cb8d1bb4dffb650bab4502afee64644e3069"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/com.google.guava/listenablefuture/1.0/3e71124fc28b44e29eaa31abbc267faef7ee7d40/listenablefuture-1.0.pom",
+          "bytes": 2226,
+          "sha256": "53873caf26bc1ed8a567ea6c939ab2aaa3f47a5e32d5cade95ddf5080d23238a"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/com.google.guava/guava-parent/26.0-android/a2c0df489614352b7e8e503e274bd1dee5c42a64/guava-parent-26.0-android.pom",
+          "bytes": 10180,
+          "sha256": "f8698ab46ca996ce889c1afc8ca4f25eb8ac6b034dc898d4583742360016cc04"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "org.apache.cordova:framework:14.0.1@aar",
+      "name": "org.apache.cordova:framework",
+      "version": "14.0.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "Apache License, Version 2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/org.apache.cordova/framework/14.0.1/d26b9d757aabac97a8b3522b9f3c7480bd590382/framework-14.0.1.pom",
+            "bytes": 2186,
+            "sha256": "42e80ef61dfa52af19d8ec9296d20b13759fc2a72021866e4f74e05c894bde20"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.apache.cordova/framework/14.0.1/4112ec6b3f3784cefce81a6467a7beb96297d8bc/framework-14.0.1.aar",
+          "bytes": 135972,
+          "sha256": "ec4176f4fc47f4cf1c3202df31cd77f81809dfcdfc22a5d2a3939cab14dbfe4f"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.apache.cordova/framework/14.0.1/d26b9d757aabac97a8b3522b9f3c7480bd590382/framework-14.0.1.pom",
+          "bytes": 2186,
+          "sha256": "42e80ef61dfa52af19d8ec9296d20b13759fc2a72021866e4f74e05c894bde20"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "org.jetbrains.kotlin:kotlin-stdlib:2.0.21@jar",
+      "name": "org.jetbrains.kotlin:kotlin-stdlib",
+      "version": "2.0.21",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.0.21/526d1403bf93bc343e3e822493a1505bc2e99140/kotlin-stdlib-2.0.21.pom",
+            "bytes": 2322,
+            "sha256": "fcbada4cd2e9f39658293570ef613752331db69fd1dad1cabaa60548403e17da"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.0.21/618b539767b4899b4660a83006e052b63f1db551/kotlin-stdlib-2.0.21.jar",
+          "bytes": 1747660,
+          "sha256": "f31cc53f105a7e48c093683bbd5437561d1233920513774b470805641bedbc09"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/2.0.21/526d1403bf93bc343e3e822493a1505bc2e99140/kotlin-stdlib-2.0.21.pom",
+          "bytes": 2322,
+          "sha256": "fcbada4cd2e9f39658293570ef613752331db69fd1dad1cabaa60548403e17da"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1@jar",
+      "name": "org.jetbrains.kotlinx:kotlinx-coroutines-android",
+      "version": "1.8.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-android/1.8.1/624a13aad81bb6092442daf33f179ea2877ba621/kotlinx-coroutines-android-1.8.1.pom",
+            "bytes": 2221,
+            "sha256": "88e8c7ede4d29b8027a2da6ea9e3ce550c556a4213633f8f6de28bb9fb201c90"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-android/1.8.1/73e2acdd18df99dd4849d99f188dff529fc0afe0/kotlinx-coroutines-android-1.8.1.jar",
+          "bytes": 20466,
+          "sha256": "a134dacf4e6578b29b32e97aa50548d09cb45e3cb3551ce77ac27e55e265d8f5"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-android/1.8.1/624a13aad81bb6092442daf33f179ea2877ba621/kotlinx-coroutines-android-1.8.1.pom",
+          "bytes": 2221,
+          "sha256": "88e8c7ede4d29b8027a2da6ea9e3ce550c556a4213633f8f6de28bb9fb201c90"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1@jar",
+      "name": "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
+      "version": "1.8.1",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.8.1/a34769025afff86031a8f6c632a26b43df48e1b4/kotlinx-coroutines-core-jvm-1.8.1.pom",
+            "bytes": 2196,
+            "sha256": "47c6a50b14151e8faf7f350a95235c37d12abc38bfb055b668974293172daf2c"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.8.1/bb0e192bd7c2b6b8217440d36e9758e377e450/kotlinx-coroutines-core-jvm-1.8.1.jar",
+          "bytes": 1546991,
+          "sha256": "f3d4f5de1c391bbcc20f3b3435ccbac013521e76b6902d7d59635ec15c1f797e"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains.kotlinx/kotlinx-coroutines-core-jvm/1.8.1/a34769025afff86031a8f6c632a26b43df48e1b4/kotlinx-coroutines-core-jvm-1.8.1.pom",
+          "bytes": 2196,
+          "sha256": "47c6a50b14151e8faf7f350a95235c37d12abc38bfb055b668974293172daf2c"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "org.jetbrains:annotations:23.0.0@jar",
+      "name": "org.jetbrains:annotations",
+      "version": "23.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache Software License, Version 2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains/annotations/23.0.0/deb853be3c9e05ed99fbbf83e49d349d08a6d10e/annotations-23.0.0.pom",
+            "bytes": 1354,
+            "sha256": "c9490f655132328df2cfbcfdf743f53fc3916d6c1d10437175a6ca6e3a67771c"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains/annotations/23.0.0/8cc20c07506ec18e0834947b84a864bfc094484e/annotations-23.0.0.jar",
+          "bytes": 29371,
+          "sha256": "7b0f19724082cbfcbc66e5abea2b9bc92cf08a1ea11e191933ed43801eb3cd05"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jetbrains/annotations/23.0.0/deb853be3c9e05ed99fbbf83e49d349d08a6d10e/annotations-23.0.0.pom",
+          "bytes": 1354,
+          "sha256": "c9490f655132328df2cfbcfdf743f53fc3916d6c1d10437175a6ca6e3a67771c"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    },
+    {
+      "id": "org.jspecify:jspecify:1.0.0@jar",
+      "name": "org.jspecify:jspecify",
+      "version": "1.0.0",
+      "kind": "maven",
+      "licenseIds": [
+        "Apache-2.0"
+      ],
+      "declarations": [
+        {
+          "name": "The Apache License, Version 2.0",
+          "url": "http://www.apache.org/licenses/LICENSE-2.0.txt",
+          "source": {
+            "path": ".gradle-cache/caches/modules-2/files-2.1/org.jspecify/jspecify/1.0.0/fae4a252aeee8a649653b2f239067bcead8f80cb/jspecify-1.0.0.pom",
+            "bytes": 1511,
+            "sha256": "cdab929a3b95211f43d2090c5e2d0dfe8465960e378bc32b35841dab324433a6"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jspecify/jspecify/1.0.0/7425a601c1c7ec76645a78d22b8c6a627edee507/jspecify-1.0.0.jar",
+          "bytes": 3819,
+          "sha256": "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab"
+        },
+        {
+          "path": ".gradle-cache/caches/modules-2/files-2.1/org.jspecify/jspecify/1.0.0/fae4a252aeee8a649653b2f239067bcead8f80cb/jspecify-1.0.0.pom",
+          "bytes": 1511,
+          "sha256": "cdab929a3b95211f43d2090c5e2d0dfe8465960e378bc32b35841dab324433a6"
+        }
+      ],
+      "licenseEvidence": [],
+      "licenseTextBasis": "publisher-declaration-with-shared-standard-text",
+      "noticeStatus": "已检查原始 AAR/JAR 及其内嵌 JAR，未发现命名 NOTICE 文件；这不证明上游没有其他通知义务。",
+      "notices": []
+    }
+  ],
+  "generatedProjects": [
+    {
+      "name": ":capacitor-cordova-android-plugins",
+      "sourceFileCount": 0,
+      "description": "Capacitor 生成的 Cordova 插件容器；当前没有 Java/Kotlin 插件源码、插件资源或本地 JAR。构建配置引用的 Cordova framework 已作为 Maven 组件列出。未为此生成项目编造独立许可。",
+      "evidence": [
+        {
+          "path": "mobile/android/capacitor-cordova-android-plugins/build.gradle",
+          "bytes": 1668,
+          "sha256": "28e3fa281f4d1e388bf98abc7f5bb31e672516e385c165c719d201ed54b8236e"
+        },
+        {
+          "path": "mobile/android/capacitor-cordova-android-plugins/cordova.variables.gradle",
+          "bytes": 312,
+          "sha256": "b13104b34f7738abceec358ae8226ba5e64855e97babde54a115880e9b9bd47b"
+        },
+        {
+          "path": "mobile/android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml",
+          "bytes": 210,
+          "sha256": "2e3e383475f0e6cb76f0a7b46017a546663fba8e5bd1ef2a537412afac2ee9b5"
+        },
+        {
+          "path": "mobile/android/capacitor-cordova-android-plugins/src/main/java/.gitkeep",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "mobile/android/capacitor-cordova-android-plugins/src/main/res/.gitkeep",
+          "bytes": 1,
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        }
+      ]
+    }
+  ],
+  "coverageGaps": [
+    "38 个 Maven 制品未内嵌命名许可全文；本页依据各自 POM 的 Apache 2.0 声明关联已从 AndroidX AAR 核验的标准全文。",
+    "本地所选制品未发现独立 NOTICE；尚未逐个核对全部上游源码发行包的通知材料。"
+  ],
+  "componentsWithoutEmbeddedLicenseText": [
+    "androidx.annotation:annotation-experimental:1.4.1@aar",
+    "androidx.annotation:annotation-jvm:1.8.1@jar",
+    "androidx.appcompat:appcompat-resources:1.7.1@aar",
+    "androidx.appcompat:appcompat:1.7.1@aar",
+    "androidx.arch.core:core-common:2.2.0@jar",
+    "androidx.arch.core:core-runtime:2.2.0@aar",
+    "androidx.collection:collection-jvm:1.4.2@jar",
+    "androidx.concurrent:concurrent-futures:1.1.0@jar",
+    "androidx.cursoradapter:cursoradapter:1.0.0@aar",
+    "androidx.customview:customview:1.0.0@aar",
+    "androidx.drawerlayout:drawerlayout:1.0.0@aar",
+    "androidx.emoji2:emoji2-views-helper:1.3.0@aar",
+    "androidx.emoji2:emoji2:1.3.0@aar",
+    "androidx.fragment:fragment:1.8.9@aar",
+    "androidx.interpolator:interpolator:1.0.0@aar",
+    "androidx.lifecycle:lifecycle-common:2.6.2@jar",
+    "androidx.lifecycle:lifecycle-livedata-core:2.6.2@aar",
+    "androidx.lifecycle:lifecycle-livedata:2.6.2@aar",
+    "androidx.lifecycle:lifecycle-process:2.6.2@aar",
+    "androidx.lifecycle:lifecycle-runtime:2.6.2@aar",
+    "androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2@aar",
+    "androidx.lifecycle:lifecycle-viewmodel:2.6.2@aar",
+    "androidx.loader:loader:1.0.0@aar",
+    "androidx.resourceinspection:resourceinspection-annotation:1.0.1@jar",
+    "androidx.savedstate:savedstate:1.2.1@aar",
+    "androidx.startup:startup-runtime:1.1.1@aar",
+    "androidx.tracing:tracing:1.2.0@aar",
+    "androidx.vectordrawable:vectordrawable-animated:1.1.0@aar",
+    "androidx.vectordrawable:vectordrawable:1.1.0@aar",
+    "androidx.versionedparcelable:versionedparcelable:1.1.1@aar",
+    "androidx.viewpager:viewpager:1.0.0@aar",
+    "com.google.guava:listenablefuture:1.0@jar",
+    "org.apache.cordova:framework:14.0.1@aar",
+    "org.jetbrains.kotlin:kotlin-stdlib:2.0.21@jar",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1@jar",
+    "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1@jar",
+    "org.jetbrains:annotations:23.0.0@jar",
+    "org.jspecify:jspecify:1.0.0@jar"
+  ]
+}
