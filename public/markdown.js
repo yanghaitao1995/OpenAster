@@ -1,4 +1,5 @@
 // A deliberately small Markdown renderer. Model output never becomes HTML.
+import { createCodeBlock } from './code-block.mjs';
 const fenceStart = line => /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
 const listItem = line => /^\s*(?:([-*+])\s+|(\d+)[.)]\s+)(.*)$/.exec(line);
 
@@ -46,19 +47,6 @@ function tableHeader(lines, index) {
   if (!header.separators || !header.cells.length || header.cells.length !== rule.cells.length || !rule.cells.every(cell => /^:?-+:?$/.test(cell))) return null;
   return { cells: header.cells, alignment: rule.cells.map(cell => cell.startsWith(':') && cell.endsWith(':') ? 'center' : cell.endsWith(':') ? 'right' : 'left') };
 }
-function codeBlock(language, text) {
-  const box = document.createElement('div'); box.className = 'code-block';
-  const bar = document.createElement('div'); bar.className = 'code-heading';
-  const label = document.createElement('span'); label.textContent = language || '代码'; label.title = label.textContent;
-  const button = document.createElement('button'); button.type = 'button'; button.textContent = '复制'; button.className = 'text-button'; button.setAttribute('aria-label', '复制代码');
-  button.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(text); button.textContent = '已复制'; setTimeout(() => { button.textContent = '复制'; }, 1800); }
-    catch { button.textContent = '请选中复制'; }
-  });
-  bar.append(label, button);
-  const pre = document.createElement('pre'); pre.tabIndex = 0; pre.setAttribute('role', 'region'); pre.setAttribute('aria-label', `${language || '文本'}代码块`);
-  const content = document.createElement('code'); content.textContent = text; pre.append(content); box.append(bar, pre); return box;
-}
 export function renderMarkdown(text) {
   const root = document.createElement('div'); root.className = 'markdown';
   const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
@@ -73,7 +61,7 @@ export function renderMarkdown(text) {
         code.push(value.slice(indent));
       }
       const closed = index < lines.length; if (closed) index++;
-      root.append(codeBlock(language, code.join('\n') + (closed && code.length ? '\n' : ''))); continue;
+      root.append(createCodeBlock(language, code.join('\n') + (closed && code.length ? '\n' : ''))); continue;
     }
     if (!line.trim()) { index++; continue; }
     const table = tableHeader(lines, index);

@@ -1,5 +1,5 @@
-const CACHE = 'openaster-shell-v41';
-const SHELL = ['./', './index.html', './app.js', './model-picker.mjs', './execution-flow.mjs', './image-input.mjs', './android-notices-ui.mjs', './theme.mjs', './composer-drafts.mjs', './draft-session.mjs', './composer-draft-ui.mjs', './file-editor-ui.mjs', './file-editor-text.mjs', './styles.css', './workbench.css', './command-palette.js', './command-palette.css', './markdown.js', './gateway.mjs', './text-diff.mjs', './icon.svg', './manifest.webmanifest'];
+const CACHE = 'openaster-shell-v42-web';
+const SHELL = ['./', './index.html', './app.js', './model-picker.mjs', './execution-flow.mjs', './image-input.mjs', './android-notices-ui.mjs', './theme.mjs', './composer-drafts.mjs', './draft-session.mjs', './composer-draft-ui.mjs', './file-editor-ui.mjs', './file-editor-text.mjs', './styles.css', './workbench.css', './command-palette.js', './command-palette.css', './markdown.js', './code-block.mjs', './command-policy-ui.mjs', './workspace-ui.mjs', './workspace-ui.css', './task-input-ui.mjs', './gateway.mjs', './text-diff.mjs', './icon.svg', './manifest.webmanifest'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('openaster-shell-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', event => {

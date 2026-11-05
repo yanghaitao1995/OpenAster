@@ -7,8 +7,11 @@ import { createFileEditorUI } from './file-editor-ui.mjs';
 import { createThemeAppearance } from './theme.mjs';
 import { createAndroidNoticesUI } from './android-notices-ui.mjs';
 import { createModelPicker } from './model-picker.mjs';
-import { createExecutionFlow, createModelStepNotes } from './execution-flow.mjs';
+import { createExecutionFlow, createModelStepNotes, renderWebToolResult, webToolNames } from './execution-flow.mjs';
 import { createImageInputUI, renderMessageImages } from './image-input.mjs';
+import { createCommandPolicyUI } from './command-policy-ui.mjs';
+import { createTaskInputUI, createQueuedInputView } from './task-input-ui.mjs';
+import { createWorkspaceUI } from './workspace-ui.mjs';
 const $ = id => document.getElementById(id);
 const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = String(text); return node; };
 const ICONS = {
@@ -35,7 +38,9 @@ const draftFileNodes = new Map();
 const fileReferences = new WeakMap();
 const fileEditReferences = new WeakMap();
 let fileEditor = null;
-let modelPicker = null, imageInput = null;
+let modelPicker = null, imageInput = null, commandPolicyUI = null, taskInputUI = null, queuedInputView = null;
+let workspaceManagerUI = null;
+let webAccessChange = null;
 const executionFlow = createExecutionFlow({ onOpenToolResult: (step, run) => {
   if (state.view !== 'chat' || state.selected?.run?.id !== run.id || !artifactRefValid(step.toolResultRef)) return;
   state.contextOpen = true; saveStorage('openaster.context', 'open'); syncContextPanel();
@@ -173,7 +178,7 @@ function toast(message, failure = false) {
   box.addEventListener('focusin',()=>clearTimeout(timer));box.addEventListener('focusout',schedule);
   box.append(icon(failure?'info':'check'),el('span','',message),close);$('toast-region').append(box);schedule();
 }
-function connection(ok, message = '') { if(ok&&(state.switching||pageSuspended||!authenticationReady))return;state.connected = ok; updateOverview(); $('storage-caption').textContent = state.gateway ? '历史记录保存在你连接的工作台' : '历史记录保存在本地工作台'; $('connection-indicator').className = `connection-indicator ${ok ? 'connected' : 'disconnected'}`; $('top-status').textContent = ok ? (state.gateway ? '网关已连接' : '本地已连接') : '连接未就绪'; $('connection-text').textContent = ok ? (state.gateway ? '远程工作空间' : '本地服务运行中') : '请检查连接'; $('connection-banner').classList.toggle('hidden', ok); $('connection-message').textContent = message || '暂时无法连接工作台服务。移动端请先配置自己的 HTTPS 网关。'; updateComposer();syncBranchControls();renderWorkspaceSearch();syncFileEditControls(); }
+function connection(ok, message = '') { if(ok&&(state.switching||pageSuspended||!authenticationReady))return;state.connected = ok; updateOverview(); $('storage-caption').textContent = state.gateway ? '历史记录保存在你连接的工作台' : '历史记录保存在本地工作台'; $('connection-indicator').className = `connection-indicator ${ok ? 'connected' : 'disconnected'}`; $('top-status').textContent = ok ? (state.gateway ? '网关已连接' : '本地已连接') : '连接未就绪'; $('connection-text').textContent = ok ? (state.gateway ? '远程工作空间' : '本地服务运行中') : '请检查连接'; $('connection-banner').classList.toggle('hidden', ok); $('connection-message').textContent = message || '暂时无法连接工作台服务。移动端请先配置自己的 HTTPS 网关。'; updateComposer();syncBranchControls();renderWorkspaceSearch();syncFileEditControls();commandPolicyUI?.sync({refresh:true}); }
 function invalidateAuthentication(message) {
   authenticationReady=false;state.csrf='';++authenticationRevision;++state.stateRequest;
   connection(false,message);
@@ -227,6 +232,7 @@ function renderWorkspaceIdentity(){
   if($('copy-workspace-path'))$('copy-workspace-path').disabled=!state.workspacePath;
 }
 function resetWorkspaceContext({keepDialog=false,clearIdentity=false,cancelSummary=true}={}){
+  state.webToolsSupported=false;state.webAccess=false;state.webAccessKnown=false;webAccessChange=null;
   fileEditor?.invalidate('工作区已切换。文件编辑内容仍保留，不能写入当前工作区；请返回原工作区核对，或明确放弃编辑。');state.workspaceEditSupported=false;
   composerDrafts.detach(); state.storageId = ''; 
   discardProviderDiagnostics();providerDiagnosticsSupported=false;
@@ -245,30 +251,51 @@ function resetWorkspaceContext({keepDialog=false,clearIdentity=false,cancelSumma
   renderWorkspaceIdentity();renderFileList();renderSessions();renderProviders();renderSkills();renderModels();showView('home',{focus:false});connection(false,'正在连接工作空间，原工作区的未发送内容不会带入。');
 }
 function syncHarnessPermissions(data) {
+  state.webToolsSupported=data.capabilities?.webTools===1;state.webAccess=data.security?.webAccess===true;state.webAccessKnown=typeof data.security?.webAccess==='boolean';syncWebAccessControls();
   state.imagesSupported=data.capabilities?.images===1;
   state.skillsPath=typeof data.workspace?.skillsPath==='string'?data.workspace.skillsPath:'./skills';$('skills-path').textContent=state.skillsPath;
   imageInput?.bind(state.workspaceKey+':'+(state.composerView==='chat'&&state.selected?state.selected.id:'new'));
   state.permissionsSupported=data.capabilities?.permissions===1;
+  state.commandPolicySupported=data.capabilities?.commandPolicy===1;
+  state.taskInputSupported=data.capabilities?.taskInput===1;
   state.fileAccess=data.security?.fileAccess==='computer'?'computer':'workspace';
   state.computerAccessAvailable=data.security?.computerAccessAvailable===true;
   state.workspaceActionsSupported=data.capabilities?.workspaceActions===1;
+  state.workspaceManagementSupported=data.capabilities?.workspaceManagement===1;
   $('file-permissions-section').classList.toggle('hidden',!state.permissionsSupported);
   const granted=state.fileAccess==='computer';
-  const permissionNote=granted?'本次会话已允许访问本机文件；模型写入、编辑和命令仍需逐次批准。':'文件工具限定在工作区；模型写入、编辑和命令仍需逐次批准。';
+  const permissionNote=(granted?'本次会话已允许访问本机文件。':'文件工具限定在工作区。')+' 文件写入与编辑仍需逐次批准；命令按当前任务的策略审核。';
   $('context-permission-note').textContent=permissionNote;$('workspace-permission-note').textContent=permissionNote+' 已批准的命令使用本机用户权限。';$('security-permission-note').textContent=permissionNote;
   $('file-permissions-current').textContent=granted?'本机文件访问已开启':'仅工作区';
   $('file-permissions-description').textContent=granted?'智能体可使用绝对路径读取本机文件，也可提出工作区外文件的写入与编辑审批。读取的内容可能发送给当前模型服务。':state.computerAccessAvailable?'智能体文件工具目前限定在工作区。你可以为本次服务会话授予本机文件访问权限。':'此连接只允许访问工作区；本机文件权限需要在本地工作台中授予。';
   $('file-permissions-button').textContent=granted?'恢复仅工作区':'允许访问本机文件…';
   $('file-permissions-button').disabled=!granted&&!state.computerAccessAvailable;
-  for(const id of ['open-workspace-project','create-workspace-project'])$(id).classList.toggle('hidden',!state.workspaceActionsSupported);
+  for(const id of ['open-workspace-project','create-workspace-project'])$(id).classList.toggle('hidden',!state.workspaceActionsSupported&&!state.workspaceManagementSupported);
+  if($('workspace-host-note'))$('workspace-host-note').textContent=state.workspaceManagementSupported?'目录位于运行 OpenAster 服务的主机上。可在此打开、新建或切换项目；手机和远程客户端管理的是主机项目。':'当前位置是运行 OpenAster 服务的主机目录。桌面菜单可打开或新建项目。';
+}
+function syncWebAccessControls() {
+  const supported=state.webToolsSupported===true,known=state.webAccessKnown===true;
+  $('web-access-section').classList.toggle('hidden',!supported);
+  const toggle=$('web-access-toggle');toggle.checked=webAccessChange?webAccessChange.enabled:known&&state.webAccess===true;toggle.disabled=!supported||!known||!state.connected||Boolean(webAccessChange);
+  const status=$('composer-web-access');status.classList.toggle('hidden',!supported);status.textContent=!state.connected||!known?'联网：待确认':state.webAccess?'联网：开启':'联网：关闭';
+  status.title=state.providers.find(item=>item.id===state.providerId)?.toolMode==='none'?'当前连接为仅对话模式，不使用网页工具。':'在设置中管理搜索网页与阅读网页。';
+  $('web-access-state').textContent=webAccessChange?'正在保存…':!known?'状态待确认':state.webAccess?'已开启':'已关闭';
+}
+async function changeWebAccess(enabled) {
+  if(!state.webToolsSupported||!state.connected||webAccessChange)return;
+  const token={generation:state.generation,enabled};webAccessChange=token;syncWebAccessControls();
+  try { await api('/api/security/web-access',{method:'POST',body:{enabled}});if(token.generation===state.generation)await refreshState(); }
+  catch(error) { if(token.generation===state.generation){state.webAccessKnown=false;try{await refreshState();}catch{}if(!error.staleContext)toast(error.message,true);} }
+  finally { if(webAccessChange===token){webAccessChange=null;syncWebAccessControls();} }
 }
 async function changeFilePermissions() {
   if(!state.permissionsSupported)return;
   if(state.fileAccess==='computer'){await api('/api/permissions',{method:'PUT',body:{fileAccess:'workspace'}});await refreshState();toast('文件工具已恢复为仅工作区。');return;}
   if(!state.computerAccessAvailable)return;
-  confirmDialog('允许智能体访问本机文件', '开启后，智能体可通过绝对路径读取当前系统账户可访问的本机文件；读取内容可能发送给所选模型服务商。工作区外的写入、编辑及所有命令仍需你逐次批准。此授权仅对本次工作台服务有效，重启后自动恢复仅工作区。', '确认允许本机文件访问', async()=>{await api('/api/permissions',{method:'PUT',body:{fileAccess:'computer',confirmComputerAccess:true}});await refreshState();toast('本次服务会话已允许本机文件访问。');});
+  confirmDialog('允许智能体访问本机文件', '开启后，智能体可通过绝对路径读取当前系统账户可访问的本机文件；读取内容可能发送给所选模型服务商。文件写入与编辑仍需逐次批准，命令授权在当前任务的命令策略中单独设置。此文件授权仅对本次工作台服务有效，重启后自动恢复仅工作区。', '确认允许本机文件访问', async()=>{await api('/api/permissions',{method:'PUT',body:{fileAccess:'computer',confirmComputerAccess:true}});await refreshState();toast('本次服务会话已允许本机文件访问。');});
 }
 async function openWorkspaceProject(create=false) {
+  if(state.workspaceManagementSupported)return workspaceManagerUI.open({create});
   if(!state.workspaceActionsSupported)return;
   if(fileEditor?.hasPending())throw new Error('请先保存或取消当前文件编辑，再打开其他项目。');
   await composerDrafts.flush();
@@ -473,6 +500,7 @@ function showView(view, {focus = true} = {}) {
   const composerVisible = ['home','chat'].includes(view); $('composer').classList.toggle('hidden', !composerVisible);
   if (composerVisible) {state.composerView=view;imageInput?.bind(state.workspaceKey+':'+(view==='chat'?state.selected.id:'new'));$(`${view}-composer-slot`).append($('composer'));}
   closeSidebar(); updateComposer(); $('main').scrollTop=0; window.scrollTo({top:0,behavior:'instant'});
+  commandPolicyUI?.sync({refresh:true});
   void refreshVisibleReads({fresh:true});
   if(focus&&view==='home')$('prompt-input').focus({preventScroll:true});
   else {const heading=$(`${view}-view`)?.querySelector('h1');if(heading&&focus){heading.tabIndex=-1;heading.focus({preventScroll:true});}}
@@ -518,13 +546,16 @@ function renderSessions() {
   updateOverview();
 }
 function renderModels() { const select = $('model-select'); const previous = state.providerId; select.replaceChildren(); for (const provider of state.providers.filter(item=>item.enabled!==false)) { const option = el('option','',provider.name+(provider.toolMode==='none'?' · 仅对话':'')); option.value = provider.id; select.append(option); } if (!select.options.length) { const option = el('option','',native&&!state.gateway?'请先配置网关':'请先连接模型'); option.value=''; select.append(option); } select.value = previous; if (previous && !select.value) { const missing = el('option','','原模型不可用，请重新选择'); missing.value=previous;missing.disabled=true;select.append(missing);select.value=previous; } else if (!previous) state.providerId = select.value = select.options[0]?.value || ''; updateComposer(); }
-function updateComposer() { const busy = state.view === 'chat' && ['running','awaiting_approval'].includes(state.selected?.run?.status); $('cancel-button').classList.toggle('hidden', !busy); $('send-button').classList.toggle('hidden', busy); const send=$('send-button'),missing=state.view==='chat'&&unavailableSessions.has(state.selected),historyPending=!missing&&!currentHistoryReady();
+function updateComposer() { syncWebAccessControls(); const busy = state.view === 'chat' && ['running','awaiting_approval'].includes(state.selected?.run?.status); $('cancel-button').classList.toggle('hidden', !busy); $('send-button').classList.toggle('hidden', busy&&!state.taskInputSupported); const send=$('send-button'),missing=state.view==='chat'&&unavailableSessions.has(state.selected),historyPending=!missing&&!currentHistoryReady();
+  const switchingInput=state.view==='chat'&&!busy&&state.selected?.queuedInputs?.some(item=>item.status==='pending');
   // Keep a history refresh from swallowing a pointer activation already in progress.
   // sendMessage still validates the complete current history on every activation.
-  send.disabled = missing || state.sending || !state.connected || !state.providers.some(item=>item.id===state.providerId&&item.enabled!==false) || Boolean(state.providers.find(item=>item.id===state.providerId)?.toolMode!=='none'&&state.skillId&&!state.skills.some(item=>item.id===state.skillId)) || (!$('prompt-input').value.trim()&&!imageInput?.hasImages()) || Boolean(imageInput?.pending()) || (imageInput?.hasImages()&&(!state.imagesSupported||state.providers.find(item=>item.id===state.providerId)?.type==='demo')) || (!state.contextFilesSupported&&requiresContextFilesSupport()) || (!handoffSupported&&hasHandoffHistory());
+  send.disabled = missing || state.sending || !state.connected || (busy&&!state.taskInputSupported) || !state.providers.some(item=>item.id===state.providerId&&item.enabled!==false) || Boolean(!busy&&state.providers.find(item=>item.id===state.providerId)?.toolMode!=='none'&&state.skillId&&!state.skills.some(item=>item.id===state.skillId)) || (!$('prompt-input').value.trim()&&!imageInput?.hasImages()) || Boolean(imageInput?.pending()) || (imageInput?.hasImages()&&(!state.imagesSupported||state.providers.find(item=>item.id===state.providerId)?.type==='demo')) || (!state.contextFilesSupported&&requiresContextFilesSupport()) || (!handoffSupported&&hasHandoffHistory());
   send.setAttribute('aria-disabled',String(send.disabled||historyPending));
-  send.title=missing?'任务已删除，未发送内容仍保留':historyPending?'正在读取任务，完成后可发送':'发送任务';
-  $('send-hint').textContent=missing?'任务已删除':historyPending?'读取中…':'Enter 发送'; $('model-select').disabled = busy || state.sending || (native&&!state.gateway); modelPicker?.sync();imageInput?.sync({enabled:state.imagesSupported===true,busy:state.sending,providerType:state.providers.find(item=>item.id===state.providerId)?.type}); const provider = state.providers.find(item=>item.id===state.providerId);const skillToggle=document.querySelector('.skill-toggle');skillToggle.disabled=provider?.toolMode==='none';skillToggle.title=provider?.toolMode==='none'?'仅对话模式不加载技能':'选择技能';skillToggle.setAttribute('aria-label',skillToggle.title); $('composer-disclaimer').textContent = provider?.type === 'demo' ? '当前为本地演示，不调用真实模型。可在设置中连接模型。' : provider ? (provider.toolMode==='none'?'仅对话，不调用文件工具 · 输入与历史对话仍会发给模型，可能含先前文件内容':'对话与工具读取的文件会发送至所选模型服务商 · 请核实 AI 结果') : native&&!state.gateway ? '配置 HTTPS 网关后，可使用工作台中的模型。' : '先在设置中连接一个模型，或检查服务连接'; updateDraftFileNote(provider);$('context-history-compatibility').classList.toggle('hidden',state.contextFilesSupported||!hasContextFilesHistory());$('handoff-history-compatibility').classList.toggle('hidden',handoffSupported||!hasHandoffHistory()); const skill = state.skills.find(item=>item.id===state.skillId); $('composer-context').classList.toggle('hidden', !state.skillId); $('skill-label').textContent = provider?.toolMode==='none'&&state.skillId?'仅对话模式 · 本次不加载所选技能':skill ? `技能：${skill.name}` : state.skillId ? '原技能不可用，请移除后再发送' : '';  }
+  send.title=missing?'任务已删除，未发送内容仍保留':historyPending?'正在读取任务，完成后可发送':busy?'补充任务，在下一个安全节点处理':'发送任务';send.setAttribute('aria-label',busy&&state.taskInputSupported?'补充任务':'发送任务');
+  if(switchingInput){send.disabled=true;send.setAttribute('aria-disabled','true');send.title='正在切换执行，草稿会保留。';}
+  taskInputUI?.sync({busy:busy||switchingInput,supported:state.taskInputSupported===true,disabled:send.disabled||historyPending,awaitingApproval:state.selected?.run?.status==='awaiting_approval',switchingInput});
+  $('send-hint').textContent=missing?'任务已删除':historyPending?'读取中…':switchingInput?'切换中…':busy&&state.taskInputSupported?'Enter 补充':'Enter 发送'; $('model-select').disabled = busy || switchingInput || state.sending || (native&&!state.gateway); modelPicker?.sync();imageInput?.sync({enabled:state.imagesSupported===true,busy:state.sending,providerType:state.providers.find(item=>item.id===state.providerId)?.type}); const provider = state.providers.find(item=>item.id===state.providerId);const skillToggle=document.querySelector('.skill-toggle');skillToggle.disabled=busy||switchingInput||provider?.toolMode==='none';skillToggle.title=busy?'运行中补充沿用当前技能':provider?.toolMode==='none'?'仅对话模式不加载技能':'选择技能';skillToggle.setAttribute('aria-label',skillToggle.title); $('composer-disclaimer').textContent = provider?.type === 'demo' ? '当前为本地演示，不调用真实模型。可在设置中连接模型。' : provider ? (provider.toolMode==='none'?'仅对话，不调用文件工具 · 输入与历史对话仍会发给模型，可能含先前文件内容':'对话与工具读取的文件会发送至所选模型服务商 · 请核实 AI 结果') : native&&!state.gateway ? '配置 HTTPS 网关后，可使用工作台中的模型。' : '先在设置中连接一个模型，或检查服务连接'; updateDraftFileNote(provider);$('context-history-compatibility').classList.toggle('hidden',state.contextFilesSupported||!hasContextFilesHistory());$('handoff-history-compatibility').classList.toggle('hidden',handoffSupported||!hasHandoffHistory()); const skill = state.skills.find(item=>item.id===state.skillId); $('composer-context').classList.toggle('hidden', !state.skillId); $('skill-label').textContent = provider?.toolMode==='none'&&state.skillId?'仅对话模式 · 本次不加载所选技能':skill ? `技能：${skill.name}` : state.skillId ? '原技能不可用，请移除后再发送' : '';  }
 const contextFilesUnsupported='当前工作台版本不支持文件资料，请更新后重连';
 function acceptCompleteSession(session,expectedId) {
   if(!session||typeof session.id!=='string'||(expectedId!==undefined&&session.id!==expectedId)||!Array.isArray(session.messages))throw new Error('任务历史未完整返回，请重新打开任务后再发送。');
@@ -660,13 +691,14 @@ function renderChat({outputOnly=false}={}) {
   for(const key of messageCache.keys()) if(!keys.has(key))messageCache.delete(key);
   if(!nodes.length){const ready=currentHistoryReady(),historyState=missing?'missing':String(ready),title=missing?'任务已删除':ready?'新任务':'正在读取任务';let placeholder=messages.querySelector('.empty-state');if(placeholder?.dataset.historyState!==historyState){placeholder=empty(title,missing?'未发送的文字和文件引用仍保留在下方。可以复制内容或从本机草稿查看，再新建任务继续。':ready?'告诉智能体你的目标，也可以先导入参考文本。':'完整对话读取后即可继续发送，输入框中的草稿会保留。',missing?'info':ready?'sparkles':'activity');placeholder.dataset.historyState=historyState;if(missing){placeholder.setAttribute('role','status');placeholder.append(button('新建任务','new'));}}nodes.push(placeholder);}
   const partial=renderOutput(session);if(partial){nodes.push(partial.node);changed=changed||partial.changed;}
+  const queued=queuedInputView?.render(session);if(queued&&!queued.hidden)nodes.push(queued);
   if(session.run?.status==='running'&&!partial&&!flow){
     let typing=messages.querySelector('.typing-indicator');if(!typing){typing=el('div','typing-indicator');typing.append(el('span'),el('span'),el('span'),el('small','','智能体正在处理，请稍候…'));}
     nodes.push(typing);
   }
   nodes.forEach((node,index)=>{if(messages.children[index]!==node){messages.insertBefore(node,messages.children[index] || null);changed=true;}});
   while(messages.children.length>nodes.length){messages.lastElementChild.remove();changed=true;}
-  if(!outputOnly){renderApprovals(session.approvals || []);renderRun(session.run);renderUsage(session);if(missing){if(state.runHistory?.sessionId)resetRunHistory(null);}else observeRunHistory(session);renderContext();renderBranchOrigin(session);syncBranchControls();syncContextPanel();
+  if(!outputOnly){renderRun(session.run);renderApprovals(session.approvals || []);renderUsage(session);if(missing){if(state.runHistory?.sessionId)resetRunHistory(null);}else observeRunHistory(session);renderContext();renderBranchOrigin(session);syncBranchControls();syncContextPanel();
     $('run-error').classList.toggle('hidden',!session.run?.error);$('run-error').textContent=session.run?.error?stringify(session.run.error):'';updateComposer();}
   if(changed&&(nearBottom||newSession)){if(mobileLayout.matches)window.scrollTo({top:scroller.scrollHeight,behavior:'instant'});else scroller.scrollTop=scroller.scrollHeight;}
 }
@@ -694,7 +726,7 @@ function renderOutput(session) {
 }
 function renderRun(run) {
   const panel=$('run-panel'),key=JSON.stringify([state.navigation,state.selected?.id,run?.id]);let cache=panel._runCache;
-  if(!cache||cache.key!==key){panel.replaceChildren();const title=el('div','run-panel-title');title.append(icon('activity'),el('span','','任务进度'));panel.append(title);cache={key,entries:new Map(),status:el('div','run-status'),list:el('ol','timeline'),note:el('p','run-panel-note')};panel._runCache=cache;panel.append(cache.status,cache.list,cache.note);}
+  if(!cache||cache.key!==key){panel.replaceChildren();const title=el('div','run-panel-title');title.append(icon('activity'),el('span','','任务进度'));panel.append(title);cache={key,entries:new Map(),status:el('div','run-status'),list:el('ol','timeline'),note:el('p','run-panel-note')};panel._runCache=cache;panel.append(cache.status,cache.list,cache.note);if(commandPolicyUI)panel.append(commandPolicyUI.taskNode);}
   cache.status.className=`run-status ${run?.status||''}`;cache.status.textContent=run?(statusText[run.status]||run.status):'';cache.status.hidden=!run;
   cache.note.textContent=!run?'你的执行步骤与工具调用会在这里显示。':!run.steps?.length?'正在准备任务…':'';cache.note.hidden=Boolean(run?.steps?.length);
   const keys=new Set();for(const [index,step]of(run?.steps||[]).entries()){
@@ -705,7 +737,7 @@ function renderRun(run) {
     if(entry.signature!==signature){const detailKey=node=>node.classList.contains('model-context-plan')?'plan':node.dataset.artifactId;const opened=new Set([...entry.extra.querySelectorAll('details[open]')].map(detailKey));const focused=document.activeElement?.tagName==='SUMMARY'&&entry.extra.contains(document.activeElement)?detailKey(document.activeElement.parentElement):null;entry.signature=signature;entry.extra.replaceChildren();appendStepContext(entry.extra,step,run,state.selected.id,false);for(const details of entry.extra.querySelectorAll('details')){details.open=opened.has(detailKey(details));if(focused&&detailKey(details)===focused)details.querySelector(':scope>summary')?.focus({preventScroll:true});}}
     if(cache.list.children[index]!==entry.node)cache.list.insertBefore(entry.node,cache.list.children[index]||null);
   }
-  for(const [id,entry]of cache.entries)if(!keys.has(id)){entry.node.remove();cache.entries.delete(id);}syncToolArtifactCapabilities();
+  for(const [id,entry]of cache.entries)if(!keys.has(id)){entry.node.remove();cache.entries.delete(id);}syncToolArtifactCapabilities();commandPolicyUI?.sync({refresh:true});
 }
 const contextByteNumber=new Intl.NumberFormat('zh-CN');
 const artifactUnsupported='当前工作台版本不支持读取工具原记录，请更新后重连。';
@@ -715,22 +747,27 @@ function invalidateToolArtifactViews(){for(const view of toolArtifactViews)++vie
 function invalidateToolArtifactRequests(){for(const view of toolArtifactViews){++view.request;if(view.loading){view.loading=false;view.status.textContent='连接已刷新，请重新读取这页原记录。';view.region.setAttribute('aria-busy','false');updateArtifactControls(view);}}}
 function syncToolArtifactCapabilities(){
   for(const view of toolArtifactViews){if(!view.node.isConnected){++view.request;toolArtifactViews.delete(view);continue;}
-    if(!state.toolArtifactsSupported){++view.request;view.loading=false;view.page=null;view.offsets=[];view.text.textContent='';view.text.hidden=true;view.status.textContent=artifactUnsupported;view.region.setAttribute('aria-busy','false');}
+    if(!state.toolArtifactsSupported){++view.request;view.loading=false;view.page=null;view.offsets=[];view.text.textContent='';view.text.hidden=true;view.webContent?.replaceChildren();view.status.textContent=artifactUnsupported;view.region.setAttribute('aria-busy','false');}
     else if(view.status.textContent===artifactUnsupported)view.status.textContent='展开后按页读取当时保存的工具返回原文。';
     updateArtifactControls(view);
   }
 }
 function updateArtifactControls(view){const unavailable=!state.toolArtifactsSupported||view.loading;view.read.disabled=unavailable;view.previous.disabled=unavailable||!view.offsets.length;view.next.disabled=unavailable||view.page?.nextOffset==null;view.read.textContent=view.page?'重新读取本页':'读取第一页';}
 function artifactViewValid(view,generation,navigation,request){return toolArtifactViews.has(view)&&view.node.isConnected&&state.generation===generation&&state.navigation===navigation&&view.request===request&&state.view==='chat'&&state.selected?.id===view.sessionId&&(view.historical||state.selected?.run?.id===view.runId)&&state.toolArtifactsSupported;}
+function validArtifactPage(artifact,page,view,offset) {
+  return artifact?.id===view.ref.artifactId&&artifact.sessionId===view.sessionId&&artifact.runId===view.runId&&artifact.bytes===view.ref.bytes&&artifact.sha256===view.ref.sha256&&page?.offset===offset&&byteCount(page.endOffset)&&page.endOffset>=offset&&page.endOffset<=artifact.bytes&&typeof page.content==='string'&&new TextEncoder().encode(page.content).byteLength===page.endOffset-offset&&page.endOffset-offset<=16384&&(page.nextOffset===null?page.endOffset===artifact.bytes:page.nextOffset===page.endOffset&&page.endOffset>offset&&page.endOffset<artifact.bytes)&&page.complete===(offset===0&&page.endOffset===artifact.bytes);
+}
 function createToolArtifactView(ref,run,sessionId,historical=false){
   const node=el('details','tool-artifact-view');node.dataset.artifactId=ref.artifactId;
-  node.append(el('summary','','查看当时工具结果 · '+(ref.path||ref.name)));
+  node.append(el('summary','','查看当时工具结果 · '+(ref.path||webToolNames[ref.name]||ref.name)));
   const region=el('div','tool-artifact-region');region.setAttribute('aria-busy','false');
-  region.append(el('p','context-note',`工具：${ref.name}${ref.isError?' · 返回错误':''} · 原记录 ${contextByteNumber.format(ref.bytes)} 字节`),el('p','context-note artifact-hash','SHA-256：'+ref.sha256),el('p','context-note','以下按页显示当时保存的完整工具返回 JSON 的片段；工具自身的扫描范围可能不完整。这不是当前磁盘文件。'));
+  region.append(el('p','context-note',`工具：${webToolNames[ref.name]||ref.name}${ref.isError?' · 返回错误':''} · 原记录 ${contextByteNumber.format(ref.bytes)} 字节`),el('p','context-note artifact-hash','SHA-256：'+ref.sha256),el('p','context-note',Object.hasOwn(webToolNames,ref.name)?'以下来自当时保存的网页工具记录；网页可能已变化，内容可能不完整。':'以下按页显示当时保存的完整工具返回 JSON 的片段；工具自身的扫描范围可能不完整。这不是当前磁盘文件。'));
   const status=el('p','context-note artifact-page-status',state.toolArtifactsSupported?'展开后按页读取当时保存的工具返回原文。':artifactUnsupported);status.setAttribute('role','status');
   const text=scrollText('','history-output tool-artifact-content','当时工具结果的原文片段');text.hidden=true;
-  const controls=el('div','tool-artifact-controls'),read=button('读取第一页','','text-button'),previous=button('上一页','','text-button'),next=button('下一页','','text-button');controls.append(previous,next,read);region.append(status,text,controls);node.append(region);
-  const view={node,region,status,text,read,previous,next,ref,runId:run.id,sessionId,historical,request:0,loading:false,page:null,offsets:[]};toolArtifactViews.add(view);
+  const controls=el('div','tool-artifact-controls'),read=button('读取第一页','','text-button'),previous=button('上一页','','text-button'),next=button('下一页','','text-button');controls.append(previous,next,read);
+  const webContent=Object.hasOwn(webToolNames,ref.name)?el('div','web-tool-content'):null;
+  if(webContent){const raw=el('details','web-tool-raw');raw.append(el('summary','','原始 JSON 记录'),status,text,controls);region.append(webContent,raw);}else region.append(status,text,controls);node.append(region);
+  const view={node,region,status,text,read,previous,next,ref,webContent,runId:run.id,sessionId,historical,request:0,loading:false,page:null,offsets:[]};toolArtifactViews.add(view);
   node.addEventListener('toggle',()=>{if(node.open&&!view.page&&!view.loading&&state.toolArtifactsSupported)void loadToolArtifactPage(view,0);});
   read.addEventListener('click',()=>void loadToolArtifactPage(view,view.page?.offset||0));
   previous.addEventListener('click',()=>{if(view.offsets.length)void loadToolArtifactPage(view,view.offsets.at(-1),'previous');});
@@ -744,11 +781,27 @@ async function loadToolArtifactPage(view,offset,direction='reload'){
   try{
     const {artifact,page}=await api(`/api/sessions/${encodeURIComponent(view.sessionId)}/runs/${encodeURIComponent(view.runId)}/artifacts/${encodeURIComponent(view.ref.artifactId)}?offset=${offset}&maxBytes=16384`);
     if(!artifactViewValid(view,generation,navigation,request))return;
-    const valid=artifact?.id===view.ref.artifactId&&artifact.sessionId===view.sessionId&&artifact.runId===view.runId&&artifact.bytes===view.ref.bytes&&artifact.sha256===view.ref.sha256&&page?.offset===offset&&byteCount(page.endOffset)&&page.endOffset>=offset&&page.endOffset<=artifact.bytes&&typeof page.content==='string'&&new TextEncoder().encode(page.content).byteLength===page.endOffset-offset&&page.endOffset-offset<=16384&&(page.nextOffset===null?page.endOffset===artifact.bytes:page.nextOffset===page.endOffset&&page.endOffset>offset&&page.endOffset<artifact.bytes)&&page.complete===(offset===0&&page.endOffset===artifact.bytes);
+    const valid=validArtifactPage(artifact,page,view,offset);
     if(!valid)throw new Error('原记录分页内容与所选工具结果不一致，已拒绝显示。');
     if(direction==='next')view.offsets.push(view.page.offset);else if(direction==='previous')view.offsets.pop();view.page=page;view.text.textContent=page.content;view.text.hidden=false;
     view.status.textContent=`UTF-8 字节范围 [${contextByteNumber.format(page.offset)}, ${contextByteNumber.format(page.endOffset)}) / ${contextByteNumber.format(artifact.bytes)}${page.complete?' · 全文已显示':page.nextOffset===null?' · 已到末页':' · 尚有后续原文'}`;
-  }catch(error){if(artifactViewValid(view,generation,navigation,request)&&!error.staleContext)view.status.textContent='读取失败：'+error.message;}
+    if(view.webContent&&offset===0){
+      view.webContent.replaceChildren(el('p','context-note','正在读取网页来源与内容…'));
+      if(artifact.bytes>128*1024)throw new Error('网页记录超过展示上限，请按页查看原始 JSON。');
+      let content=page.content,last=page,pages=1;
+      while(last.nextOffset!==null){
+        if(++pages>9)throw new Error('网页记录分页超过展示上限，请按页查看原始 JSON。');
+        const nextOffset=last.nextOffset,result=await api(`/api/sessions/${encodeURIComponent(view.sessionId)}/runs/${encodeURIComponent(view.runId)}/artifacts/${encodeURIComponent(view.ref.artifactId)}?offset=${nextOffset}&maxBytes=16384`);
+        if(!artifactViewValid(view,generation,navigation,request))return;
+        if(!validArtifactPage(result.artifact,result.page,view,nextOffset))throw new Error('网页原记录分页不一致，已拒绝显示。');
+        last=result.page;content+=last.content;
+      }
+      const bytes=new TextEncoder().encode(content),hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),value=>value.toString(16).padStart(2,'0')).join('');
+      if(!artifactViewValid(view,generation,navigation,request))return;
+      if(bytes.byteLength!==artifact.bytes||hash!==artifact.sha256)throw new Error('网页原记录校验未通过，已拒绝显示。');
+      const rendered=renderWebToolResult(view.ref.name,JSON.parse(content));view.webContent.replaceChildren(rendered||el('p','context-note','此记录没有可识别的网页来源，请查看原始 JSON。'));
+    }
+  }catch(error){if(artifactViewValid(view,generation,navigation,request)&&!error.staleContext){view.status.textContent='读取失败：'+error.message;if(view.webContent)view.webContent.replaceChildren(el('p','context-note',view.status.textContent));}}
   finally{if(artifactViewValid(view,generation,navigation,request)){view.loading=false;view.region.setAttribute('aria-busy','false');updateArtifactControls(view);}}
 }
 function appendStepContext(container,step,run,sessionId,historical){
@@ -1069,8 +1122,8 @@ function createApprovalCard(approval) {
     const heading=el('h3');heading.append(icon('terminal'),el('span','','执行命令需批准'));card.append(heading);
     const valid=commandApprovalValid(approval);
     if(valid)card.append(commandApprovalContent(approval));else card.append(el('p','diff-unavailable','完整命令预览不可用，请拒绝并重新生成提案。'));
-    card.append(el('p','context-note','命令以本机当前用户权限执行，可修改文件和访问网络；工作目录不是安全沙箱。批准仅对上方这一次命令有效，可随时停止任务。'));
-    const actions=el('div','approval-actions'),approve=button('批准这次命令','approve','button primary',{id:approval.id});approve.disabled=!valid;actions.append(approve,button('拒绝','deny','button secondary',{id:approval.id}));card.append(actions);return card;
+    card.append(el('p','context-note','命令以本机当前用户权限执行，可修改文件和访问网络；工作目录不是安全沙箱。“批准这次命令”只允许上方这一条。可随时停止任务。'));
+    const actions=el('div','approval-actions'),approve=button('批准这次命令','approve','button primary',{id:approval.id});approve.disabled=!valid;actions.append(approve,button('拒绝','deny','button secondary',{id:approval.id}));if(valid&&commandPolicyUI?.pendingEligibility(approval.id)?.sessionEligible===true)actions.append(button('批准并授权本轮…','approve-task','button secondary',{id:approval.id}));card.append(actions);return card;
   }
   const card=el('article','approval-card');card.dataset.approvalId=approval.id;const heading=el('h3');heading.append(icon('shield'),el('span','',approval.tool==='edit_file'?'文件修改需批准':'文件写入需批准'));
   card.append(heading,el('p','',approval.description||'智能体请求写入工作文件。批准仅对这一次操作有效。'),el('code','approval-path',approval.args?.path||approval.preview?.path||''));
@@ -1082,29 +1135,34 @@ function createApprovalCard(approval) {
   const actions=el('div','approval-actions');const approve=button('批准这次写入','approve','button primary',{id:approval.id});approve.disabled=!valid;actions.append(approve,button('拒绝','deny','button secondary',{id:approval.id}));card.append(actions);return card;
 }
 function renderApprovals(approvals) {
-  const container=$('approval-list'),signature=JSON.stringify(approvals);if(container._signature===signature)return;container._signature=signature;
-  const nodes=[],pending=new Set();for(const approval of approvals.filter(item=>item.status==='pending')){pending.add(approval.id);const key=JSON.stringify(approval);let cached=approvalCache.get(approval.id);if(!cached||cached.key!==key){cached={key,node:createApprovalCard(approval)};approvalCache.set(approval.id,cached);}nodes.push(cached.node);}
+  const container=$('approval-list'),historyHost=$('run-panel'),signature=JSON.stringify([approvals,commandPolicyUI?.signature()]);if(container._signature===signature&&container._historyHost===historyHost._runCache)return;container._signature=signature;container._historyHost=historyHost._runCache;
+  const nodes=[],pending=new Set();for(const approval of approvals.filter(item=>item.status==='pending')){pending.add(approval.id);const key=JSON.stringify([approval,commandPolicyUI?.pendingEligibility(approval.id)?.sessionEligible===true]);let cached=approvalCache.get(approval.id);if(!cached||cached.key!==key){cached={key,node:createApprovalCard(approval)};approvalCache.set(approval.id,cached);}nodes.push(cached.node);}
   for(const id of approvalCache.keys())if(!pending.has(id))approvalCache.delete(id);
   const resolved=approvals.filter(item=>item.status!=='pending'),resolvedIds=new Set(resolved.map(item=>item.id));for(const id of approvalHistoryCache.keys())if(!resolvedIds.has(id))approvalHistoryCache.delete(id);
-  if(resolved.length){let history=container.querySelector('.approval-history');if(!history){history=el('details','approval-history');history.append(el('summary'));}history.firstElementChild.textContent='已处理的审批（'+resolved.length+'）';const records=[];
-    for(const approval of resolved){const key=JSON.stringify(approval);let cached=approvalHistoryCache.get(approval.id);if(approval.tool==='run_command'){if(cached?.key===key){records.push(cached.node);continue;}const record=el('article','approval-record');const status=approval.revoked?'已撤销':approval.status==='approved'?'已批准':'已拒绝';record.append(el('strong','',status+' · 命令执行'),el('p','',approval.startedAt?'已记录进程启动；退出状态与结果请查看任务进度。':'未记录进程启动；批准不等于执行成功。'));if(commandApprovalValid(approval)){const details=el('details');details.append(el('summary','','查看当时的命令'),commandApprovalContent(approval));record.append(details);}approvalHistoryCache.set(approval.id,{key,node:record});records.push(record);continue;}if(!cached||cached.key!==key){const record=el('article','approval-record');const status=approval.revoked===true?'已撤销':({approved:'已批准',denied:'已拒绝'}[approval.status]||'已处理');record.append(el('strong','',status+' · '+(approval.args?.path||approval.description||'文件写入')),el('p','',approval.status==='approved'?'批准决定已记录；是否成功写入请以任务进度和文件内容为准。':'此条审批已结束，不能再次批准。'));const after=approval.preview?.after??approval.args?.content;if(typeof after==='string'){const details=el('details');details.append(el('summary','','查看当时的写入提案'));details.addEventListener('toggle',()=>{if(details.open&&!details.querySelector('pre'))details.append(scrollText(after,'approval-preview approval-full-content','完整写入提案'));});record.append(details);}else record.append(el('p','approval-archived','完整预览已归档，仅保留审批状态与路径等元数据。'));cached={key,node:record};approvalHistoryCache.set(approval.id,cached);}records.push(cached.node);}
-    records.forEach((node,index)=>{if(history.children[index+1]!==node)history.insertBefore(node,history.children[index+1]||null);});while(history.children.length>records.length+1)history.lastElementChild.remove();nodes.push(history);
-  }
+  if(resolved.length){let history=historyHost.querySelector(':scope>.approval-history');if(!history){history=el('details','approval-history');history.append(el('summary'));historyHost.append(history);}history.firstElementChild.textContent='已处理的审批（'+resolved.length+'）';const records=[];
+    for(const approval of resolved){const key=JSON.stringify(approval);let cached=approvalHistoryCache.get(approval.id);if(approval.tool==='run_command'){if(cached?.key===key){records.push(cached.node);continue;}const record=el('article','approval-record');const status=approval.revoked?'已撤销':approval.status==='approved'?'已批准':'已拒绝';record.append(el('strong','',status+' · 命令执行'));if(approval.description)record.append(el('p','context-note',approval.description));record.append(el('p','',approval.startedAt?'已记录进程启动；退出状态与结果请查看任务进度。':'未记录进程启动；批准不等于执行成功。'));if(commandApprovalValid(approval)){const details=el('details');details.append(el('summary','','查看当时的命令'),commandApprovalContent(approval));record.append(details);}approvalHistoryCache.set(approval.id,{key,node:record});records.push(record);continue;}if(!cached||cached.key!==key){const record=el('article','approval-record');const status=approval.revoked===true?'已撤销':({approved:'已批准',denied:'已拒绝'}[approval.status]||'已处理');record.append(el('strong','',status+' · '+(approval.args?.path||approval.description||'文件写入')),el('p','',approval.status==='approved'?'批准决定已记录；是否成功写入请以任务进度和文件内容为准。':'此条审批已结束，不能再次批准。'));const after=approval.preview?.after??approval.args?.content;if(typeof after==='string'){const details=el('details');details.append(el('summary','','查看当时的写入提案'));details.addEventListener('toggle',()=>{if(details.open&&!details.querySelector('pre'))details.append(scrollText(after,'approval-preview approval-full-content','完整写入提案'));});record.append(details);}else record.append(el('p','approval-archived','完整预览已归档，仅保留审批状态与路径等元数据。'));cached={key,node:record};approvalHistoryCache.set(approval.id,cached);}records.push(cached.node);}
+    records.forEach((node,index)=>{if(history.children[index+1]!==node)history.insertBefore(node,history.children[index+1]||null);});while(history.children.length>records.length+1)history.lastElementChild.remove();
+  }else historyHost.querySelector(':scope>.approval-history')?.remove();
   nodes.forEach((node,index)=>{if(container.children[index]!==node)container.insertBefore(node,container.children[index]||null);});while(container.children.length>nodes.length)container.lastElementChild.remove();
+  container.hidden=!nodes.length;
 }
-async function sendMessage(event) {
+async function sendMessage(event,{mode='queue'}={}) {
   event?.preventDefault(); const content = $('prompt-input').value.trim();
   const imageToken=imageInput?.snapshot();const images=imageToken?.images.map(({name,mimeType,data})=>({name,mimeType,data}))||[];
   if (imageInput?.pending())return;
   if ((!content&&!images.length) || nativeLeaveLock || state.sending || state.switching || !state.connected) return;
   if(state.view==='chat'&&unavailableSessions.has(state.selected)){toast('任务已删除，未发送内容仍保留。请新建任务后再发送。',true);return;}
-  if (!state.providers.some(item=>item.id===state.providerId&&item.enabled!==false) || (state.providers.find(item=>item.id===state.providerId)?.toolMode!=='none'&&state.skillId&&!state.skills.some(item=>item.id===state.skillId))) {toast('请选择可用的模型和技能后再发送。',true);return;}
+  const busy=state.view==='chat'&&['running','awaiting_approval'].includes(state.selected?.run?.status);
+  if(state.view==='chat'&&!busy&&state.selected?.queuedInputs?.some(item=>item.status==='pending')){toast('正在切换到已接收的补充内容，草稿已保留。');return;}
+  if(mode==='interrupt'&&!busy){toast('当前任务已结束，草稿仍保留。可直接发送新一轮任务。');return;}
+  if(busy&&!state.taskInputSupported){toast('此工作台暂不支持运行中补充，草稿已保留。',true);return;}
+  if (!state.providers.some(item=>item.id===state.providerId&&item.enabled!==false) || (!busy&&state.providers.find(item=>item.id===state.providerId)?.toolMode!=='none'&&state.skillId&&!state.skills.some(item=>item.id===state.skillId))) {toast('请选择可用的模型和技能后再发送。',true);return;}
   if(images.length&&(!state.imagesSupported||state.providers.find(item=>item.id===state.providerId)?.type==='demo')){toast('请选择支持图片的真实模型，并确认工作台已支持图片消息。',true);return;}
   if (composerDrafts.uncertain()) {toast('上一次发送的结果尚未确认。请先核对任务记录，再打开本机草稿确认。',true);return;}
   if(!currentHistoryReady()){toast('正在读取任务，本次尚未发送。草稿已保留，请读取完成后再次发送。',true);return;}
   if(!handoffSupported&&hasHandoffHistory()){toast(handoffUnsupported+'；未发送消息，草稿已保留。',true);return;}
   if(!state.contextFilesSupported&&requiresContextFilesSupport()){toast(contextFilesUnsupported+'；未发送内容。请移除未发送引用，或新建不含文件资料的任务。',true);return;}
-  if (state.view === 'chat' && ['running','awaiting_approval'].includes(state.selected?.run?.status)) return;
+  const steering=busy?{mode,requestId:crypto.randomUUID(),expectedRunId:state.selected.run.id}:null;
   const navigation = state.navigation; const generation = state.generation; const sendRequest=++state.sendRequest; const providerId = state.providerId; const skillId = state.providers.find(item=>item.id===state.providerId)?.toolMode==='none'?'':state.skillId;
   const draftRevision=state.draftRevision;const files=state.draftFiles.map(({path,sha256})=>({path,sha256}));clearContextFileError();
   let targetSession = state.view === 'chat' ? state.selected : null;
@@ -1127,9 +1185,10 @@ async function sendMessage(event) {
     if(!state.contextFilesSupported&&(files.length||targetSession.messages.some(message=>message&&Object.hasOwn(message,'contextFiles'))))throw new Error(contextFilesUnsupported+'；未发送消息，草稿已保留。');
     if(!handoffSupported&&targetSession.messages.some(message=>message&&Object.hasOwn(message,'contextHandoff')))throw new Error(handoffUnsupported+'；未发送消息，草稿已保留。');
     messageStarted = true;
-    const result = await api(`/api/sessions/${encodeURIComponent(id)}/messages`, {method:'POST',body:{content,providerId,skillId:skillId || undefined,...(files.length?{files}:{}),...(images.length?{images}:{})}});
+    const result = await api(`/api/sessions/${encodeURIComponent(id)}/messages`, {method:'POST',body:{content,...(steering||{providerId,skillId:skillId || undefined}),...(files.length?{files}:{}),...(images.length?{images}:{})}});
     composerDrafts.finishSend(draftToken,{accepted:true});if(imageToken)imageInput.accepted(imageToken);
     if (generation !== state.generation) return;
+    if(steering)toast(steering.mode==='interrupt'?'已保存补充，并请求停止当前步骤后继续。':'补充已保存，将在安全节点处理。');
     if (state.selected?.id === id) { ++state.sessionRequest; state.selected = acceptCompleteSession(result.session,id); if(state.view === 'chat') renderChat(); }
     if (!draftToken && state.draftRevision===draftRevision && $('prompt-input').value.trim() === content) {$('prompt-input').value = '';clearDraftFiles();}
     if (!draftToken && state.skillId === skillId) state.skillId = '';
@@ -1462,6 +1521,7 @@ function updateOverview(){
 }
 function syncContextPanel(){
   $('context-panel').classList.toggle('hidden',!state.contextOpen);$('chat-layout').classList.toggle('panel-collapsed',!state.contextOpen);$('context-toggle').setAttribute('aria-expanded',String(state.contextOpen));$('context-toggle').classList.toggle('selected',state.contextOpen);
+  commandPolicyUI?.sync();
 }
 function renderContext(){
   const session=state.selected;if(!session)return;const provider=state.providers.find(item=>item.id===session.providerId);const meta=$('chat-meta');meta.replaceChildren();meta.append(el('span',`task-status-badge ${session.run?.status||'idle'}`,unavailableSessions.has(session)?'已删除':statusText[session.run?.status]||'准备开始'));
@@ -1880,7 +1940,7 @@ function showProviderDialog(providerId){
   const key=field(existing?'新的 API 密钥（留空保留现有值）':'API 密钥（本机服务可留空）','apiKey',{type:'password',maxLength:8192,placeholder:existing?'不回显已存储的密钥':'在这里粘贴密钥',hint:'独立运行时密钥仅驻留服务内存；桌面版使用操作系统保护存储。'});
   const clear=el('label','check-field');const checkbox=el('input');checkbox.type='checkbox';checkbox.name='clearKey';clear.append(checkbox,el('span','','清除此连接已保存的密钥'));checkbox.addEventListener('change',()=>{const input=key.querySelector('input');input.disabled=checkbox.checked;if(checkbox.checked)input.value='';});
   const advanced=el('details');advanced.append(el('summary','','高级兼容选项'),field('输出 token 上限','maxTokens',{type:'number',value:String(existing?.maxTokens||4096),min:128,max:16384,required:true,hint:'实际可用上限取决于模型与服务商。'}),field('Chat Completions token 参数','tokenParameter',{value:existing?.tokenParameter||'max_completion_tokens',options:[{value:'max_completion_tokens',label:'max_completion_tokens（默认）'},{value:'max_tokens',label:'max_tokens（部分兼容服务）'}],hint:'仅用于 Chat Completions；根据服务商接口文档选择。'}));
-  const capabilities=field('任务能力','toolMode',{value:existing?.toolMode==='none'?'none':'workspace',options:[{value:'workspace',label:'对话、文件与命令'},{value:'none',label:'仅对话'}],hint:'工作区工具包含文件与命令，写入和命令逐次审批；仅对话不调用任何工具，但已有对话内容仍会发送给模型。'});
+  const capabilities=field('任务能力','toolMode',{value:existing?.toolMode==='none'?'none':'workspace',options:[{value:'workspace',label:'对话、文件与命令'},{value:'none',label:'仅对话'}],hint:'文件写入逐次审批，命令按任务策略审核；仅对话不调用任何工具，但已有对话内容仍会发送给模型。'});
   const streaming=field('响应显示方式','streaming',{value:existing?.streaming===false?'false':'true',options:[{value:'true',label:'逐步显示输出（默认）'},{value:'false',label:'兼容模式 · 等待完整响应'}],hint:'如果服务商不支持流式响应，请选择兼容模式。未完成的片段不会作为完成结果保存。'});
   const enabled=el('label','check-field');const enabledInput=el('input');enabledInput.type='checkbox';enabledInput.name='enabled';enabledInput.checked=existing?.enabled!==false;enabled.append(enabledInput,el('span','','启用此连接'));
   const nodes=[desc,name,type,base,model,key,capabilities,streaming];if(existing)nodes.push(enabled,clear);nodes.push(advanced);
@@ -1925,7 +1985,7 @@ function showGatewayDialog() {
   });
   url.querySelector('input').addEventListener('input',updateTarget);updateTarget();
 }
-function showHelp(){const body=el('div','dialog-help');body.append(el('p','','OpenAster 是开源、本地优先的智能体工作台。这个预览版本提供对话、工作区文件工具、逐次审批的命令执行和可核查的执行过程。'));const list=el('ul');for(const text of ['1. 在「设置」连接自己的模型，或先体验标注明确的本地演示。','2. 在「工作空间」查看完整路径；桌面菜单「工作区 → 新建项目…」可创建自己的项目文件夹。','3. 查看任务步骤，检查完整写入内容或命令，再批准或拒绝。命令使用本机用户权限，可通过停止任务中断。','4. 在「安全与活动记录」回顾操作，或在设置导出自己的数据。'])list.append(el('li','',text));body.append(list,el('p','','快捷键：Ctrl / ⌘ P 搜索任务、文件与操作；Ctrl / ⌘ K 新建任务；Enter 发送；Shift + Enter 换行。中文输入法选词期间不会误发送。'),el('p','','移动端作为配套客户端连接你自行托管的 HTTPS 网关。PWA 离线只保留界面资源，任务操作需要工作台服务。'),el('p','','AI 结果需要核实。接入云端模型后，对话与模型读取的文件会发送到所选服务商。本预览版本不宣称已达到绝对安全或零缺陷。'));openDialog('使用帮助',body,'开始使用',async()=>{});}
+function showHelp(){const body=el('div','dialog-help');body.append(el('p','','OpenAster 是开源、本地优先的智能体工作台。这个预览版本提供对话、工作区文件工具、可配置的命令审批和可核查的执行过程。'));const list=el('ul');for(const text of ['1. 在「设置」连接自己的模型，或先体验标注明确的本地演示。','2. 在「工作空间」查看完整路径；桌面菜单「工作区 → 新建项目…」可创建自己的项目文件夹。','3. 查看任务步骤，检查完整写入内容或命令，再批准或拒绝。命令使用本机用户权限，可通过停止任务中断。','4. 在「安全与活动记录」回顾操作，或在设置导出自己的数据。'])list.append(el('li','',text));body.append(list,el('p','','快捷键：Ctrl / ⌘ P 搜索任务、文件与操作；Ctrl / ⌘ K 新建任务；Enter 发送；Shift + Enter 换行。中文输入法选词期间不会误发送。'),el('p','','移动端作为配套客户端连接你自行托管的 HTTPS 网关。PWA 离线只保留界面资源，任务操作需要工作台服务。'),el('p','','AI 结果需要核实。接入云端模型后，对话与模型读取的文件会发送到所选服务商。本预览版本不宣称已达到绝对安全或零缺陷。'));openDialog('使用帮助',body,'开始使用',async()=>{});}
 function confirmDialog(title,description,submit,handler){openDialog(title,el('p','dialog-description',description),submit,handler);$('dialog-submit').className='button danger';}
 function downloadJson(value,filename){const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 async function showComposerDrafts(){
@@ -1982,7 +2042,7 @@ const actions={
   'use-skill':node=>{startNew();state.skillId=node.dataset.id;updateComposer();composerDrafts.changed();$('prompt-input').focus();},'clear-skill':()=>{state.skillId='';updateComposer();composerDrafts.changed();},
   'add-provider':showProviderDialog,import:showImportDialog,gateway:showGatewayDialog,help:showHelp,'close-dialog':closeDialog,reconnect:bootstrap,
   'android-notices':()=>androidNotices.open(),
-  'file-permissions':changeFilePermissions,'open-workspace-project':()=>openWorkspaceProject(false),'create-workspace-project':()=>openWorkspaceProject(true),
+  'file-permissions':changeFilePermissions,'web-access-settings':()=>{showView('settings');$('web-access-toggle').focus();},'open-workspace-project':()=>openWorkspaceProject(false),'create-workspace-project':()=>openWorkspaceProject(true),
   theme:()=>{document.body.classList.toggle('dark');saveStorage('openaster.theme',document.body.classList.contains('dark')?'dark':'light');syncThemeAppearance();toast(document.body.classList.contains('dark')?'已切换为深色主题':'已切换为浅色主题');},
   'refresh-files':refreshWorkspaceFiles,'open-file':node=>openFile(node.dataset.path),'refresh-audit':()=>loadAudit({restart:true}),
   'refresh-context-files':()=>loadFiles({invalidate:true}),'refresh-context-audit':()=>loadAudit({restart:true}),
@@ -1997,12 +2057,14 @@ const actions={
   'export-session':()=>{if(state.selected)downloadJson(state.selected,`openaster-task-${state.selected.id}.json`);},
   'export-all':async()=>{const data=await api('/api/export');downloadJson(data,`openaster-export-${new Date().toISOString().slice(0,10)}.json`);toast('已导出工作台数据，未包含模型密钥。');},
   cancel:async()=>{if(!state.selected)return;const id=state.selected.id;await api(`/api/sessions/${encodeURIComponent(id)}/cancel`,{method:'POST',body:{}});await refreshSession(id);toast('已请求停止任务。');},
-  approve:node=>decide(node,'approve'),deny:node=>decide(node,'deny')
+  approve:node=>decide(node,'approve'),deny:node=>decide(node,'deny'),
+  'approve-task':node=>commandPolicyUI?.approveForRun(node.dataset.id,()=>decide(node,'approve','session'))
 };
-async function decide(node,decision){if(!state.selected||!completeSessionHistory.has(state.selected))throw new Error('正在重新读取任务，本次审批尚未发送。请读取完成后核对审批状态。');if(decision==='approve'&&!approvalPreview(state.selected?.approvals?.find(item=>item.id===node.dataset.id)||{}))throw new Error('完整操作预览不可用，请拒绝后重新生成提案。');node.disabled=true;try{await api(`/api/approvals/${encodeURIComponent(node.dataset.id)}`,{method:'POST',body:{decision}});if(state.selected)await refreshSession(state.selected.id);toast(decision==='approve'?'批准已记录，请查看任务中的实际执行结果。':'已拒绝这一次操作。');}finally{node.disabled=false;}}
+async function decide(node,decision,scope='once'){if(!state.selected||!completeSessionHistory.has(state.selected))throw new Error('正在重新读取任务，本次审批尚未发送。请读取完成后核对审批状态。');const sessionId=state.selected.id,generation=state.generation,approval=state.selected.approvals?.find(item=>item.id===node.dataset.id);if(!approval||approval.status!=='pending')throw new Error('此审批已变化，请重新核对当前待审批内容。');if(decision==='approve'&&!approvalPreview(approval))throw new Error('完整操作预览不可用，请拒绝后重新生成提案。');if(scope==='session'&&commandPolicyUI?.pendingEligibility(approval.id)?.sessionEligible!==true)throw new Error('此命令不支持本轮授权。');node.disabled=true;try{await api(`/api/approvals/${encodeURIComponent(node.dataset.id)}`,{method:'POST',body:{decision,...(scope==='session'?{scope:'session',confirmRisk:true}:{})}});if(generation===state.generation&&state.selected?.id===sessionId)await refreshSession(sessionId);toast(decision==='approve'?'批准已记录，请查看任务中的实际执行结果。':'已拒绝这一次操作。');}finally{node.disabled=false;}}
 document.addEventListener('click',event=>{const node=event.target.closest('[data-action]');if(!node||node.disabled)return;const action=actions[node.dataset.action];if(!action)return;event.preventDefault();Promise.resolve().then(()=>action(node)).catch(error=>{if(!error.staleContext)toast(error.message||'操作失败，请重试。',true);});});
 $('usage-overview').addEventListener('toggle',()=>{if($('usage-overview').open&&state.view==='settings'&&state.usageOverviewSupported&&!state.usageOverview?.snapshot&&!state.usageOverview?.loading)void loadUsageOverview();});
 $('run-history').addEventListener('toggle',()=>{const history=state.runHistory;if($('run-history').open&&history?.sessionId&&!history.loaded&&!history.loading)void loadRunHistory();});
+$('web-access-toggle').addEventListener('change',event=>void changeWebAccess(event.target.checked));
 $('composer').addEventListener('submit',sendMessage);
 $('prompt-input').addEventListener('input',()=>{++state.draftRevision;updateComposer();composerDrafts.changed();});
 let composerComposing=false,composerCompositionEndedAt=-Infinity;
@@ -2030,8 +2092,17 @@ $('workspace-search-query').addEventListener('keydown',event=>{
 });
 $('workspace-search-results').addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp'].includes(event.key)||event.isComposing)return;const rows=[...$('workspace-search-results').querySelectorAll('[data-action=search-result]')],index=rows.indexOf(event.target.closest('[data-action=search-result]'));if(index<0)return;event.preventDefault();const next=index+(event.key==='ArrowDown'?1:-1);if(next<0)$('workspace-search-query').focus();else rows[Math.min(next,rows.length-1)]?.focus();});
 $('workspace-include-generated').addEventListener('change',event=>{void loadBrowseFiles({includeGenerated:event.target.checked}).catch(error=>{if(!error.staleContext)toast(error.message,true);});});
+commandPolicyUI=createCommandPolicyUI({context:()=>{const session=state.selected,provider=state.providers.find(item=>item.id===session?.providerId);return{key:JSON.stringify([state.generation,state.navigation,state.workspaceKey,session?.id]),sessionId:session?.id,title:session?.title,supported:state.commandPolicySupported===true,available:state.commandPolicySupported===true&&authenticationReady&&state.connected&&!state.switching&&!unavailableSessions.has(session),toolsAvailable:Boolean(provider&&provider.toolMode!=='none'),visible:state.view==='settings'||state.view==='chat'&&(state.contextOpen||session?.approvals?.some(item=>item.status==='pending'))};},request:api,openDialog,onUpdate:()=>{if(state.view==='chat'&&state.selected)renderApprovals(state.selected.approvals||[]);},onChanged:async()=>{const sessionId=state.selected?.id;if(sessionId)await refreshSession(sessionId);toast('命令策略已更新。');}});
+$('file-permissions-section').after(commandPolicyUI.settingsNode);
 imageInput=createImageInputUI({container:$('image-input-region'),list:$('image-input-list'),status:$('image-input-status'),input:$('image-input-file'),button:$('attach-image-button'),pasteTarget:$('prompt-input'),dropTarget:$('composer'),onChange:()=>updateComposer()});
+taskInputUI=createTaskInputUI({input:$('prompt-input'),onInterrupt:()=>void sendMessage(undefined,{mode:'interrupt'})});
+queuedInputView=createQueuedInputView({renderImages:renderMessageImages});
 modelPicker=createModelPicker({select:$('model-select'),trigger:$('model-picker-trigger'),popup:$('model-picker-popup'),label:$('model-picker-label'),readProviders:()=>state.providers});
+workspaceManagerUI=createWorkspaceUI({api,reconnect:bootstrap,notify:toast,getContext:()=>({path:state.workspacePath}),beforeSwitch:async()=>{
+  if(fileEditor?.hasPending())throw new Error('请先保存或取消当前文件编辑，再切换项目。');
+  if(imageInput?.hasAny())throw new Error('请先发送或移除待发送图片，再切换项目。');
+  await composerDrafts.flush();
+}});
 $('model-select').addEventListener('change',event=>{state.providerId=event.target.value;updateComposer();composerDrafts.changed();});
 $('dialog-form').addEventListener('submit',async event=>{event.preventDefault();if(!state.dialogSubmit||$('dialog-submit').disabled)return;const handler=state.dialogSubmit;$('dialog-submit').disabled=true;$('dialog-error').classList.add('hidden');try{await handler(event.currentTarget);if(state.dialogSubmit===handler&&!state.dialogStayOpen)closeDialog();}catch(error){if(state.dialogSubmit===handler&&!error.staleContext)dialogError(error.message||'无法完成操作，请重试。');}finally{if(state.dialogSubmit===handler){$('dialog-submit').disabled=false;syncBranchControls();syncProviderDiagnostics();}}});
 $('app-dialog').addEventListener('cancel',event=>{event.preventDefault();closeDialog();});

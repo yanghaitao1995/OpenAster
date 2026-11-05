@@ -1,11 +1,54 @@
 // SPDX-License-Identifier: Apache-2.0
 // This view displays recorded actions and public model output, never invented reasoning.
 import { renderMarkdown } from './markdown.js';
+import { createCodeBlock } from './code-block.mjs';
 const node = (tag, className = '', text) => { const value = document.createElement(tag); value.className = className; if (text !== undefined) value.textContent = text; return value; };
 const statuses = { running: '进行中', awaiting_approval: '等待批准', completed: '已完成', cancelled: '已停止', failed: '执行失败', denied: '已拒绝' };
 const time = value => typeof value === 'string' && Number.isFinite(Date.parse(value)) ? Date.parse(value) : null;
 const duration = value => { const seconds = Math.max(0, Math.floor(value / 1000)); return seconds >= 60 ? `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒` : `${seconds} 秒`; };
 const detailText = value => typeof value === 'string' ? value : value == null ? '' : JSON.stringify(value, null, 2);
+export const webToolNames = Object.freeze({ search_web: '搜索网页', read_webpage: '阅读网页' });
+function webSource(title, address) {
+  if (typeof address !== 'string' || address.length > 2048 || /[\s\x00-\x1f\x7f]/u.test(address)) return null;
+  let url; try { url = new URL(address); } catch { return null; }
+  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) return null;
+  const source = node('a', 'web-source'); source.href = url.href; source.target = '_blank'; source.rel = 'noopener noreferrer';
+  source.append(node('strong', '', typeof title === 'string' && title ? title : url.hostname), node('span', 'web-source-url', url.href));
+  return source;
+}
+// Only complete, verified artifact JSON reaches this view. Web content remains
+// text: no remote HTML, embedded images, scripts, or inferred citations.
+export function renderWebToolResult(name, value) {
+  if (!Object.hasOwn(webToolNames, name) || !value || typeof value !== 'object' || value.untrusted_data !== true) return null;
+  if (value.error && typeof value.error.message === 'string') return node('p', 'web-tool-error', value.error.message);
+  const result = value.result;
+  if (!result || typeof result !== 'object' || result.untrusted_data !== true) return null;
+  const root = node('section', 'web-tool-result'); root.setAttribute('aria-label', webToolNames[name] + '的来源与内容');
+  const addSources = (sources, parent = root) => {
+    const list = node('ul', 'web-sources');
+    for (const item of sources) {
+      if (!item || typeof item !== 'object') continue;
+      const source = webSource(item.title, item.url); if (!source) continue;
+      const row = node('li'); row.append(source);
+      if (typeof item.snippet === 'string' && item.snippet) row.append(node('p', 'web-source-snippet', item.snippet));
+      list.append(row);
+    }
+    if (list.children.length) parent.append(list);
+  };
+  if (name === 'search_web') {
+    if (typeof result.query !== 'string' || !Array.isArray(result.results) || result.results.length > 10) return null;
+    root.append(node('p', 'web-result-query', '搜索：' + result.query)); addSources(result.results);
+    if (!root.querySelector('a')) root.append(node('p', 'context-note', '没有可显示的有效来源。'));
+  } else {
+    if (typeof result.content !== 'string' || !Array.isArray(result.links) || result.links.length > 20) return null;
+    const source = webSource(result.title, result.url); if (!source) return null;
+    root.append(source, createCodeBlock('text', result.content));
+    if (result.links.length) { const links = node('details', 'web-page-links'); links.append(node('summary', '', '页面中的链接')); addSources(result.links, links); root.append(links); }
+  }
+  const stamp = typeof result.fetchedAt === 'string' && Number.isFinite(Date.parse(result.fetchedAt)) ? new Date(result.fetchedAt).toLocaleString('zh-CN') : '';
+  root.append(node('p', 'context-note', [stamp ? '读取时间：' + stamp : '', result.truncated ? '内容或链接已截取。' : '', '外部网页内容，仅作资料。'].filter(Boolean).join(' ')));
+  return root;
+}
 // Only these explicit public fields are presentational. Provider signatures,
 // encrypted content and raw reasoning objects must never be inspected here.
 export function createModelStepNotes() {
