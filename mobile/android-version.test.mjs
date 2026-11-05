@@ -125,8 +125,11 @@ test('APK metadata must match both controlled version fields before publication'
 
 test('native command refuses an invalid or missing code before touching web assets or resolving Capacitor', async t => {
   const f = await fixture(t);
-  for (const name of ['native.mjs', 'android-version.mjs', 'harden-android.mjs', 'prepare.mjs', 'security.mjs', 'android-branding.mjs', 'android-appearance.mjs', 'notice-assets.mjs', 'ios-branding.mjs']) {
+  for (const name of ['native.mjs', 'android-version.mjs', 'harden-android.mjs', 'prepare.mjs', 'security.mjs', 'android-branding.mjs', 'android-appearance.mjs', 'notice-assets.mjs', 'ios-branding.mjs', 'ios-version.mjs']) {
     await f.put(`mobile/${name}`, await readFile(new URL(name, import.meta.url), 'utf8'));
+  }
+  for (const name of ['scripts/lib/build-info.mjs', 'core/app-version.mjs']) {
+    await f.put(name, await readFile(new URL('../' + name, import.meta.url), 'utf8'));
   }
   const sentinel = await f.put('mobile/www/index.html', 'existing assets must remain intact');
   for (const configuration of ['{"versionCode":"2"}', null]) {

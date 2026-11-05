@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, rmdir, link } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, rmdir, link, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
@@ -12,6 +12,20 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const project = path.dirname(here);
 const mainPath = 'app/src/main/java/org/openaster/preview/MainActivity.java';
 const originalMain = 'package org.openaster.preview;\n\nimport com.getcapacitor.BridgeActivity;\n\npublic class MainActivity extends BridgeActivity {}\n';
+async function findJavaTools({ javaHome, toolchains }) {
+  const extension = process.platform === 'win32' ? '.exe' : '';
+  const candidates = javaHome ? [path.join(javaHome, 'bin')] : [];
+  let entries;
+  try { entries = await readdir(toolchains); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; entries = []; }
+  candidates.push(...entries.filter(name => name.startsWith('jdk-')).sort().reverse().map(name => path.join(toolchains, name, 'bin')));
+  for (const bin of candidates) {
+    const javac = path.join(bin, 'javac' + extension), java = path.join(bin, 'java' + extension);
+    try { if ((await stat(javac)).isFile() && (await stat(java)).isFile()) return { javac, java }; }
+    catch (error) { if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error; }
+  }
+  return null;
+}
 async function fixture(t) {
   const parent = path.join(project, 'test-results');
   await mkdir(parent, { recursive: true });
@@ -96,11 +110,8 @@ test('appearance never writes through a hard-linked target', async t => {
 
 test('native enum policy accepts only exact light/dark values and uses fixed matching colors', async t => {
   const root = await fixture(t);
-  const toolchains = path.join(project, '.toolchains');
-  const jdks = (await readdir(toolchains)).filter(name => name.startsWith('jdk-')).sort();
-  if (!jdks.length) return t.skip('A local JDK is required for this pure Java enum contract test; no tool is downloaded');
-  const extension = process.platform === 'win32' ? '.exe' : '';
-  const bin = path.join(toolchains, jdks.at(-1), 'bin');
+  const tools = await findJavaTools({ javaHome: process.env.JAVA_HOME, toolchains: path.join(project, '.toolchains') });
+  if (!tools) return t.skip('A JDK in JAVA_HOME or project .toolchains is required for this pure Java enum contract test; no tool is downloaded');
   const check = path.join(root, 'AppearanceThemeCheck.java');
   await writeFile(check, `package org.openaster.preview;
 public class AppearanceThemeCheck {
@@ -116,7 +127,23 @@ public class AppearanceThemeCheck {
   }
 }\n`);
   const options = { cwd: root, windowsHide: true, timeout: 30000, maxBuffer: 64 * 1024 };
-  await exec(path.join(bin, 'javac' + extension), ['-d', root, path.join(here, 'android-appearance/AppearanceTheme.java'), check], options);
-  const result = await exec(path.join(bin, 'java' + extension), ['-cp', root, 'org.openaster.preview.AppearanceThemeCheck'], options);
+  await exec(tools.javac, ['-d', root, path.join(here, 'android-appearance/AppearanceTheme.java'), check], options);
+  const result = await exec(tools.java, ['-cp', root, 'org.openaster.preview.AppearanceThemeCheck'], options);
   assert.match(result.stdout, /Exact enum, fixed colors/);
+});
+
+test('Java discovery permits a clean checkout without local toolchains', async t => {
+  const root = await fixture(t);
+  assert.equal(await findJavaTools({ toolchains: path.join(root, 'absent') }), null);
+});
+
+test('Java discovery uses JAVA_HOME when project toolchains are absent and requires both tools', async t => {
+  const root = await fixture(t), javaHome = path.join(root, 'ci-jdk'), bin = path.join(javaHome, 'bin');
+  const extension = process.platform === 'win32' ? '.exe' : '';
+  await mkdir(bin, { recursive: true });
+  const javac = path.join(bin, 'javac' + extension), java = path.join(bin, 'java' + extension);
+  await writeFile(javac, 'discovery fixture only; never executed');
+  assert.equal(await findJavaTools({ javaHome, toolchains: path.join(root, 'absent') }), null);
+  await writeFile(java, 'discovery fixture only; never executed');
+  assert.deepEqual(await findJavaTools({ javaHome, toolchains: path.join(root, 'absent') }), { javac, java });
 });

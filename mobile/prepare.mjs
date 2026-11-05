@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { secureMobileHtml } from './security.mjs';
 import { readAndroidNoticeAsset } from './notice-assets.mjs';
+import { sharedBuildInfo } from '../scripts/lib/build-info.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 export async function prepareMobile() {
@@ -23,8 +24,8 @@ export async function prepareMobile() {
   // An embedded local web app is shipped with the native bundle. Remote executable code is never loaded.
   const config = JSON.parse(await readFile(path.join(directory, 'capacitor.config.json'), 'utf8'));
   if (config.server.url || config.server.cleartext || config.server.allowNavigation?.length) throw new Error('Remote navigation and plaintext mobile transport are forbidden');
-  const version = JSON.parse(await readFile(path.join(directory, '..', 'package.json'), 'utf8')).version;
-  await writeFile(path.join(target, 'build-info.json'), `${JSON.stringify({ name: 'OpenAster', version, mode: 'companion' })}\n`);
+  const buildInfo = await sharedBuildInfo(path.join(directory, '..'));
+  await writeFile(path.join(target, 'build-info.json'), `${JSON.stringify({ ...buildInfo, mode: 'companion' })}\n`);
   return target;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

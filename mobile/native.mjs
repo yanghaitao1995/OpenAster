@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -9,6 +9,8 @@ import { hardenAndroidProject } from './harden-android.mjs';
 import { readAndroidVersion } from './android-version.mjs';
 import { synchronizeAndroidAppearance } from './android-appearance.mjs';
 import { synchronizeIOSBranding } from './ios-branding.mjs';
+import { synchronizeIOSVersion } from './ios-version.mjs';
+import { APP_VERSION } from '../core/app-version.mjs';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const platform = process.argv[2];
@@ -38,6 +40,8 @@ if (platform === 'android') {
   await synchronizeAndroidAppearance(path.join(directory, 'android'));
 } else {
   await synchronizeIOSBranding(path.join(directory, 'ios'));
+  const { versionCode: buildNumber } = JSON.parse(await readFile(path.join(directory, 'android-version.json'), 'utf8'));
+  await synchronizeIOSVersion(path.join(directory, 'ios'), { version: APP_VERSION, buildNumber });
 }
 if (process.argv.includes('--open')) await run(['open', platform]);
 console.log(`${platform} project is ready. Compile and sign it using the platform SDK; generation is not an installation test.`);
