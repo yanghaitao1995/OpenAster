@@ -1,0 +1,4661 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:0aa6fa87-2f37-462a-8309-3649ddec9064",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-27T08:27:12.059Z",
+    "component": {
+      "type": "application",
+      "name": "openaster",
+      "version": "0.1.0"
+    },
+    "properties": [
+      {
+        "name": "openaster:scope",
+        "value": "Installed npm development/build/test dependencies. Does not enumerate the separate bundled Chromium/Node native components; retain Electron LICENSE and LICENSES.chromium.html."
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40axe-core/playwright@4.14.0",
+      "name": "@axe-core/playwright",
+      "version": "4.14.0",
+      "purl": "pkg:npm/%40axe-core/playwright@4.14.0",
+      "licenses": [
+        {
+          "expression": "MPL-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Provides a method to inject and analyze web pages using axe"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40capacitor/android@8.5.3",
+      "name": "@capacitor/android",
+      "version": "8.5.3",
+      "purl": "pkg:npm/%40capacitor/android@8.5.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Capacitor: Cross-platform apps with JavaScript and the web"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40capacitor/cli@8.5.3",
+      "name": "@capacitor/cli",
+      "version": "8.5.3",
+      "purl": "pkg:npm/%40capacitor/cli@8.5.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Capacitor: Cross-platform apps with JavaScript and the web"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40capacitor/core@8.5.3",
+      "name": "@capacitor/core",
+      "version": "8.5.3",
+      "purl": "pkg:npm/%40capacitor/core@8.5.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Capacitor: Cross-platform apps with JavaScript and the web"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40capacitor/ios@8.5.3",
+      "name": "@capacitor/ios",
+      "version": "8.5.3",
+      "purl": "pkg:npm/%40capacitor/ios@8.5.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Capacitor: Cross-platform apps with JavaScript and the web"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron-internal/extract-zip@1.0.6",
+      "name": "@electron-internal/extract-zip",
+      "version": "1.0.6",
+      "purl": "pkg:npm/%40electron-internal/extract-zip@1.0.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Fast, safe, native zip extraction for Node.js. Drop-in replacement for extract-zip."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/asar@3.4.1",
+      "name": "@electron/asar",
+      "version": "3.4.1",
+      "purl": "pkg:npm/%40electron/asar@3.4.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Creating Electron app packages"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/fuses@1.8.0",
+      "name": "@electron/fuses",
+      "version": "1.8.0",
+      "purl": "pkg:npm/%40electron/fuses@1.8.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Flip Electron Fuses and customize your packaged build of Electron"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/get@3.1.0",
+      "name": "@electron/get",
+      "version": "3.1.0",
+      "purl": "pkg:npm/%40electron/get@3.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Utility for downloading artifacts from different versions of Electron"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/get@5.1.0",
+      "name": "@electron/get",
+      "version": "5.1.0",
+      "purl": "pkg:npm/%40electron/get@5.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Utility for downloading artifacts from different versions of Electron"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/notarize@2.5.0",
+      "name": "@electron/notarize",
+      "version": "2.5.0",
+      "purl": "pkg:npm/%40electron/notarize@2.5.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Notarize your Electron app"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/osx-sign@1.3.3",
+      "name": "@electron/osx-sign",
+      "version": "1.3.3",
+      "purl": "pkg:npm/%40electron/osx-sign@1.3.3",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Codesign Electron macOS apps"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/rebuild@4.2.1",
+      "name": "@electron/rebuild",
+      "version": "4.2.1",
+      "purl": "pkg:npm/%40electron/rebuild@4.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Electron supporting package to rebuild native node modules against the currently installed electron"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/universal@2.0.3",
+      "name": "@electron/universal",
+      "version": "2.0.3",
+      "purl": "pkg:npm/%40electron/universal@2.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Utility for creating Universal macOS applications from two x64 and arm64 Electron applications"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40electron/windows-sign@1.2.2",
+      "name": "@electron/windows-sign",
+      "version": "1.2.2",
+      "purl": "pkg:npm/%40electron/windows-sign@1.2.2",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Codesign Electron Windows apps"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/cli-framework-output@2.2.8",
+      "name": "@ionic/cli-framework-output",
+      "version": "2.2.8",
+      "purl": "pkg:npm/%40ionic/cli-framework-output@2.2.8",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The log/tasks/spinners portion of Ionic CLI Framework"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-array@2.1.6",
+      "name": "@ionic/utils-array",
+      "version": "2.1.6",
+      "purl": "pkg:npm/%40ionic/utils-array@2.1.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Array utils"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-fs@3.1.7",
+      "name": "@ionic/utils-fs",
+      "version": "3.1.7",
+      "purl": "pkg:npm/%40ionic/utils-fs@3.1.7",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Filesystem utils for Node"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-object@2.1.6",
+      "name": "@ionic/utils-object",
+      "version": "2.1.6",
+      "purl": "pkg:npm/%40ionic/utils-object@2.1.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Object utils"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-process@2.1.12",
+      "name": "@ionic/utils-process",
+      "version": "2.1.12",
+      "purl": "pkg:npm/%40ionic/utils-process@2.1.12",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Process utils for NodeJS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-stream@3.1.7",
+      "name": "@ionic/utils-stream",
+      "version": "3.1.7",
+      "purl": "pkg:npm/%40ionic/utils-stream@3.1.7",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Stream utils for NodeJS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-subprocess@3.0.1",
+      "name": "@ionic/utils-subprocess",
+      "version": "3.0.1",
+      "purl": "pkg:npm/%40ionic/utils-subprocess@3.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Subprocess utils for NodeJS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40ionic/utils-terminal@2.3.5",
+      "name": "@ionic/utils-terminal",
+      "version": "2.3.5",
+      "purl": "pkg:npm/%40ionic/utils-terminal@2.3.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Terminal utils for NodeJS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40isaacs/fs-minipass@4.0.1",
+      "name": "@isaacs/fs-minipass",
+      "version": "4.0.1",
+      "purl": "pkg:npm/%40isaacs/fs-minipass@4.0.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs read and write streams based on minipass"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40malept/cross-spawn-promise@2.0.0",
+      "name": "@malept/cross-spawn-promise",
+      "version": "2.0.0",
+      "purl": "pkg:npm/%40malept/cross-spawn-promise@2.0.0",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Promisified version of cross-spawn"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40malept/flatpak-bundler@0.4.0",
+      "name": "@malept/flatpak-bundler",
+      "version": "0.4.0",
+      "purl": "pkg:npm/%40malept/flatpak-bundler@0.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A small utility for packing files in a flatpak."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40noble/hashes@1.8.0",
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "purl": "pkg:npm/%40noble/hashes@1.8.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Audited & minimal 0-dependency JS implementation of SHA, RIPEMD, BLAKE, HMAC, HKDF, PBKDF & Scrypt"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40peculiar/asn1-schema@2.11.1",
+      "name": "@peculiar/asn1-schema",
+      "version": "2.11.1",
+      "purl": "pkg:npm/%40peculiar/asn1-schema@2.11.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Decorators and helper APIs for declaring ASN.1 schemas in TypeScript."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40peculiar/json-schema@1.1.12",
+      "name": "@peculiar/json-schema",
+      "version": "1.1.12",
+      "purl": "pkg:npm/%40peculiar/json-schema@1.1.12",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "This package uses ES2015 decorators to simplify JSON schema creation and use"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40peculiar/utils@2.0.3",
+      "name": "@peculiar/utils",
+      "version": "2.0.3",
+      "purl": "pkg:npm/%40peculiar/utils@2.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Modern byte, encoding, converter registry, and PEM utilities for TypeScript projects."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40peculiar/webcrypto@1.7.1",
+      "name": "@peculiar/webcrypto",
+      "version": "1.7.1",
+      "purl": "pkg:npm/%40peculiar/webcrypto@1.7.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A WebCrypto Polyfill for NodeJS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40playwright/test@1.64.1",
+      "name": "@playwright/test",
+      "version": "1.64.1",
+      "purl": "pkg:npm/%40playwright/test@1.64.1",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "A high-level API to automate web browsers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40sindresorhus/is@4.6.0",
+      "name": "@sindresorhus/is",
+      "version": "4.6.0",
+      "purl": "pkg:npm/%40sindresorhus/is@4.6.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Type check values"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40szmarczak/http-timer@4.0.6",
+      "name": "@szmarczak/http-timer",
+      "version": "4.0.6",
+      "purl": "pkg:npm/%40szmarczak/http-timer@4.0.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Timings for HTTP requests"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/cacheable-request@6.0.3",
+      "name": "@types/cacheable-request",
+      "version": "6.0.3",
+      "purl": "pkg:npm/%40types/cacheable-request@6.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for cacheable-request"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/debug@4.1.13",
+      "name": "@types/debug",
+      "version": "4.1.13",
+      "purl": "pkg:npm/%40types/debug@4.1.13",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for debug"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/fs-extra@8.1.5",
+      "name": "@types/fs-extra",
+      "version": "8.1.5",
+      "purl": "pkg:npm/%40types/fs-extra@8.1.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for fs-extra"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/fs-extra@9.0.13",
+      "name": "@types/fs-extra",
+      "version": "9.0.13",
+      "purl": "pkg:npm/%40types/fs-extra@9.0.13",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for fs-extra"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/http-cache-semantics@4.2.0",
+      "name": "@types/http-cache-semantics",
+      "version": "4.2.0",
+      "purl": "pkg:npm/%40types/http-cache-semantics@4.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for http-cache-semantics"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/keyv@3.1.4",
+      "name": "@types/keyv",
+      "version": "3.1.4",
+      "purl": "pkg:npm/%40types/keyv@3.1.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for keyv"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/ms@2.1.0",
+      "name": "@types/ms",
+      "version": "2.1.0",
+      "purl": "pkg:npm/%40types/ms@2.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for ms"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/node@24.19.2",
+      "name": "@types/node",
+      "version": "24.19.2",
+      "purl": "pkg:npm/%40types/node@24.19.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for node"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/node@26.6.5",
+      "name": "@types/node",
+      "version": "26.6.5",
+      "purl": "pkg:npm/%40types/node@26.6.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for node"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/responselike@1.0.3",
+      "name": "@types/responselike",
+      "version": "1.0.3",
+      "purl": "pkg:npm/%40types/responselike@1.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for responselike"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40types/slice-ansi@4.0.0",
+      "name": "@types/slice-ansi",
+      "version": "4.0.0",
+      "purl": "pkg:npm/%40types/slice-ansi@4.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "TypeScript definitions for slice-ansi"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40xmldom/xmldom@0.8.15",
+      "name": "@xmldom/xmldom",
+      "version": "0.8.15",
+      "purl": "pkg:npm/%40xmldom/xmldom@0.8.15",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A pure JavaScript W3C standard-based (XML DOM Level 2 Core) DOMParser and XMLSerializer module."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/%40xmldom/xmldom@0.9.12",
+      "name": "@xmldom/xmldom",
+      "version": "0.9.12",
+      "purl": "pkg:npm/%40xmldom/xmldom@0.9.12",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A pure JavaScript W3C standard-based (XML DOM Level 2 Core) DOMParser and XMLSerializer module."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/abbrev@4.0.0",
+      "name": "abbrev",
+      "version": "4.0.0",
+      "purl": "pkg:npm/abbrev@4.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Like ruby's abbrev module, but in js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/agent-base@7.1.4",
+      "name": "agent-base",
+      "version": "7.1.4",
+      "purl": "pkg:npm/agent-base@7.1.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Turn a function into an `http.Agent` instance"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ajv@8.20.0",
+      "name": "ajv",
+      "version": "8.20.0",
+      "purl": "pkg:npm/ajv@8.20.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Another JSON Schema Validator"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ansi-regex@5.0.1",
+      "name": "ansi-regex",
+      "version": "5.0.1",
+      "purl": "pkg:npm/ansi-regex@5.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Regular expression for matching ANSI escape codes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ansi-styles@4.3.0",
+      "name": "ansi-styles",
+      "version": "4.3.0",
+      "purl": "pkg:npm/ansi-styles@4.3.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "ANSI escape codes for styling strings in the terminal"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/app-builder-lib@26.18.0",
+      "name": "app-builder-lib",
+      "version": "26.18.0",
+      "purl": "pkg:npm/app-builder-lib@26.18.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "electron-builder lib"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/argparse@2.0.1",
+      "name": "argparse",
+      "version": "2.0.1",
+      "purl": "pkg:npm/argparse@2.0.1",
+      "licenses": [
+        {
+          "expression": "Python-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "CLI arguments parser. Native port of python's argparse."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/asn1js@3.1.0",
+      "name": "asn1js",
+      "version": "3.1.0",
+      "purl": "pkg:npm/asn1js@3.1.0",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "asn1js is a pure JavaScript library implementing this standard. ASN.1 is the basis of all X.509 related data structures and numerous other protocols used on the web"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/astral-regex@2.0.0",
+      "name": "astral-regex",
+      "version": "2.0.0",
+      "purl": "pkg:npm/astral-regex@2.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Regular expression for matching astral symbols"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/async-exit-hook@2.0.1",
+      "name": "async-exit-hook",
+      "version": "2.0.1",
+      "purl": "pkg:npm/async-exit-hook@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Run some code when the process exits (supports async hooks and pm2 clustering)"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/async@3.2.6",
+      "name": "async",
+      "version": "3.2.6",
+      "purl": "pkg:npm/async@3.2.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Higher-order functions and common patterns for asynchronous code"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/asynckit@0.4.0",
+      "name": "asynckit",
+      "version": "0.4.0",
+      "purl": "pkg:npm/asynckit@0.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Minimal async jobs utility library, with streams support"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/at-least-node@1.0.0",
+      "name": "at-least-node",
+      "version": "1.0.0",
+      "purl": "pkg:npm/at-least-node@1.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Lightweight Node.js version sniffing/comparison"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/aws4@1.13.2",
+      "name": "aws4",
+      "version": "1.13.2",
+      "purl": "pkg:npm/aws4@1.13.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Signs and prepares requests using AWS Signature Version 4"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/axe-core@4.14.0",
+      "name": "axe-core",
+      "version": "4.14.0",
+      "purl": "pkg:npm/axe-core@4.14.0",
+      "licenses": [
+        {
+          "expression": "MPL-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Accessibility engine for automated Web UI testing"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/balanced-match@1.0.2",
+      "name": "balanced-match",
+      "version": "1.0.2",
+      "purl": "pkg:npm/balanced-match@1.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Match balanced character pairs, like \"{\" and \"}\""
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/balanced-match@4.0.4",
+      "name": "balanced-match",
+      "version": "4.0.4",
+      "purl": "pkg:npm/balanced-match@4.0.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Match balanced character pairs, like \"{\" and \"}\""
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/base64-js@1.5.1",
+      "name": "base64-js",
+      "version": "1.5.1",
+      "purl": "pkg:npm/base64-js@1.5.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Base64 encoding/decoding in pure JS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/big-integer@1.6.52",
+      "name": "big-integer",
+      "version": "1.6.52",
+      "purl": "pkg:npm/big-integer@1.6.52",
+      "licenses": [
+        {
+          "expression": "Unlicense"
+        }
+      ],
+      "scope": "optional",
+      "description": "An arbitrary length integer library for Javascript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bluebird@3.7.2",
+      "name": "bluebird",
+      "version": "3.7.2",
+      "purl": "pkg:npm/bluebird@3.7.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Full featured Promises/A+ implementation with exceptionally good performance"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/boolean@3.2.0",
+      "name": "boolean",
+      "version": "3.2.0",
+      "purl": "pkg:npm/boolean@3.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "boolean converts lots of things to boolean."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bplist-creator@0.1.0",
+      "name": "bplist-creator",
+      "version": "0.1.0",
+      "purl": "pkg:npm/bplist-creator@0.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Binary Mac OS X Plist (property list) creator."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bplist-parser@0.3.1",
+      "name": "bplist-parser",
+      "version": "0.3.1",
+      "purl": "pkg:npm/bplist-parser@0.3.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Binary plist parser."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bplist-parser@0.3.2",
+      "name": "bplist-parser",
+      "version": "0.3.2",
+      "purl": "pkg:npm/bplist-parser@0.3.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Binary plist parser."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/brace-expansion@1.1.21",
+      "name": "brace-expansion",
+      "version": "1.1.21",
+      "purl": "pkg:npm/brace-expansion@1.1.21",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Brace expansion as known from sh/bash"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/brace-expansion@2.1.7",
+      "name": "brace-expansion",
+      "version": "2.1.7",
+      "purl": "pkg:npm/brace-expansion@2.1.7",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Brace expansion as known from sh/bash"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/brace-expansion@5.0.12",
+      "name": "brace-expansion",
+      "version": "5.0.12",
+      "purl": "pkg:npm/brace-expansion@5.0.12",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Brace expansion as known from sh/bash"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/buffer-crc32@0.2.13",
+      "name": "buffer-crc32",
+      "version": "0.2.13",
+      "purl": "pkg:npm/buffer-crc32@0.2.13",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A pure javascript CRC32 algorithm that plays nice with binary data"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/buffer-from@1.1.2",
+      "name": "buffer-from",
+      "version": "1.1.2",
+      "purl": "pkg:npm/buffer-from@1.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/builder-util-runtime@9.7.0",
+      "name": "builder-util-runtime",
+      "version": "9.7.0",
+      "purl": "pkg:npm/builder-util-runtime@9.7.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/builder-util@26.16.0",
+      "name": "builder-util",
+      "version": "26.16.0",
+      "purl": "pkg:npm/builder-util@26.16.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/bytestreamjs@2.0.1",
+      "name": "bytestreamjs",
+      "version": "2.0.1",
+      "purl": "pkg:npm/bytestreamjs@2.0.1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "ByteStream is a library making possible to manipulates single bytes and bits on pure JavaScript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cacheable-lookup@5.0.4",
+      "name": "cacheable-lookup",
+      "version": "5.0.4",
+      "purl": "pkg:npm/cacheable-lookup@5.0.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A cacheable dns.lookup(…) that respects the TTL"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cacheable-request@7.0.4",
+      "name": "cacheable-request",
+      "version": "7.0.4",
+      "purl": "pkg:npm/cacheable-request@7.0.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Wrap native HTTP requests with RFC compliant cache support"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/call-bind-apply-helpers@1.0.2",
+      "name": "call-bind-apply-helpers",
+      "version": "1.0.2",
+      "purl": "pkg:npm/call-bind-apply-helpers@1.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Helper functions around Function call/apply/bind, for use in `call-bind`"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/chalk@4.1.2",
+      "name": "chalk",
+      "version": "4.1.2",
+      "purl": "pkg:npm/chalk@4.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Terminal string styling done right"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/chownr@3.0.0",
+      "name": "chownr",
+      "version": "3.0.0",
+      "purl": "pkg:npm/chownr@3.0.0",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "like `chown -R`"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/chromium-pickle-js@0.2.0",
+      "name": "chromium-pickle-js",
+      "version": "0.2.0",
+      "purl": "pkg:npm/chromium-pickle-js@0.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Binary value packing and unpacking"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ci-info@4.3.1",
+      "name": "ci-info",
+      "version": "4.3.1",
+      "purl": "pkg:npm/ci-info@4.3.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get details about the current Continuous Integration environment"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ci-info@4.4.0",
+      "name": "ci-info",
+      "version": "4.4.0",
+      "purl": "pkg:npm/ci-info@4.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get details about the current Continuous Integration environment"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cliui@8.0.1",
+      "name": "cliui",
+      "version": "8.0.1",
+      "purl": "pkg:npm/cliui@8.0.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "easily create complex multi-column command-line-interfaces"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/clone-response@1.0.3",
+      "name": "clone-response",
+      "version": "1.0.3",
+      "purl": "pkg:npm/clone-response@1.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Clone a Node.js HTTP response stream"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/color-convert@2.0.1",
+      "name": "color-convert",
+      "version": "2.0.1",
+      "purl": "pkg:npm/color-convert@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Plain color conversion functions"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/color-name@1.1.4",
+      "name": "color-name",
+      "version": "1.1.4",
+      "purl": "pkg:npm/color-name@1.1.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A list of color names and its values"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/combined-stream@1.0.8",
+      "name": "combined-stream",
+      "version": "1.0.8",
+      "purl": "pkg:npm/combined-stream@1.0.8",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A stream that emits multiple other streams one after another."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/commander@12.1.0",
+      "name": "commander",
+      "version": "12.1.0",
+      "purl": "pkg:npm/commander@12.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "the complete solution for node.js command-line programs"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/commander@5.1.0",
+      "name": "commander",
+      "version": "5.1.0",
+      "purl": "pkg:npm/commander@5.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "the complete solution for node.js command-line programs"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/commander@9.5.0",
+      "name": "commander",
+      "version": "9.5.0",
+      "purl": "pkg:npm/commander@9.5.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "the complete solution for node.js command-line programs"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/compare-version@0.1.2",
+      "name": "compare-version",
+      "version": "0.1.2",
+      "purl": "pkg:npm/compare-version@0.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Compare semver version numbers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/concat-map@0.0.1",
+      "name": "concat-map",
+      "version": "0.0.1",
+      "purl": "pkg:npm/concat-map@0.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "concatenative mapdashery"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/core-util-is@1.0.3",
+      "name": "core-util-is",
+      "version": "1.0.3",
+      "purl": "pkg:npm/core-util-is@1.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The `util.is*` functions introduced in Node v0.12."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cross-dirname@0.1.0",
+      "name": "cross-dirname",
+      "version": "0.1.0",
+      "purl": "pkg:npm/cross-dirname@0.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/cross-spawn@7.0.6",
+      "name": "cross-spawn",
+      "version": "7.0.6",
+      "purl": "pkg:npm/cross-spawn@7.0.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Cross platform child_process#spawn and child_process#spawnSync"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/debug@4.4.3",
+      "name": "debug",
+      "version": "4.4.3",
+      "purl": "pkg:npm/debug@4.4.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Lightweight debugging utility for Node.js and the browser"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/decompress-response@6.0.0",
+      "name": "decompress-response",
+      "version": "6.0.0",
+      "purl": "pkg:npm/decompress-response@6.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Decompress a HTTP response if needed"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/defer-to-connect@2.0.1",
+      "name": "defer-to-connect",
+      "version": "2.0.1",
+      "purl": "pkg:npm/defer-to-connect@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The safe way to handle the `connect` socket event"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/define-data-property@1.1.4",
+      "name": "define-data-property",
+      "version": "1.1.4",
+      "purl": "pkg:npm/define-data-property@1.1.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Define a data property on an object. Will fall back to assignment in an engine without descriptors."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/define-lazy-prop@2.0.0",
+      "name": "define-lazy-prop",
+      "version": "2.0.0",
+      "purl": "pkg:npm/define-lazy-prop@2.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Define a lazily evaluated property on an object"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/define-properties@1.2.1",
+      "name": "define-properties",
+      "version": "1.2.1",
+      "purl": "pkg:npm/define-properties@1.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Define multiple non-enumerable properties at once. Uses `Object.defineProperty` when available; falls back to standard assignment in older engines."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/delayed-stream@1.0.0",
+      "name": "delayed-stream",
+      "version": "1.0.0",
+      "purl": "pkg:npm/delayed-stream@1.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Buffers events from a stream until you are ready to handle them."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/detect-node@2.1.0",
+      "name": "detect-node",
+      "version": "2.1.0",
+      "purl": "pkg:npm/detect-node@2.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Detect Node.JS (as opposite to browser environment) (reliable)"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/dir-compare@4.2.0",
+      "name": "dir-compare",
+      "version": "4.2.0",
+      "purl": "pkg:npm/dir-compare@4.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Node JS directory compare"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/dmg-builder@26.18.0",
+      "name": "dmg-builder",
+      "version": "26.18.0",
+      "purl": "pkg:npm/dmg-builder@26.18.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/dotenv-expand@11.0.7",
+      "name": "dotenv-expand",
+      "version": "11.0.7",
+      "purl": "pkg:npm/dotenv-expand@11.0.7",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Expand environment variables using dotenv"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/dotenv@16.6.1",
+      "name": "dotenv",
+      "version": "16.6.1",
+      "purl": "pkg:npm/dotenv@16.6.1",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Loads environment variables from .env file"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/dunder-proto@1.0.1",
+      "name": "dunder-proto",
+      "version": "1.0.1",
+      "purl": "pkg:npm/dunder-proto@1.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "If available, the `Object.prototype.__proto__` accessor and mutator, call-bound"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/duplexer2@0.1.4",
+      "name": "duplexer2",
+      "version": "0.1.4",
+      "purl": "pkg:npm/duplexer2@0.1.4",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Like duplexer but using streams3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ejs@3.1.10",
+      "name": "ejs",
+      "version": "3.1.10",
+      "purl": "pkg:npm/ejs@3.1.10",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Embedded JavaScript templates"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/electron-builder-squirrel-windows@26.18.0",
+      "name": "electron-builder-squirrel-windows",
+      "version": "26.18.0",
+      "purl": "pkg:npm/electron-builder-squirrel-windows@26.18.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/electron-builder@26.18.0",
+      "name": "electron-builder",
+      "version": "26.18.0",
+      "purl": "pkg:npm/electron-builder@26.18.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A complete solution to package and build a ready for distribution Electron app for MacOS, Windows and Linux with “auto update” support out of the box"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/electron-publish@26.18.0",
+      "name": "electron-publish",
+      "version": "26.18.0",
+      "purl": "pkg:npm/electron-publish@26.18.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/electron-winstaller@5.4.0",
+      "name": "electron-winstaller",
+      "version": "5.4.0",
+      "purl": "pkg:npm/electron-winstaller@5.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Module to generate Windows installers for Electron apps"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/electron@45.0.0",
+      "name": "electron",
+      "version": "45.0.0",
+      "purl": "pkg:npm/electron@45.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Build cross platform desktop apps with JavaScript, HTML, and CSS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/elementtree@0.1.7",
+      "name": "elementtree",
+      "version": "0.1.7",
+      "purl": "pkg:npm/elementtree@0.1.7",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "XML Serialization and Parsing module based on Python's ElementTree."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/emoji-regex@8.0.0",
+      "name": "emoji-regex",
+      "version": "8.0.0",
+      "purl": "pkg:npm/emoji-regex@8.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A regular expression to match all Emoji-only symbols as per the Unicode Standard."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/end-of-stream@1.4.5",
+      "name": "end-of-stream",
+      "version": "1.4.5",
+      "purl": "pkg:npm/end-of-stream@1.4.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Call a callback when a readable/writable/duplex stream has completed or failed."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/env-paths@2.2.1",
+      "name": "env-paths",
+      "version": "2.2.1",
+      "purl": "pkg:npm/env-paths@2.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get paths for storing things like data, config, cache, etc"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/env-paths@3.0.0",
+      "name": "env-paths",
+      "version": "3.0.0",
+      "purl": "pkg:npm/env-paths@3.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get paths for storing things like data, config, cache, etc"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/err-code@2.0.3",
+      "name": "err-code",
+      "version": "2.0.3",
+      "purl": "pkg:npm/err-code@2.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Create an error with a code"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/es-define-property@1.0.1",
+      "name": "es-define-property",
+      "version": "1.0.1",
+      "purl": "pkg:npm/es-define-property@1.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "`Object.defineProperty`, but not IE 8's broken one."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/es-errors@1.3.0",
+      "name": "es-errors",
+      "version": "1.3.0",
+      "purl": "pkg:npm/es-errors@1.3.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A simple cache for a few of the JS Error constructors."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/es-object-atoms@1.1.2",
+      "name": "es-object-atoms",
+      "version": "1.1.2",
+      "purl": "pkg:npm/es-object-atoms@1.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "ES Object-related atoms: Object, ToObject, RequireObjectCoercible"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/es-set-tostringtag@2.1.0",
+      "name": "es-set-tostringtag",
+      "version": "2.1.0",
+      "purl": "pkg:npm/es-set-tostringtag@2.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A helper to optimistically set Symbol.toStringTag, when possible."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/es6-error@4.1.1",
+      "name": "es6-error",
+      "version": "4.1.1",
+      "purl": "pkg:npm/es6-error@4.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Easily-extendable error for use with ES6 classes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/escalade@3.2.0",
+      "name": "escalade",
+      "version": "3.2.0",
+      "purl": "pkg:npm/escalade@3.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A tiny (183B to 210B) and fast utility to ascend parent directories"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/escape-string-regexp@4.0.0",
+      "name": "escape-string-regexp",
+      "version": "4.0.0",
+      "purl": "pkg:npm/escape-string-regexp@4.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Escape RegExp special characters"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/exponential-backoff@3.1.3",
+      "name": "exponential-backoff",
+      "version": "3.1.3",
+      "purl": "pkg:npm/exponential-backoff@3.1.3",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "A utility that allows retrying a function with an exponential delay between attempts."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-deep-equal@3.1.3",
+      "name": "fast-deep-equal",
+      "version": "3.1.3",
+      "purl": "pkg:npm/fast-deep-equal@3.1.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Fast deep equal"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fast-uri@3.1.9",
+      "name": "fast-uri",
+      "version": "3.1.9",
+      "purl": "pkg:npm/fast-uri@3.1.9",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Dependency-free RFC 3986 URI toolbox"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fd-slicer@1.1.0",
+      "name": "fd-slicer",
+      "version": "1.1.0",
+      "purl": "pkg:npm/fd-slicer@1.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "safely create multiple ReadStream or WriteStream objects from the same file descriptor"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fdir@6.5.0",
+      "name": "fdir",
+      "version": "6.5.0",
+      "purl": "pkg:npm/fdir@6.5.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The fastest directory crawler & globbing alternative to glob, fast-glob, & tiny-glob. Crawls 1m files in < 1s"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/filelist@1.0.6",
+      "name": "filelist",
+      "version": "1.0.6",
+      "purl": "pkg:npm/filelist@1.0.6",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Lazy-evaluating list of files, based on globs or regex patterns"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/form-data@4.0.6",
+      "name": "form-data",
+      "version": "4.0.6",
+      "purl": "pkg:npm/form-data@4.0.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A library to create readable \"multipart/form-data\" streams. Can be used to submit forms and file uploads to other web applications."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs-extra@10.1.0",
+      "name": "fs-extra",
+      "version": "10.1.0",
+      "purl": "pkg:npm/fs-extra@10.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs-extra contains methods that aren't included in the vanilla Node.js fs package. Such as recursive mkdir, copy, and remove."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs-extra@11.3.1",
+      "name": "fs-extra",
+      "version": "11.3.1",
+      "purl": "pkg:npm/fs-extra@11.3.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs-extra contains methods that aren't included in the vanilla Node.js fs package. Such as recursive mkdir, copy, and remove."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs-extra@11.4.1",
+      "name": "fs-extra",
+      "version": "11.4.1",
+      "purl": "pkg:npm/fs-extra@11.4.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs-extra contains methods that aren't included in the vanilla Node.js fs package. Such as recursive mkdir, copy, and remove."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs-extra@7.0.1",
+      "name": "fs-extra",
+      "version": "7.0.1",
+      "purl": "pkg:npm/fs-extra@7.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs-extra contains methods that aren't included in the vanilla Node.js fs package. Such as recursive mkdir, copy, and remove."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs-extra@8.1.0",
+      "name": "fs-extra",
+      "version": "8.1.0",
+      "purl": "pkg:npm/fs-extra@8.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs-extra contains methods that aren't included in the vanilla Node.js fs package. Such as recursive mkdir, copy, and remove."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs-extra@9.1.0",
+      "name": "fs-extra",
+      "version": "9.1.0",
+      "purl": "pkg:npm/fs-extra@9.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "fs-extra contains methods that aren't included in the vanilla Node.js fs package. Such as recursive mkdir, copy, and remove."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/fs.realpath@1.0.0",
+      "name": "fs.realpath",
+      "version": "1.0.0",
+      "purl": "pkg:npm/fs.realpath@1.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Use node's fs.realpath, but fall back to the JS implementation if the native one fails"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/function-bind@1.1.2",
+      "name": "function-bind",
+      "version": "1.1.2",
+      "purl": "pkg:npm/function-bind@1.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Implementation of Function.prototype.bind"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/get-caller-file@2.0.5",
+      "name": "get-caller-file",
+      "version": "2.0.5",
+      "purl": "pkg:npm/get-caller-file@2.0.5",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": ""
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/get-intrinsic@1.3.0",
+      "name": "get-intrinsic",
+      "version": "1.3.0",
+      "purl": "pkg:npm/get-intrinsic@1.3.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get and robustly cache all JS language-level intrinsics at first require time"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/get-proto@1.0.1",
+      "name": "get-proto",
+      "version": "1.0.1",
+      "purl": "pkg:npm/get-proto@1.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Robustly get the [[Prototype]] of an object"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/get-stream@5.2.0",
+      "name": "get-stream",
+      "version": "5.2.0",
+      "purl": "pkg:npm/get-stream@5.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get a stream as a string, buffer, or array"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/glob@13.0.6",
+      "name": "glob",
+      "version": "13.0.6",
+      "purl": "pkg:npm/glob@13.0.6",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "the most correct and second fastest glob implementation in JavaScript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/glob@7.2.3",
+      "name": "glob",
+      "version": "7.2.3",
+      "purl": "pkg:npm/glob@7.2.3",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "a little globber"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/global-agent@3.0.0",
+      "name": "global-agent",
+      "version": "3.0.0",
+      "purl": "pkg:npm/global-agent@3.0.0",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Global HTTP/HTTPS proxy configurable using environment variables."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/globalthis@1.0.4",
+      "name": "globalthis",
+      "version": "1.0.4",
+      "purl": "pkg:npm/globalthis@1.0.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "ECMAScript spec-compliant polyfill/shim for `globalThis`"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/gopd@1.2.0",
+      "name": "gopd",
+      "version": "1.2.0",
+      "purl": "pkg:npm/gopd@1.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "`Object.getOwnPropertyDescriptor`, but accounts for IE's broken implementation."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/got@11.8.6",
+      "name": "got",
+      "version": "11.8.6",
+      "purl": "pkg:npm/got@11.8.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Human-friendly and powerful HTTP request library for Node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/graceful-fs@4.2.11",
+      "name": "graceful-fs",
+      "version": "4.2.11",
+      "purl": "pkg:npm/graceful-fs@4.2.11",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "A drop-in replacement for fs, making various improvements."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/has-flag@4.0.0",
+      "name": "has-flag",
+      "version": "4.0.0",
+      "purl": "pkg:npm/has-flag@4.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Check if argv has a specific flag"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/has-property-descriptors@1.0.2",
+      "name": "has-property-descriptors",
+      "version": "1.0.2",
+      "purl": "pkg:npm/has-property-descriptors@1.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Does the environment have full property descriptor support? Handles IE 8's broken defineProperty/gOPD."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/has-symbols@1.1.0",
+      "name": "has-symbols",
+      "version": "1.1.0",
+      "purl": "pkg:npm/has-symbols@1.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Determine if the JS environment has Symbol support. Supports spec, or shams."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/has-tostringtag@1.0.2",
+      "name": "has-tostringtag",
+      "version": "1.0.2",
+      "purl": "pkg:npm/has-tostringtag@1.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Determine if the JS environment has `Symbol.toStringTag` support. Supports spec, or shams."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/hasown@2.0.4",
+      "name": "hasown",
+      "version": "2.0.4",
+      "purl": "pkg:npm/hasown@2.0.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A robust, ES3 compatible, \"has own property\" predicate."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/hosted-git-info@4.1.0",
+      "name": "hosted-git-info",
+      "version": "4.1.0",
+      "purl": "pkg:npm/hosted-git-info@4.1.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Provides metadata and conversions from repository urls for GitHub, Bitbucket and GitLab"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/http-cache-semantics@4.3.0",
+      "name": "http-cache-semantics",
+      "version": "4.3.0",
+      "purl": "pkg:npm/http-cache-semantics@4.3.0",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Parses Cache-Control and other headers. Helps building correct HTTP caches and proxies"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/http-proxy-agent@7.0.2",
+      "name": "http-proxy-agent",
+      "version": "7.0.2",
+      "purl": "pkg:npm/http-proxy-agent@7.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An HTTP(s) proxy `http.Agent` implementation for HTTP"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/http2-wrapper@1.0.3",
+      "name": "http2-wrapper",
+      "version": "1.0.3",
+      "purl": "pkg:npm/http2-wrapper@1.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "HTTP2 client, just with the familiar `https` API"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/https-proxy-agent@7.0.6",
+      "name": "https-proxy-agent",
+      "version": "7.0.6",
+      "purl": "pkg:npm/https-proxy-agent@7.0.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An HTTP(s) proxy `http.Agent` implementation for HTTPS"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/inflight@1.0.6",
+      "name": "inflight",
+      "version": "1.0.6",
+      "purl": "pkg:npm/inflight@1.0.6",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Add callbacks to requests in flight to avoid async duplication"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/inherits@2.0.4",
+      "name": "inherits",
+      "version": "2.0.4",
+      "purl": "pkg:npm/inherits@2.0.4",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Browser-friendly inheritance fully compatible with standard node.js inherits()"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ini@4.1.3",
+      "name": "ini",
+      "version": "4.1.3",
+      "purl": "pkg:npm/ini@4.1.3",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "An ini encoder/decoder for node"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/is-docker@2.2.1",
+      "name": "is-docker",
+      "version": "2.2.1",
+      "purl": "pkg:npm/is-docker@2.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Check if the process is running inside a Docker container"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/is-fullwidth-code-point@3.0.0",
+      "name": "is-fullwidth-code-point",
+      "version": "3.0.0",
+      "purl": "pkg:npm/is-fullwidth-code-point@3.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Check if the character represented by a given Unicode code point is fullwidth"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/is-wsl@2.2.0",
+      "name": "is-wsl",
+      "version": "2.2.0",
+      "purl": "pkg:npm/is-wsl@2.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Check if the process is running inside Windows Subsystem for Linux (Bash on Windows)"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isarray@1.0.0",
+      "name": "isarray",
+      "version": "1.0.0",
+      "purl": "pkg:npm/isarray@1.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Array#isArray for older browsers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isbinaryfile@4.0.10",
+      "name": "isbinaryfile",
+      "version": "4.0.10",
+      "purl": "pkg:npm/isbinaryfile@4.0.10",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Detects if a file is binary in Node.js. Similar to Perl's -B."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isbinaryfile@5.0.7",
+      "name": "isbinaryfile",
+      "version": "5.0.7",
+      "purl": "pkg:npm/isbinaryfile@5.0.7",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Detects if a file is binary in Node.js. Similar to Perl's -B."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isexe@2.0.0",
+      "name": "isexe",
+      "version": "2.0.0",
+      "purl": "pkg:npm/isexe@2.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Minimal module to check if a file is executable."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isexe@3.1.5",
+      "name": "isexe",
+      "version": "3.1.5",
+      "purl": "pkg:npm/isexe@3.1.5",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Minimal module to check if a file is executable."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/isexe@4.0.0",
+      "name": "isexe",
+      "version": "4.0.0",
+      "purl": "pkg:npm/isexe@4.0.0",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Minimal module to check if a file is executable."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jake@10.9.4",
+      "name": "jake",
+      "version": "10.9.4",
+      "purl": "pkg:npm/jake@10.9.4",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "JavaScript build tool, similar to Make or Rake"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jiti@2.7.0",
+      "name": "jiti",
+      "version": "2.7.0",
+      "purl": "pkg:npm/jiti@2.7.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Runtime typescript and ESM support for Node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/js-yaml@4.3.2",
+      "name": "js-yaml",
+      "version": "4.3.2",
+      "purl": "pkg:npm/js-yaml@4.3.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "YAML 1.2 parser and serializer"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/json-buffer@3.0.1",
+      "name": "json-buffer",
+      "version": "3.0.1",
+      "purl": "pkg:npm/json-buffer@3.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "JSON parse & stringify that supports binary via bops & base64"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/json-schema-traverse@1.0.0",
+      "name": "json-schema-traverse",
+      "version": "1.0.0",
+      "purl": "pkg:npm/json-schema-traverse@1.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Traverse JSON Schema passing each schema object to callback"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/json-stringify-safe@5.0.1",
+      "name": "json-stringify-safe",
+      "version": "5.0.1",
+      "purl": "pkg:npm/json-stringify-safe@5.0.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Like JSON.stringify, but doesn't blow up on circular refs."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/json5@2.2.3",
+      "name": "json5",
+      "version": "2.2.3",
+      "purl": "pkg:npm/json5@2.2.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "JSON for Humans"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jsonfile@4.0.0",
+      "name": "jsonfile",
+      "version": "4.0.0",
+      "purl": "pkg:npm/jsonfile@4.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Easily read/write JSON files."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/jsonfile@6.2.1",
+      "name": "jsonfile",
+      "version": "6.2.1",
+      "purl": "pkg:npm/jsonfile@6.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Easily read/write JSON files."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/keyv@4.5.4",
+      "name": "keyv",
+      "version": "4.5.4",
+      "purl": "pkg:npm/keyv@4.5.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Simple key-value storage with support for multiple backends"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/kleur@3.0.3",
+      "name": "kleur",
+      "version": "3.0.3",
+      "purl": "pkg:npm/kleur@3.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The fastest Node.js library for formatting terminal text with ANSI colors~!"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/kleur@4.1.5",
+      "name": "kleur",
+      "version": "4.1.5",
+      "purl": "pkg:npm/kleur@4.1.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The fastest Node.js library for formatting terminal text with ANSI colors~!"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lazy-val@1.0.5",
+      "name": "lazy-val",
+      "version": "1.0.5",
+      "purl": "pkg:npm/lazy-val@1.0.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lodash@4.18.1",
+      "name": "lodash",
+      "version": "4.18.1",
+      "purl": "pkg:npm/lodash@4.18.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Lodash modular utilities."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lowercase-keys@2.0.0",
+      "name": "lowercase-keys",
+      "version": "2.0.0",
+      "purl": "pkg:npm/lowercase-keys@2.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Lowercase the keys of an object"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lru-cache@11.5.3",
+      "name": "lru-cache",
+      "version": "11.5.3",
+      "purl": "pkg:npm/lru-cache@11.5.3",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "A cache object that deletes the least-recently-used items."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/lru-cache@6.0.0",
+      "name": "lru-cache",
+      "version": "6.0.0",
+      "purl": "pkg:npm/lru-cache@6.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "A cache object that deletes the least-recently-used items."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/matcher@3.0.0",
+      "name": "matcher",
+      "version": "3.0.0",
+      "purl": "pkg:npm/matcher@3.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Simple wildcard matching"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/math-intrinsics@1.1.0",
+      "name": "math-intrinsics",
+      "version": "1.1.0",
+      "purl": "pkg:npm/math-intrinsics@1.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "ES Math-related intrinsics and helpers, robustly cached."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/mime-db@1.52.0",
+      "name": "mime-db",
+      "version": "1.52.0",
+      "purl": "pkg:npm/mime-db@1.52.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Media Type Database"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/mime-types@2.1.35",
+      "name": "mime-types",
+      "version": "2.1.35",
+      "purl": "pkg:npm/mime-types@2.1.35",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The ultimate javascript content-type utility."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/mime@2.6.0",
+      "name": "mime",
+      "version": "2.6.0",
+      "purl": "pkg:npm/mime@2.6.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A comprehensive library for mime-type mapping"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/mimic-response@1.0.1",
+      "name": "mimic-response",
+      "version": "1.0.1",
+      "purl": "pkg:npm/mimic-response@1.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Mimic a Node.js HTTP response stream"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/mimic-response@3.1.0",
+      "name": "mimic-response",
+      "version": "3.1.0",
+      "purl": "pkg:npm/mimic-response@3.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Mimic a Node.js HTTP response stream"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@10.2.6",
+      "name": "minimatch",
+      "version": "10.2.6",
+      "purl": "pkg:npm/minimatch@10.2.6",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "a glob matcher in javascript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@3.1.5",
+      "name": "minimatch",
+      "version": "3.1.5",
+      "purl": "pkg:npm/minimatch@3.1.5",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "a glob matcher in javascript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@5.1.9",
+      "name": "minimatch",
+      "version": "5.1.9",
+      "purl": "pkg:npm/minimatch@5.1.9",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "a glob matcher in javascript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@9.0.9",
+      "name": "minimatch",
+      "version": "9.0.9",
+      "purl": "pkg:npm/minimatch@9.0.9",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "a glob matcher in javascript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimist@1.2.8",
+      "name": "minimist",
+      "version": "1.2.8",
+      "purl": "pkg:npm/minimist@1.2.8",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "parse argument options"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minipass@7.1.3",
+      "name": "minipass",
+      "version": "7.1.3",
+      "purl": "pkg:npm/minipass@7.1.3",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "minimal implementation of a PassThrough stream"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minizlib@3.1.0",
+      "name": "minizlib",
+      "version": "3.1.0",
+      "purl": "pkg:npm/minizlib@3.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A small fast zlib stream built on [minipass](http://npm.im/minipass) and Node.js's zlib binding."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/mkdirp@0.5.6",
+      "name": "mkdirp",
+      "version": "0.5.6",
+      "purl": "pkg:npm/mkdirp@0.5.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Recursively mkdir, like `mkdir -p`"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/ms@2.1.3",
+      "name": "ms",
+      "version": "2.1.3",
+      "purl": "pkg:npm/ms@2.1.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Tiny millisecond conversion utility"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/native-run@2.0.3",
+      "name": "native-run",
+      "version": "2.0.3",
+      "purl": "pkg:npm/native-run@2.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A CLI for running apps on iOS/Android devices and simulators/emulators"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/node-abi@4.40.0",
+      "name": "node-abi",
+      "version": "4.40.0",
+      "purl": "pkg:npm/node-abi@4.40.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get the Node ABI for a given target and runtime, and vice versa."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/node-api-version@0.2.1",
+      "name": "node-api-version",
+      "version": "0.2.1",
+      "purl": "pkg:npm/node-api-version@0.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Gets the supported Node-API version for a specific node or electron version"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/node-gyp@12.4.0",
+      "name": "node-gyp",
+      "version": "12.4.0",
+      "purl": "pkg:npm/node-gyp@12.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Node.js native addon build tool"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/node-int64@0.4.0",
+      "name": "node-int64",
+      "version": "0.4.0",
+      "purl": "pkg:npm/node-int64@0.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Support for representing 64-bit integers in JavaScript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/nopt@9.0.0",
+      "name": "nopt",
+      "version": "9.0.0",
+      "purl": "pkg:npm/nopt@9.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Option parsing for Node, supporting types, shorthands, etc. Used by npm."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/normalize-url@6.1.0",
+      "name": "normalize-url",
+      "version": "6.1.0",
+      "purl": "pkg:npm/normalize-url@6.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Normalize a URL"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/object-keys@1.1.1",
+      "name": "object-keys",
+      "version": "1.1.1",
+      "purl": "pkg:npm/object-keys@1.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An Object.keys replacement, in case Object.keys is not available. From https://github.com/es-shims/es5-shim"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/once@1.4.0",
+      "name": "once",
+      "version": "1.4.0",
+      "purl": "pkg:npm/once@1.4.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Run a function exactly one time"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/open@8.4.2",
+      "name": "open",
+      "version": "8.4.2",
+      "purl": "pkg:npm/open@8.4.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Open stuff like URLs, files, executables. Cross-platform."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/p-cancelable@2.1.1",
+      "name": "p-cancelable",
+      "version": "2.1.1",
+      "purl": "pkg:npm/p-cancelable@2.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Create a promise that can be canceled"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/p-limit@3.1.0",
+      "name": "p-limit",
+      "version": "3.1.0",
+      "purl": "pkg:npm/p-limit@3.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Run multiple promise-returning & async functions with limited concurrency"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/package-json-from-dist@1.0.1",
+      "name": "package-json-from-dist",
+      "version": "1.0.1",
+      "purl": "pkg:npm/package-json-from-dist@1.0.1",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Load the local package.json from either src or dist folder"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/path-is-absolute@1.0.1",
+      "name": "path-is-absolute",
+      "version": "1.0.1",
+      "purl": "pkg:npm/path-is-absolute@1.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Node.js 0.12 path.isAbsolute() ponyfill"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/path-key@3.1.1",
+      "name": "path-key",
+      "version": "3.1.1",
+      "purl": "pkg:npm/path-key@3.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get the PATH environment variable key cross-platform"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/path-scurry@2.0.2",
+      "name": "path-scurry",
+      "version": "2.0.2",
+      "purl": "pkg:npm/path-scurry@2.0.2",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "walk paths fast and efficiently"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pe-library@0.4.1",
+      "name": "pe-library",
+      "version": "0.4.1",
+      "purl": "pkg:npm/pe-library@0.4.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Node.js library for Portable Executable format"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pend@1.2.0",
+      "name": "pend",
+      "version": "1.2.0",
+      "purl": "pkg:npm/pend@1.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "dead-simple optimistic async helper"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/picocolors@1.1.1",
+      "name": "picocolors",
+      "version": "1.1.1",
+      "purl": "pkg:npm/picocolors@1.1.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "The tiniest and the fastest library for terminal output formatting with ANSI colors"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/picomatch@4.0.7",
+      "name": "picomatch",
+      "version": "4.0.7",
+      "purl": "pkg:npm/picomatch@4.0.7",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Blazing fast and accurate glob matcher written in JavaScript, with no dependencies and full support for standard and extended Bash glob features, including braces, extglobs, POSIX brackets, and regular expressions."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pkijs@3.4.3",
+      "name": "pkijs",
+      "version": "3.4.3",
+      "purl": "pkg:npm/pkijs@3.4.3",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Public Key Infrastructure (PKI) is the basis of how identity and key management is performed on the web today. PKIjs is a pure JavaScript library implementing the formats that are used in PKI applications. It is built on WebCrypto and aspires to make it possible to build native web applications that utilize X.509 and the related formats on the web without plug-ins"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/playwright-core@1.64.1",
+      "name": "playwright-core",
+      "version": "1.64.1",
+      "purl": "pkg:npm/playwright-core@1.64.1",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "A high-level API to automate web browsers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/playwright@1.64.1",
+      "name": "playwright",
+      "version": "1.64.1",
+      "purl": "pkg:npm/playwright@1.64.1",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "A high-level API to automate web browsers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/plist@3.1.0",
+      "name": "plist",
+      "version": "3.1.0",
+      "purl": "pkg:npm/plist@3.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Apple's property list parser/builder for Node.js and browsers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/plist@3.1.1",
+      "name": "plist",
+      "version": "3.1.1",
+      "purl": "pkg:npm/plist@3.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Apple's property list parser/builder for Node.js and browsers"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/postject@1.0.0-alpha.6",
+      "name": "postject",
+      "version": "1.0.0-alpha.6",
+      "purl": "pkg:npm/postject@1.0.0-alpha.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Easily inject arbitrary read-only resources into executable formats (Mach-O, PE, ELF) and use it at runtime."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/proc-log@6.1.0",
+      "name": "proc-log",
+      "version": "6.1.0",
+      "purl": "pkg:npm/proc-log@6.1.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "just emit 'log' events on the process object"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/process-nextick-args@2.0.1",
+      "name": "process-nextick-args",
+      "version": "2.0.1",
+      "purl": "pkg:npm/process-nextick-args@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "process.nextTick but always with args"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/progress@2.0.3",
+      "name": "progress",
+      "version": "2.0.3",
+      "purl": "pkg:npm/progress@2.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Flexible ascii progress bar"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/promise-retry@2.0.1",
+      "name": "promise-retry",
+      "version": "2.0.1",
+      "purl": "pkg:npm/promise-retry@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Retries a function that returns a promise, leveraging the power of the retry module."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/prompts@2.4.2",
+      "name": "prompts",
+      "version": "2.4.2",
+      "purl": "pkg:npm/prompts@2.4.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Lightweight, beautiful and user-friendly prompts"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/proper-lockfile@4.1.2",
+      "name": "proper-lockfile",
+      "version": "4.1.2",
+      "purl": "pkg:npm/proper-lockfile@4.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A inter-process and inter-machine lockfile utility that works on a local or network file system"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pump@3.0.4",
+      "name": "pump",
+      "version": "3.0.4",
+      "purl": "pkg:npm/pump@3.0.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "pipe streams together and close all of them if one of them closes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pvtsutils@1.3.6",
+      "name": "pvtsutils",
+      "version": "1.3.6",
+      "purl": "pkg:npm/pvtsutils@1.3.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "pvtsutils is a set of common utility functions used in various Peculiar Ventures TypeScript based projects."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/pvutils@1.2.0",
+      "name": "pvutils",
+      "version": "1.2.0",
+      "purl": "pkg:npm/pvutils@1.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Common utilities for products from Peculiar Ventures"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/quick-lru@5.1.1",
+      "name": "quick-lru",
+      "version": "5.1.1",
+      "purl": "pkg:npm/quick-lru@5.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Simple “Least Recently Used” (LRU) cache"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/read-binary-file-arch@1.0.6",
+      "name": "read-binary-file-arch",
+      "version": "1.0.6",
+      "purl": "pkg:npm/read-binary-file-arch@1.0.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Reads a binary file to determine its CPU architecture."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/readable-stream@2.3.8",
+      "name": "readable-stream",
+      "version": "2.3.8",
+      "purl": "pkg:npm/readable-stream@2.3.8",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Streams3, a user-land copy of the stream library from Node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/readable-stream@3.6.2",
+      "name": "readable-stream",
+      "version": "3.6.2",
+      "purl": "pkg:npm/readable-stream@3.6.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Streams3, a user-land copy of the stream library from Node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/require-directory@2.1.1",
+      "name": "require-directory",
+      "version": "2.1.1",
+      "purl": "pkg:npm/require-directory@2.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Recursively iterates over specified directory, require()'ing each file, and returning a nested hash structure containing those modules."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/require-from-string@2.0.2",
+      "name": "require-from-string",
+      "version": "2.0.2",
+      "purl": "pkg:npm/require-from-string@2.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Require module from string"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/resedit@1.7.2",
+      "name": "resedit",
+      "version": "1.7.2",
+      "purl": "pkg:npm/resedit@1.7.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Node.js library editing Windows Resource data"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/resolve-alpn@1.2.1",
+      "name": "resolve-alpn",
+      "version": "1.2.1",
+      "purl": "pkg:npm/resolve-alpn@1.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Detects the ALPN protocol"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/responselike@2.0.1",
+      "name": "responselike",
+      "version": "2.0.1",
+      "purl": "pkg:npm/responselike@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A response-like object for mocking a Node.js HTTP response stream"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/retry@0.12.0",
+      "name": "retry",
+      "version": "0.12.0",
+      "purl": "pkg:npm/retry@0.12.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Abstraction for exponential and custom retry strategies for failed operations."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/rimraf@2.6.3",
+      "name": "rimraf",
+      "version": "2.6.3",
+      "purl": "pkg:npm/rimraf@2.6.3",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "A deep deletion module for node (like `rm -rf`)"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/rimraf@6.1.3",
+      "name": "rimraf",
+      "version": "6.1.3",
+      "purl": "pkg:npm/rimraf@6.1.3",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "A deep deletion module for node (like `rm -rf`)"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/roarr@2.15.4",
+      "name": "roarr",
+      "version": "2.15.4",
+      "purl": "pkg:npm/roarr@2.15.4",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "JSON logger for Node.js and browser."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/safe-buffer@5.1.2",
+      "name": "safe-buffer",
+      "version": "5.1.2",
+      "purl": "pkg:npm/safe-buffer@5.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Safer Node.js Buffer API"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/safe-buffer@5.2.1",
+      "name": "safe-buffer",
+      "version": "5.2.1",
+      "purl": "pkg:npm/safe-buffer@5.2.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Safer Node.js Buffer API"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sanitize-filename@1.6.4",
+      "name": "sanitize-filename",
+      "version": "1.6.4",
+      "purl": "pkg:npm/sanitize-filename@1.6.4",
+      "licenses": [
+        {
+          "expression": "WTFPL OR ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Sanitize a string for use as a filename"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sax@1.1.4",
+      "name": "sax",
+      "version": "1.1.4",
+      "purl": "pkg:npm/sax@1.1.4",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "An evented streaming XML parser in JavaScript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sax@1.6.1",
+      "name": "sax",
+      "version": "1.6.1",
+      "purl": "pkg:npm/sax@1.6.1",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "An evented streaming XML parser in JavaScript"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/semver-compare@1.0.0",
+      "name": "semver-compare",
+      "version": "1.0.0",
+      "purl": "pkg:npm/semver-compare@1.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "compare two semver version strings, returning -1, 0, or 1"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/semver@5.7.2",
+      "name": "semver",
+      "version": "5.7.2",
+      "purl": "pkg:npm/semver@5.7.2",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "The semantic version parser used by npm."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/semver@6.3.1",
+      "name": "semver",
+      "version": "6.3.1",
+      "purl": "pkg:npm/semver@6.3.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "The semantic version parser used by npm."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/semver@7.7.4",
+      "name": "semver",
+      "version": "7.7.4",
+      "purl": "pkg:npm/semver@7.7.4",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "The semantic version parser used by npm."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/semver@7.8.5",
+      "name": "semver",
+      "version": "7.8.5",
+      "purl": "pkg:npm/semver@7.8.5",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "The semantic version parser used by npm."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/serialize-error@7.0.1",
+      "name": "serialize-error",
+      "version": "7.0.1",
+      "purl": "pkg:npm/serialize-error@7.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Serialize/deserialize an error into a plain object"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/shebang-command@2.0.0",
+      "name": "shebang-command",
+      "version": "2.0.0",
+      "purl": "pkg:npm/shebang-command@2.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get the command from a shebang"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/shebang-regex@3.0.0",
+      "name": "shebang-regex",
+      "version": "3.0.0",
+      "purl": "pkg:npm/shebang-regex@3.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Regular expression for matching a shebang line"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/signal-exit@3.0.7",
+      "name": "signal-exit",
+      "version": "3.0.7",
+      "purl": "pkg:npm/signal-exit@3.0.7",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "when you want to fire an event no matter how a process exits."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/simple-plist@1.3.1",
+      "name": "simple-plist",
+      "version": "1.3.1",
+      "purl": "pkg:npm/simple-plist@1.3.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A wrapper utility for interacting with plist data."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/simple-update-notifier@2.0.0",
+      "name": "simple-update-notifier",
+      "version": "2.0.0",
+      "purl": "pkg:npm/simple-update-notifier@2.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Simple update notifier to check for npm updates for cli applications"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sisteransi@1.0.5",
+      "name": "sisteransi",
+      "version": "1.0.5",
+      "purl": "pkg:npm/sisteransi@1.0.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "ANSI escape codes for some terminal swag"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/slice-ansi@4.0.0",
+      "name": "slice-ansi",
+      "version": "4.0.0",
+      "purl": "pkg:npm/slice-ansi@4.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Slice a string with ANSI escape codes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/source-map-support@0.5.21",
+      "name": "source-map-support",
+      "version": "0.5.21",
+      "purl": "pkg:npm/source-map-support@0.5.21",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Fixes stack traces for files with source maps"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/source-map@0.6.1",
+      "name": "source-map",
+      "version": "0.6.1",
+      "purl": "pkg:npm/source-map@0.6.1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "Generates and consumes source maps"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/split2@4.2.0",
+      "name": "split2",
+      "version": "4.2.0",
+      "purl": "pkg:npm/split2@4.2.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "split a Text Stream into a Line Stream, using Stream 3"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sprintf-js@1.1.3",
+      "name": "sprintf-js",
+      "version": "1.1.3",
+      "purl": "pkg:npm/sprintf-js@1.1.3",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "scope": "optional",
+      "description": "JavaScript sprintf implementation"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/stat-mode@1.0.0",
+      "name": "stat-mode",
+      "version": "1.0.0",
+      "purl": "pkg:npm/stat-mode@1.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Offers convenient getters and setters for the stat `mode`"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/stream-buffers@2.2.0",
+      "name": "stream-buffers",
+      "version": "2.2.0",
+      "purl": "pkg:npm/stream-buffers@2.2.0",
+      "licenses": [
+        {
+          "expression": "Unlicense"
+        }
+      ],
+      "scope": "optional",
+      "description": "Buffer-backed Streams for reading and writing."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/string_decoder@1.1.1",
+      "name": "string_decoder",
+      "version": "1.1.1",
+      "purl": "pkg:npm/string_decoder@1.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The string_decoder module from Node core"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/string_decoder@1.3.0",
+      "name": "string_decoder",
+      "version": "1.3.0",
+      "purl": "pkg:npm/string_decoder@1.3.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The string_decoder module from Node core"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/string-width@4.2.3",
+      "name": "string-width",
+      "version": "4.2.3",
+      "purl": "pkg:npm/string-width@4.2.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get the visual width of a string - the number of columns required to display it"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/strip-ansi@6.0.1",
+      "name": "strip-ansi",
+      "version": "6.0.1",
+      "purl": "pkg:npm/strip-ansi@6.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Strip ANSI escape codes from a string"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/sumchecker@3.0.1",
+      "name": "sumchecker",
+      "version": "3.0.1",
+      "purl": "pkg:npm/sumchecker@3.0.1",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Checksum validator"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/supports-color@7.2.0",
+      "name": "supports-color",
+      "version": "7.2.0",
+      "purl": "pkg:npm/supports-color@7.2.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Detect whether a terminal supports color"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tar@7.5.22",
+      "name": "tar",
+      "version": "7.5.22",
+      "purl": "pkg:npm/tar@7.5.22",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "tar for node"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/temp-file@3.4.0",
+      "name": "temp-file",
+      "version": "3.4.0",
+      "purl": "pkg:npm/temp-file@3.4.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/temp@0.9.4",
+      "name": "temp",
+      "version": "0.9.4",
+      "purl": "pkg:npm/temp@0.9.4",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Temporary files and directories"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/through2@4.0.2",
+      "name": "through2",
+      "version": "4.0.2",
+      "purl": "pkg:npm/through2@4.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A tiny wrapper around Node.js streams.Transform (Streams2/3) to avoid explicit subclassing noise"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tiny-async-pool@1.3.0",
+      "name": "tiny-async-pool",
+      "version": "1.3.0",
+      "purl": "pkg:npm/tiny-async-pool@1.3.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Run multiple promise-returning & async functions with limited concurrency using native ES6/ES7"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tinyglobby@0.2.17",
+      "name": "tinyglobby",
+      "version": "0.2.17",
+      "purl": "pkg:npm/tinyglobby@0.2.17",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A fast and minimal alternative to globby and fast-glob"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tmp-promise@3.0.3",
+      "name": "tmp-promise",
+      "version": "3.0.3",
+      "purl": "pkg:npm/tmp-promise@3.0.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The tmp package with promises support and disposers."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tmp@0.2.7",
+      "name": "tmp",
+      "version": "0.2.7",
+      "purl": "pkg:npm/tmp@0.2.7",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Temporary file and directory creator"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tree-kill@1.2.2",
+      "name": "tree-kill",
+      "version": "1.2.2",
+      "purl": "pkg:npm/tree-kill@1.2.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "kill trees of processes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/truncate-utf8-bytes@1.0.2",
+      "name": "truncate-utf8-bytes",
+      "version": "1.0.2",
+      "purl": "pkg:npm/truncate-utf8-bytes@1.0.2",
+      "licenses": [
+        {
+          "expression": "WTFPL"
+        }
+      ],
+      "scope": "optional",
+      "description": "Truncate string to given length in bytes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/tslib@2.8.1",
+      "name": "tslib",
+      "version": "2.8.1",
+      "purl": "pkg:npm/tslib@2.8.1",
+      "licenses": [
+        {
+          "expression": "0BSD"
+        }
+      ],
+      "scope": "optional",
+      "description": "Runtime library for TypeScript helper functions"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/type-fest@0.13.1",
+      "name": "type-fest",
+      "version": "0.13.1",
+      "purl": "pkg:npm/type-fest@0.13.1",
+      "licenses": [
+        {
+          "expression": "(MIT OR CC0-1.0)"
+        }
+      ],
+      "scope": "optional",
+      "description": "A collection of essential TypeScript types"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/undici-types@7.24.6",
+      "name": "undici-types",
+      "version": "7.24.6",
+      "purl": "pkg:npm/undici-types@7.24.6",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A stand-alone types package for Undici"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/undici-types@8.9.0",
+      "name": "undici-types",
+      "version": "8.9.0",
+      "purl": "pkg:npm/undici-types@8.9.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "A stand-alone types package for Undici"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/undici@6.29.1",
+      "name": "undici",
+      "version": "6.29.1",
+      "purl": "pkg:npm/undici@6.29.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An HTTP/1.1 client, written from scratch for Node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/undici@7.30.1",
+      "name": "undici",
+      "version": "7.30.1",
+      "purl": "pkg:npm/undici@7.30.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An HTTP/1.1 client, written from scratch for Node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/universalify@0.1.2",
+      "name": "universalify",
+      "version": "0.1.2",
+      "purl": "pkg:npm/universalify@0.1.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Make a callback- or promise-based function support both promises and callbacks."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/universalify@2.0.1",
+      "name": "universalify",
+      "version": "2.0.1",
+      "purl": "pkg:npm/universalify@2.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Make a callback- or promise-based function support both promises and callbacks."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/untildify@4.0.0",
+      "name": "untildify",
+      "version": "4.0.0",
+      "purl": "pkg:npm/untildify@4.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Convert a tilde path to an absolute path: `~/dev` → `/Users/sindresorhus/dev`"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/unzipper@0.12.5",
+      "name": "unzipper",
+      "version": "0.12.5",
+      "purl": "pkg:npm/unzipper@0.12.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Unzip cross-platform streaming API "
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/utf8-byte-length@1.0.5",
+      "name": "utf8-byte-length",
+      "version": "1.0.5",
+      "purl": "pkg:npm/utf8-byte-length@1.0.5",
+      "licenses": [
+        {
+          "expression": "(WTFPL OR MIT)"
+        }
+      ],
+      "scope": "optional",
+      "description": "Get utf8 byte length of string"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/util-deprecate@1.0.2",
+      "name": "util-deprecate",
+      "version": "1.0.2",
+      "purl": "pkg:npm/util-deprecate@1.0.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "The Node.js `util.deprecate()` function with browser support"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/uuid@11.1.1",
+      "name": "uuid",
+      "version": "11.1.1",
+      "purl": "pkg:npm/uuid@11.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "RFC9562 UUIDs"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/webcrypto-core@1.9.2",
+      "name": "webcrypto-core",
+      "version": "1.9.2",
+      "purl": "pkg:npm/webcrypto-core@1.9.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Common layer to be used by crypto libraries based on WebCrypto API for input validation."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/which@2.0.2",
+      "name": "which",
+      "version": "2.0.2",
+      "purl": "pkg:npm/which@2.0.2",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Like which(1) unix command. Find the first instance of an executable in the PATH."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/which@5.0.0",
+      "name": "which",
+      "version": "5.0.0",
+      "purl": "pkg:npm/which@5.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Like which(1) unix command. Find the first instance of an executable in the PATH."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/which@6.0.1",
+      "name": "which",
+      "version": "6.0.1",
+      "purl": "pkg:npm/which@6.0.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Like which(1) unix command. Find the first instance of an executable in the PATH."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/wrap-ansi@7.0.0",
+      "name": "wrap-ansi",
+      "version": "7.0.0",
+      "purl": "pkg:npm/wrap-ansi@7.0.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Wordwrap a string with ANSI escape codes"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/wrappy@1.0.2",
+      "name": "wrappy",
+      "version": "1.0.2",
+      "purl": "pkg:npm/wrappy@1.0.2",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Callback wrapping utility"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/xcode@3.0.1",
+      "name": "xcode",
+      "version": "3.0.1",
+      "purl": "pkg:npm/xcode@3.0.1",
+      "licenses": [
+        {
+          "expression": "Apache-2.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "parser for xcodeproj/project.pbxproj files"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/xml2js@0.6.2",
+      "name": "xml2js",
+      "version": "0.6.2",
+      "purl": "pkg:npm/xml2js@0.6.2",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Simple XML to JavaScript object converter."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/xmlbuilder@11.0.1",
+      "name": "xmlbuilder",
+      "version": "11.0.1",
+      "purl": "pkg:npm/xmlbuilder@11.0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An XML builder for node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/xmlbuilder@15.1.1",
+      "name": "xmlbuilder",
+      "version": "15.1.1",
+      "purl": "pkg:npm/xmlbuilder@15.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "An XML builder for node.js"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/y18n@5.0.8",
+      "name": "y18n",
+      "version": "5.0.8",
+      "purl": "pkg:npm/y18n@5.0.8",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "the bare-bones internationalization library used by yargs"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yallist@4.0.0",
+      "name": "yallist",
+      "version": "4.0.0",
+      "purl": "pkg:npm/yallist@4.0.0",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "Yet Another Linked List"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yallist@5.0.0",
+      "name": "yallist",
+      "version": "5.0.0",
+      "purl": "pkg:npm/yallist@5.0.0",
+      "licenses": [
+        {
+          "expression": "BlueOak-1.0.0"
+        }
+      ],
+      "scope": "optional",
+      "description": "Yet Another Linked List"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yargs-parser@21.1.1",
+      "name": "yargs-parser",
+      "version": "21.1.1",
+      "purl": "pkg:npm/yargs-parser@21.1.1",
+      "licenses": [
+        {
+          "expression": "ISC"
+        }
+      ],
+      "scope": "optional",
+      "description": "the mighty option parser used by yargs"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yargs@17.7.3",
+      "name": "yargs",
+      "version": "17.7.3",
+      "purl": "pkg:npm/yargs@17.7.3",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "yargs the modern, pirate-themed, successor to optimist."
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yauzl@2.10.0",
+      "name": "yauzl",
+      "version": "2.10.0",
+      "purl": "pkg:npm/yauzl@2.10.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "yet another unzip library for node"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/yocto-queue@0.1.0",
+      "name": "yocto-queue",
+      "version": "0.1.0",
+      "purl": "pkg:npm/yocto-queue@0.1.0",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "scope": "optional",
+      "description": "Tiny queue data structure"
+    }
+  ]
+}
