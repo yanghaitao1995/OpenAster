@@ -1,0 +1,85 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "org.openaster.preview",
+  "productName": "OpenAster",
+  "asar": true,
+  "beforePack": "desktop/windows-compat.mjs",
+  "afterPack": "desktop/third-party-notices.mjs",
+  "electronFuses": {
+    "runAsNode": false,
+    "enableCookieEncryption": true,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableNodeCliInspectArguments": false,
+    "enableEmbeddedAsarIntegrityValidation": true,
+    "onlyLoadAppFromAsar": true,
+    "grantFileProtocolExtraPrivileges": false
+  },
+  "directories": {
+    "output": "release",
+    "buildResources": "desktop/resources"
+  },
+  "files": [
+    "desktop/main.mjs",
+    "desktop/secret-store.mjs",
+    "desktop/composer-drafts.mjs",
+    "desktop/workspace-profiles.mjs",
+    "desktop/workspace-errors.mjs",
+    "desktop/workspace-switch.mjs",
+    "desktop/workspace-actions.mjs",
+    "desktop/workspace-navigation.mjs",
+    "desktop/lifecycle.mjs",
+    "desktop/native-leave.mjs",
+    "desktop/backup-worker.mjs",
+    "desktop/backup-worker-client.mjs",
+    "desktop/relaunch-smoke.mjs",
+    "desktop/draft-relaunch-ui.mjs",
+    "desktop/draft-relaunch-proof.mjs",
+    "desktop/relaunch-smoke-state.mjs",
+    "desktop/smoke-diagnostics.mjs",
+    "desktop/smoke-readiness.mjs",
+    "desktop/resources/icon.png",
+    "server/**/*",
+    "core/**/*",
+    "public/**/*",
+    "package.json",
+    "LICENSE",
+    "NOTICE",
+    "docs/THIRD_PARTY.md",
+    "docs/sbom.cdx.json",
+    "skills/**/*"
+  ],
+  "extraMetadata": {
+    "main": "desktop/main.mjs"
+  },
+  "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+  "npmRebuild": false,
+  "publish": null,
+  "win": {
+    "target": [
+      "nsis"
+    ],
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false
+  },
+  "mac": {
+    "target": [
+      "dmg",
+      "zip"
+    ],
+    "category": "public.app-category.productivity",
+    "hardenedRuntime": true
+  },
+  "linux": {
+    "target": [
+      "AppImage",
+      "deb"
+    ],
+    "category": "Office",
+    "synopsis": "Local-first agent workspace"
+  }
+}
