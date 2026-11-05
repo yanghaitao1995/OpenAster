@@ -1,0 +1,28 @@
+name: 功能建议
+description: 描述一个具体需求及可验证的预期结果。
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        OpenAster 是个人学习探索项目，建议不代表实现承诺。
+        请使用合成场景说明需求，不要包含私人账号、密钥或公司资料。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 当前遇到的问题
+      description: 谁在什么场景中受到影响？现有功能为何不足？
+    validations:
+      required: true
+  - type: textarea
+    id: desired_behavior
+    attributes:
+      label: 希望发生的行为
+      description: 给出一个小而明确的例子和完成条件。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方式与影响
+      description: 可选；说明现有替代方式、平台限制或新增权限需求。
