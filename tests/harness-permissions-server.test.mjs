@@ -7,10 +7,10 @@ import { tmpdir } from 'node:os';
 import { startServer } from '../server/index.mjs';
 
 async function fixture(t, options={}) {
-  const root=await fs.mkdtemp(path.join(tmpdir(),'openaster-permissions-'));
+  const root=await fs.realpath(await fs.mkdtemp(path.join(tmpdir(),'openaster-permissions-')));
   const outside=path.join(root,'outside');await fs.mkdir(outside);await fs.writeFile(path.join(outside,'note.txt'),'outside text');
   const app=await startServer({dataDir:path.join(root,'data'),...options});
-  t.after(async()=>{await app.close();assert.equal(path.dirname(root),tmpdir());await fs.rm(root,{recursive:true,force:true});});
+  t.after(async()=>{await app.close();assert.equal(path.dirname(root),await fs.realpath(tmpdir()));await fs.rm(root,{recursive:true,force:true});});
   const first=await fetch(app.url+'/api/bootstrap'),bootstrap=await first.json();
   const headers={cookie:first.headers.get('set-cookie').split(';')[0],'X-CSRF-Token':bootstrap.csrfToken,'Content-Type':'application/json'};
   async function request(route,body,method=body===undefined?'GET':'POST',extra={}) {const response=await fetch(app.url+route,{method,headers:{...headers,...extra},...(body===undefined?{}:{body:JSON.stringify(body)})});return {status:response.status,data:await response.json()};}

@@ -18,8 +18,8 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const now = '2026-10-27T00:00:00.000Z';
 const missing = file => assert.rejects(fs.lstat(file), { code: 'ENOENT' });
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(tmpdir(), 'openaster-backup-'));
-  t.after(async () => { assert.ok(path.resolve(root).startsWith(path.resolve(tmpdir()) + path.sep)); await fs.rm(root, { recursive: true, force: true }); });
+  const root = await fs.realpath(await fs.mkdtemp(path.join(tmpdir(), 'openaster-backup-')));
+  t.after(async () => { assert.ok(path.resolve(root).startsWith(await fs.realpath(tmpdir()) + path.sep)); await fs.rm(root, { recursive: true, force: true }); });
   const dataDir = path.join(root, 'data');
   const workspace = path.join(dataDir, 'workspace');
   await fs.mkdir(workspace, { recursive: true });

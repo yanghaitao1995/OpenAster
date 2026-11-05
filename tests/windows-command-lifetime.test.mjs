@@ -13,16 +13,26 @@ const shell = systemRoot ? path.join(systemRoot, 'System32', 'WindowsPowerShell'
 const quoted = value => "'" + value.replaceAll("'", "''") + "'";
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const options = { skip: process.platform !== 'win32', timeout: 70000 };
+const diagnosticCodes = new Set(['COMMAND_HOST_FAILED', 'ABORTED', 'ENOENT', 'EACCES', 'EPERM', 'EPIPE']);
+const diagnosticCode = error => diagnosticCodes.has(error?.code) ? error.code : 'OTHER';
+const outcomeFacts = result => ({ exitCode: result.exitCode, signal: result.signal === 'SIGTERM' ? 'SIGTERM' : null,
+  timedOut: result.timedOut, cancelled: result.cancelled, durationMs: result.durationMs,
+  stdoutBytes: Buffer.byteLength(result.stdout), stderrBytes: Buffer.byteLength(result.stderr), truncated: result.truncated });
 
 function launch(executable, args, cwd) {
   const child = spawn(executable, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '', stderr = '', spawnError;
+  const startedAt = performance.now(), facts = { state: 'pending' };
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
   child.stdout.on('data', chunk => { stdout += chunk; });
   child.stderr.on('data', chunk => { stderr += chunk; });
-  child.on('error', error => { spawnError = error.message; });
-  const done = new Promise(resolve => child.once('close', (code, signal) => resolve({ code, signal, stdout, stderr, spawnError })));
-  return { child, done, output: () => stdout };
+  child.on('error', error => { spawnError = error.message; facts.errorCode = diagnosticCode(error); });
+  const done = new Promise(resolve => child.once('close', (code, signal) => {
+    Object.assign(facts, { state: 'closed', exitCode: code, signal: ['SIGTERM', 'SIGKILL', 'SIGINT'].includes(signal) ? signal : null });
+    resolve({ code, signal, stdout, stderr, spawnError });
+  }));
+  return { child, done, output: () => stdout, facts: () => ({ ...facts, elapsedMs: Math.round(performance.now() - startedAt),
+    stdoutBytes: Buffer.byteLength(stdout), stderrBytes: Buffer.byteLength(stderr), commandReadyCount: stdout.split(/\r?\n/u).filter(line => line === 'COMMAND_READY').length }) };
 }
 async function waitUntil(predicate, label, milliseconds = 15000) {
   const deadline = performance.now() + milliseconds;
@@ -83,22 +93,33 @@ async function scenario(t, killParent) {
   const command = ownedCommand(marker);
   const controller = new AbortController();
   let operation, parent, observer, passed = false;
+  const startedAt = performance.now(), commandFacts = { state: 'not-started', readyCount: 0, readyElapsedMs: null };
+  let stage = 'preparing';
+  const diagnostic = phase => t.diagnostic(JSON.stringify({ phase, stage, elapsedMs: Math.round(performance.now() - startedAt),
+    command: commandFacts, parent: parent?.facts() ?? null, observer: observer?.facts() ?? null }));
   try {
     if (killParent) {
       const script = path.join(cwd, 'owner.mjs');
       await writeFile(script, `import { runWindowsCommand } from ${JSON.stringify(new URL('../core/windows-command.mjs', import.meta.url).href)};
-const result=await runWindowsCommand(${JSON.stringify({ command, cwd, env, timeoutMs: 120000 })});
+const result=await runWindowsCommand({...${JSON.stringify({ command, cwd, env, timeoutMs: 120000 })},onStarted:()=>console.log('COMMAND_READY')});
 console.log(JSON.stringify(result));
 `, { flag: 'wx' });
       parent = launch(process.execPath, [script], cwd);
     } else {
-      operation = runWindowsCommand({ command, cwd, env, timeoutMs: 20000, signal: controller.signal });
+      commandFacts.state = 'pending';
+      operation = runWindowsCommand({ command, cwd, env, timeoutMs: 20000, signal: controller.signal,
+        onStarted: () => { commandFacts.readyCount++; commandFacts.readyElapsedMs = Math.round(performance.now() - startedAt); },
+      }).then(result => { Object.assign(commandFacts, { state: 'resolved', ...outcomeFacts(result) }); return result; },
+        error => { Object.assign(commandFacts, { state: 'rejected', errorCode: diagnosticCode(error) }); throw error; });
       // Attach rejection handling immediately, even if setup fails before the await.
       operation.catch(() => {});
     }
+    stage = 'waiting-marker';
     await waitUntil(() => markerReady(marker), 'all owned command processes must actually start');
+    stage = 'waiting-observer';
     observer = observe(marker, cwd);
     await waitUntil(() => observer.output().startsWith('READY\r\n') || observer.output().startsWith('READY\n'), 'observer must bind exact live process handles');
+    stage = 'triggering-exit';
     if (killParent) {
       assert.equal(parent.child.exitCode, null);
       assert.equal(parent.child.kill(), true, 'terminate only the test-created Node ChildProcess handle');
@@ -111,6 +132,7 @@ console.log(JSON.stringify(result));
       assert.equal(result.cancelled, false);
       assert.equal(result.signal, 'SIGTERM');
     }
+    stage = 'waiting-observer-exit';
     const observed = await observer.done;
     assert.equal(observed.spawnError, undefined);
     assert.equal(observed.code, 0, observed.stderr);
@@ -119,11 +141,14 @@ console.log(JSON.stringify(result));
     assert.ok(evidence.every(item => item.exited === true));
     t.diagnostic(JSON.stringify({ trigger: killParent ? 'test-owned-node-parent-termination' : 'command-timeout', heldProcessHandles: evidence }));
     passed = true;
+    stage = 'completed';
   } finally {
+    diagnostic('before-cleanup');
     // Never select a process by name or terminate a PID read from a marker.
     controller.abort();
     if (parent && parent.child.exitCode === null && parent.child.signalCode === null) parent.child.kill();
     await Promise.allSettled([operation, parent?.done, observer?.done]);
+    diagnostic('after-cleanup');
     if (passed) {
       const current = await lstat(cwd);
       assert.equal(await realpath(cwd), cwd);
@@ -132,7 +157,7 @@ console.log(JSON.stringify(result));
       assert.equal(current.dev, original.dev); assert.equal(current.ino, original.ino);
       await rm(cwd, { recursive: true, force: false });
     } else {
-      t.diagnostic('Preserved owned failure fixture: ' + cwd);
+      t.diagnostic('Preserved owned failure fixture (path omitted).');
     }
   }
 }

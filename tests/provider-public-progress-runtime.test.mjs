@@ -16,7 +16,7 @@ import { validateInterruptedOutputs, INTERRUPTED_OUTPUT_BYTES } from '../core/pr
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(check) { for (let i = 0; i < 1000; i++) { if (check()) return; await sleep(5); } throw new Error('Public output fixture timed out'); }
 async function fixture(t, providerCall, limits = {}) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openaster-public-progress-'));
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'openaster-public-progress-')));
   const dataDir = path.join(root, 'data'), workspace = path.join(dataDir, 'workspace');
   await fs.mkdir(workspace, { recursive: true });
   let store = new Store(dataDir);

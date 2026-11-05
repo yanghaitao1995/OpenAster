@@ -18,10 +18,10 @@ const hash = value => createHash('sha256').update(value).digest('hex');
 const snapshot = (file, content) => ({ path: file, sha256: hash(Buffer.from(content, 'utf8')), content });
 const missing = file => assert.rejects(fs.lstat(file), { code: 'ENOENT' });
 async function fixture(t, withContext = true) {
-  const root = await fs.mkdtemp(path.join(tmpdir(), 'openaster-context-backup-'));
+  const root = await fs.realpath(await fs.mkdtemp(path.join(tmpdir(), 'openaster-context-backup-')));
   const identity = await fs.lstat(root, { bigint: true });
   t.after(async () => {
-    assert.equal(path.dirname(path.resolve(root)), path.resolve(tmpdir()));
+    assert.equal(path.dirname(path.resolve(root)), await fs.realpath(tmpdir()));
     const actual = await fs.lstat(root, { bigint: true });
     assert.ok(actual.isDirectory() && !actual.isSymbolicLink() && actual.dev === identity.dev && actual.ino === identity.ino);
     await fs.rm(root, { recursive: true, force: true });

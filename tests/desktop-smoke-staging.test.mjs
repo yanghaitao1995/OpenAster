@@ -84,10 +84,10 @@ test('synthetic framework relative links remain relative and resolve wholly insi
   const destination = path.join(staged.stagedDirectory, 'Contents/Frameworks/Electron Framework.framework');
   for (const [name, target] of links) {
     const link = path.join(destination, name);
-    assert.equal((await fs.lstat(link)).isSymbolicLink(), true); assert.equal(await fs.readlink(link), target);
+    assert.equal((await fs.lstat(link)).isSymbolicLink(), true); assert.equal(await fs.readlink(link), path.normalize(target));
     assert.equal(path.isAbsolute(await fs.readlink(link)), false);
     assert.ok((await fs.realpath(link)).startsWith(staged.stagedDirectory + path.sep));
-    assert.equal(await fs.readlink(path.join(original.framework, name)), target);
+    assert.equal(await fs.readlink(path.join(original.framework, name)), path.normalize(target));
   }
   assert.equal(await fs.readFile(path.join(destination, 'Resources/resource.pak'), 'utf8'), 'framework resource');
 });

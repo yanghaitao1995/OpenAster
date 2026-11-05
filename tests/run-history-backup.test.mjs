@@ -15,10 +15,10 @@ const usage = { inputTokens: 12, outputTokens: 5, totalTokens: 17, cachedInputTo
 const missing = file => assert.rejects(fs.lstat(file), { code: 'ENOENT' });
 
 async function fixture(t) {
-  const root = await fs.mkdtemp(path.join(tmpdir(), 'openaster-history-backup-'));
+  const root = await fs.realpath(await fs.mkdtemp(path.join(tmpdir(), 'openaster-history-backup-')));
   const identity = await fs.lstat(root, { bigint: true });
   t.after(async () => {
-    assert.equal(path.dirname(path.resolve(root)), path.resolve(tmpdir()));
+    assert.equal(path.dirname(path.resolve(root)), await fs.realpath(tmpdir()));
     const current = await fs.lstat(root, { bigint: true });
     assert.ok(current.isDirectory() && !current.isSymbolicLink() && current.dev === identity.dev && current.ino === identity.ino);
     await fs.rm(root, { recursive: true, force: true });
