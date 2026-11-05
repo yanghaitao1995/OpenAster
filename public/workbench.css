@@ -445,6 +445,12 @@
 /* Web access stays a service-session setting; fetched pages are plain records. */
 .web-access-option { display: flex; align-items: center; gap: 10px; width: fit-content; min-height: 36px; font-size: 13px; color: var(--text); }
 .web-access-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--text); }
+.web-search-configuration { margin-top: 18px; font-size: 13px; }
+.web-search-configuration>label { display: block; margin-bottom: 7px; color: var(--text); }
+.web-search-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.web-search-controls select { min-width: 0; max-width: 100%; min-height: 36px; padding: 7px 30px 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--text); background: var(--surface); font: inherit; }
+.web-search-controls select:disabled { opacity: .65; }
+.web-search-summary { margin-top: 14px; }
 .composer-web-access { flex: none; padding: 0; border: 0; background: none; color: var(--muted); font-size: 11px; line-height: 1.6; white-space: nowrap; cursor: pointer; }
 .composer-web-access:hover { color: var(--text); }
 .web-tool-content { min-width: 0; }

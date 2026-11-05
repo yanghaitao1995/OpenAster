@@ -1,4 +1,5 @@
 import { renderMarkdown } from './markdown.js';
+import { createCodeBlock } from './code-block.mjs';
 import { buildTextDiff } from './text-diff.mjs';
 import { normalizeGateway } from './gateway.mjs';
 import { createCommandPalette } from './command-palette.js';
@@ -41,6 +42,13 @@ let fileEditor = null;
 let modelPicker = null, imageInput = null, commandPolicyUI = null, taskInputUI = null, queuedInputView = null;
 let workspaceManagerUI = null;
 let webAccessChange = null;
+let webSearchChange = null, webSearchDraft = null;
+const webSearchServices = Object.freeze({
+  parallel: { name:'Parallel', description:'免密钥，有限流。选择仅在本次服务有效；保存不会启用联网或发起搜索。', destination:'搜索词发往 Parallel；网页内容交给当前模型。仅本次服务有效。' },
+  bailian: { name:'百炼原生', description:'使用当前 Qwen 连接，需要支持 Responses；搜索与模型调用另计费用。选择仅在本次服务有效；保存不会发起请求。', destination:'搜索词交给当前百炼 Qwen 连接，搜索与模型调用另计费用；网页内容交给当前模型。仅本次服务有效。' },
+  duckduckgo: { name:'DuckDuckGo', description:'实验性网页入口，可能遇到验证码。选择仅在本次服务有效；保存不会启用联网或发起搜索。', destination:'搜索词发往 DuckDuckGo，可能遇到验证码；网页内容交给当前模型。仅本次服务有效。' },
+});
+const webSearchService = value => typeof value==='string'&&Object.hasOwn(webSearchServices,value)?webSearchServices[value]:null;
 const executionFlow = createExecutionFlow({ onOpenToolResult: (step, run) => {
   if (state.view !== 'chat' || state.selected?.run?.id !== run.id || !artifactRefValid(step.toolResultRef)) return;
   state.contextOpen = true; saveStorage('openaster.context', 'open'); syncContextPanel();
@@ -233,6 +241,7 @@ function renderWorkspaceIdentity(){
 }
 function resetWorkspaceContext({keepDialog=false,clearIdentity=false,cancelSummary=true}={}){
   state.webToolsSupported=false;state.webAccess=false;state.webAccessKnown=false;webAccessChange=null;
+  state.webSearchConfigurationSupported=false;state.webSearchProvider=null;webSearchChange=null;webSearchDraft=null;
   fileEditor?.invalidate('工作区已切换。文件编辑内容仍保留，不能写入当前工作区；请返回原工作区核对，或明确放弃编辑。');state.workspaceEditSupported=false;
   composerDrafts.detach(); state.storageId = ''; 
   discardProviderDiagnostics();providerDiagnosticsSupported=false;
@@ -251,7 +260,8 @@ function resetWorkspaceContext({keepDialog=false,clearIdentity=false,cancelSumma
   renderWorkspaceIdentity();renderFileList();renderSessions();renderProviders();renderSkills();renderModels();showView('home',{focus:false});connection(false,'正在连接工作空间，原工作区的未发送内容不会带入。');
 }
 function syncHarnessPermissions(data) {
-  state.webToolsSupported=data.capabilities?.webTools===1;state.webAccess=data.security?.webAccess===true;state.webAccessKnown=typeof data.security?.webAccess==='boolean';syncWebAccessControls();
+  state.webToolsSupported=data.capabilities?.webTools===1;state.webAccess=data.security?.webAccess===true;state.webAccessKnown=typeof data.security?.webAccess==='boolean';
+  state.webSearchConfigurationSupported=data.capabilities?.webSearchConfiguration===1;state.webSearchProvider=webSearchService(data.security?.webSearchProvider)?data.security.webSearchProvider:null;syncWebAccessControls();
   state.imagesSupported=data.capabilities?.images===1;
   state.skillsPath=typeof data.workspace?.skillsPath==='string'?data.workspace.skillsPath:'./skills';$('skills-path').textContent=state.skillsPath;
   imageInput?.bind(state.workspaceKey+':'+(state.composerView==='chat'&&state.selected?state.selected.id:'new'));
@@ -280,6 +290,27 @@ function syncWebAccessControls() {
   const status=$('composer-web-access');status.classList.toggle('hidden',!supported);status.textContent=!state.connected||!known?'联网：待确认':state.webAccess?'联网：开启':'联网：关闭';
   status.title=state.providers.find(item=>item.id===state.providerId)?.toolMode==='none'?'当前连接为仅对话模式，不使用网页工具。':'在设置中管理搜索网页与阅读网页。';
   $('web-access-state').textContent=webAccessChange?'正在保存…':!known?'状态待确认':state.webAccess?'已开启':'已关闭';
+  const confirmed=webSearchService(state.webSearchProvider),draft=webSearchDraft??state.webSearchProvider,selected=webSearchService(draft);
+  $('web-access-description').textContent=confirmed?.destination||'搜索服务状态待确认；网页内容交给当前模型。仅本次服务有效。';
+  $('web-search-configuration').classList.toggle('hidden',!state.webSearchConfigurationSupported);
+  $('web-search-provider').value=webSearchChange?.provider??(selected?draft:'');
+  $('web-search-provider').disabled=!supported||!state.webSearchConfigurationSupported||!confirmed||!state.connected||Boolean(webSearchChange);
+  $('web-search-save').disabled=$('web-search-provider').disabled||!selected||draft===state.webSearchProvider;
+  $('web-search-description').textContent=selected?.description||'连接工作台并确认当前搜索服务后，才可修改设置。';
+  $('web-search-status').textContent=webSearchChange?'正在保存…':!state.connected||!confirmed?'状态待确认':draft!==state.webSearchProvider?'尚未保存':`当前：${confirmed.name}`;
+}
+async function saveWebSearchProvider() {
+  const provider=webSearchDraft;
+  if(!state.webToolsSupported||!state.webSearchConfigurationSupported||!state.connected||!webSearchService(state.webSearchProvider)||!webSearchService(provider)||provider===state.webSearchProvider||webSearchChange)return;
+  const token={generation:state.generation,provider};webSearchChange=token;syncWebAccessControls();
+  try {
+    const result=await api('/api/security/web-search',{method:'POST',body:{provider}});
+    if(token.generation!==state.generation)return;
+    if(result.provider!==provider||result.lifetime!=='service-session')throw new Error('搜索服务保存结果无法确认，请重新连接后核对。');
+    state.webSearchProvider=provider;webSearchDraft=null;await refreshState();
+  } catch(error) {
+    if(token.generation===state.generation){state.webSearchProvider=null;try{await refreshState();}catch{}if(!error.staleContext)toast(error.message,true);}
+  } finally { if(webSearchChange===token){webSearchChange=null;syncWebAccessControls();} }
 }
 async function changeWebAccess(enabled) {
   if(!state.webToolsSupported||!state.connected||webAccessChange)return;
@@ -799,7 +830,15 @@ async function loadToolArtifactPage(view,offset,direction='reload'){
       const bytes=new TextEncoder().encode(content),hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),value=>value.toString(16).padStart(2,'0')).join('');
       if(!artifactViewValid(view,generation,navigation,request))return;
       if(bytes.byteLength!==artifact.bytes||hash!==artifact.sha256)throw new Error('网页原记录校验未通过，已拒绝显示。');
-      const rendered=renderWebToolResult(view.ref.name,JSON.parse(content));view.webContent.replaceChildren(rendered||el('p','context-note','此记录没有可识别的网页来源，请查看原始 JSON。'));
+      const value=JSON.parse(content),rendered=renderWebToolResult(view.ref.name,value);
+      if(rendered?.classList.contains('web-tool-result')){
+        const result=value.result,provider=webSearchService(result.provider);
+        if(provider)rendered.prepend(el('p','context-note web-search-source-provider','搜索服务：'+provider.name));
+        if(view.ref.name==='search_web'&&result.summaryKind==='model-generated'&&typeof result.summary==='string'&&result.summary){
+          const summary=el('section','web-search-summary');summary.setAttribute('aria-label','模型生成的搜索摘要');summary.append(el('p','context-note','模型生成的搜索摘要 · 非网页原文'),createCodeBlock('text',result.summary));rendered.append(summary);
+        }
+      }
+      view.webContent.replaceChildren(rendered||el('p','context-note','此记录没有可识别的网页来源，请查看原始 JSON。'));
     }
   }catch(error){if(artifactViewValid(view,generation,navigation,request)&&!error.staleContext){view.status.textContent='读取失败：'+error.message;if(view.webContent)view.webContent.replaceChildren(el('p','context-note',view.status.textContent));}}
   finally{if(artifactViewValid(view,generation,navigation,request)){view.loading=false;view.region.setAttribute('aria-busy','false');updateArtifactControls(view);}}
@@ -2065,6 +2104,8 @@ document.addEventListener('click',event=>{const node=event.target.closest('[data
 $('usage-overview').addEventListener('toggle',()=>{if($('usage-overview').open&&state.view==='settings'&&state.usageOverviewSupported&&!state.usageOverview?.snapshot&&!state.usageOverview?.loading)void loadUsageOverview();});
 $('run-history').addEventListener('toggle',()=>{const history=state.runHistory;if($('run-history').open&&history?.sessionId&&!history.loaded&&!history.loading)void loadRunHistory();});
 $('web-access-toggle').addEventListener('change',event=>void changeWebAccess(event.target.checked));
+$('web-search-provider').addEventListener('change',event=>{webSearchDraft=event.target.value;syncWebAccessControls();});
+$('web-search-save').addEventListener('click',()=>void saveWebSearchProvider());
 $('composer').addEventListener('submit',sendMessage);
 $('prompt-input').addEventListener('input',()=>{++state.draftRevision;updateComposer();composerDrafts.changed();});
 let composerComposing=false,composerCompositionEndedAt=-Infinity;
