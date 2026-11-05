@@ -26,7 +26,7 @@ async function ownedDirectory(t) {
 async function client(app) {
   const boot = await fetch(app.url + '/api/bootstrap');
   const cookie = boot.headers.get('set-cookie').split(';')[0], bootstrap = await boot.json();
-  assert.deepEqual(bootstrap.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, commandPolicy: 1, taskInput: 1, webTools: 1, progressiveSkills: 1, images: 1 });
+  assert.deepEqual(bootstrap.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, commandPolicy: 1, taskInput: 1, webTools: 1, webSearchConfiguration: 1, progressiveSkills: 1, images: 1 });
   const { csrfToken } = bootstrap;
   return async (route, { method = 'GET', body, auth = true, headers = {} } = {}) => {
     const response = await fetch(app.url + route, {
@@ -97,7 +97,7 @@ for (const type of ['openai', 'responses', 'anthropic', 'ollama']) {
       assert.equal(supplied.attached_files[0].sha256, hash(content));
       assert.equal(supplied.attached_files[0].content, content);
       assert.ok(!JSON.stringify(calls[0]).includes('NOT_SELECTED_PRIVATE_TEXT'));
-      const currentState = await request('/api/state'); assert.deepEqual(currentState.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, commandPolicy: 1, taskInput: 1, webTools: 1, progressiveSkills: 1, images: 1 });
+      const currentState = await request('/api/state'); assert.deepEqual(currentState.capabilities, { contextFiles: 1, toolArtifacts: 1, usageOverview: 1, conversationBranch: 1, conversationHandoff: 1, handoffDraft: 1, workspaceSearch: 1, workspaceIgnore: 1, workspaceDirectory: 1, workspaceEdit: 1, providerDiagnostics: 1, permissions: 1, commandPolicy: 1, taskInput: 1, webTools: 1, webSearchConfiguration: 1, progressiveSkills: 1, images: 1 });
       assert.ok(!JSON.stringify(currentState).includes('<script>not executable</script>'));
       assert.deepEqual((await request('/api/export')).sessions.find(item => item.id === session.id).messages[0].contextFiles, done.messages[0].contextFiles);
       await fs.writeFile(path.join(root, 'workspace', 'src', '资料.md'), 'NEW_DISK_TEXT_NOT_SELECTED');

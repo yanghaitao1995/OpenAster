@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, access } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, access, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runWindowsCommand } from '../core/windows-command.mjs';
@@ -10,14 +10,18 @@ const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ['s
 const options = { skip: process.platform !== 'win32', timeout: 30000 };
 const quoted = value => "'" + value.replaceAll("'", "''") + "'";
 async function fixture(fn) {
-  const cwd=await mkdtemp(path.join(os.tmpdir(),'openaster-job-test-'));
+  const cwd=await mkdtemp(path.join(await realpath(os.tmpdir()),'openaster-job-test-'));
   try { await fn(cwd); } finally { await rm(cwd,{recursive:true,force:true}); }
 }
 test('Windows command captures UTF-8 output, exit code, cwd and isolated environment', options, async()=>fixture(async cwd=>{
   let started=0;
   const result=await runWindowsCommand({command:"[Console]::WriteLine('你好'); [Console]::Error.WriteLine('error'); [Console]::WriteLine((Get-Location).Path); [Console]::WriteLine($env:OPENASTER_TEST_SECRET); exit 7",cwd,env,timeoutMs:15000,onStarted:()=>{started++;}});
   assert.equal(started,1); assert.equal(result.exitCode,7); assert.equal(result.timedOut,false);
-  assert.match(result.stdout,/你好/); assert.ok(result.stdout.includes(cwd)); assert.equal(result.stderr.trim(),'error'); assert.doesNotMatch(result.stdout,/do-not-inherit/);
+  assert.match(result.stdout,/你好/);
+  const reportedCwd = result.stdout.split(/\r?\n/u)[1];
+  assert.ok(path.isAbsolute(reportedCwd), 'shell reports an absolute working directory');
+  assert.equal((await realpath(reportedCwd)).toLowerCase(), (await realpath(cwd)).toLowerCase(), 'shell actually runs in the selected directory');
+  assert.equal(result.stderr.trim(),'error'); assert.doesNotMatch(result.stdout,/do-not-inherit/);
 }));
 test('Windows approval persistence failure prevents any command execution', options, async()=>fixture(async cwd=>{
   const file=path.join(cwd,'must-not-exist'); const error=new Error('durability failed');

@@ -10,10 +10,15 @@ import { createWorkspace, MAX_FILE_BYTES } from '../core/workspace.mjs';
 
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 async function fixture(t, options = {}) {
-  const base = await fs.mkdtemp(path.join(os.tmpdir(), 'openaster-edit-'));
+  const parent = await fs.realpath(os.tmpdir());
+  const base = await fs.mkdtemp(path.join(parent, 'openaster-edit-'));
   const root = path.join(base, 'workspace');
   await fs.mkdir(root);
-  t.after(() => fs.rm(base, { recursive: true, force: true }));
+  t.after(async () => {
+    assert.equal(await fs.realpath(base), base);
+    assert.equal(path.dirname(base), parent);
+    await fs.rm(base, { recursive: true, force: true });
+  });
   return { base, root, workspace: createWorkspace(root, options) };
 }
 async function put(root, content, relative = 'file.txt') {

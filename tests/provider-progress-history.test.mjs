@@ -16,7 +16,8 @@ import { CoreError } from '../core/errors.mjs';
 async function until(check) { for (let index = 0; index < 1000; index++) { if (check()) return; await new Promise(resolve => setTimeout(resolve, 5)); } throw new Error('Progress history fixture timed out'); }
 
 test('retry metadata, public model explanation and an absolute write record survive backup without replaying external files', async t => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'openaster-progress-history-'));
+  const tempRoot = await fs.realpath(os.tmpdir());
+  const root = await fs.mkdtemp(path.join(tempRoot, 'openaster-progress-history-'));
   const dataDir = path.join(root, 'data'), workspacePath = path.join(dataDir, 'workspace'), external = path.join(root, 'outside');
   await fs.mkdir(workspacePath, { recursive: true }); await fs.mkdir(external);
   let store = new Store(dataDir), runtime;
@@ -32,7 +33,12 @@ test('retry metadata, public model explanation and an absolute write record surv
       return { content: '已完成', toolCalls: [] };
     } });
   await runtime.start(session.id, { content: 'Create the fixture file' });
-  await until(() => store.getSession(session.id).approvals.length === 1);
+  await until(() => {
+    const current = store.getSession(session.id);
+    if (current.approvals.length === 1) return true;
+    assert.ok(runtime.isActive(session.id), `Run ended without the expected approval: ${JSON.stringify({ status: current.run?.status, error: current.run?.error, failedSteps: current.run?.steps.filter(step => step.status === 'failed').map(step => ({ title: step.title, detail: step.detail })) })}`);
+    return false;
+  });
   await runtime.decide(store.getSession(session.id).approvals[0].id, 'approve');
   await until(() => !runtime.isActive(session.id));
   const saved = store.getSession(session.id); assert.equal(saved.run.status, 'completed');

@@ -15,20 +15,24 @@ const provider = { name: '模型能力测试', type: 'openai', model: 'fixture-m
 const legacy = { ...provider, id: 'legacy-provider', enabled: true };
 const hash = value => createHash('sha256').update(value).digest('hex');
 async function temporary(t) {
-  const root = await fs.mkdtemp(path.join(tmpdir(), 'openaster-tool-mode-'));
+  const parent = await fs.realpath(tmpdir());
+  const root = await fs.mkdtemp(path.join(parent, 'openaster-tool-mode-'));
   t.after(async () => {
-    assert.ok(path.resolve(root).startsWith(path.resolve(tmpdir()) + path.sep));
+    assert.equal(await fs.realpath(root), root);
+    assert.equal(path.dirname(root), parent);
     await fs.rm(root, { recursive: true, force: true });
   });
   return root;
 }
 async function serverFixture(t, providers = []) {
-  const root = await fs.mkdtemp(path.join(tmpdir(), 'openaster-tool-mode-http-'));
+  const parent = await fs.realpath(tmpdir());
+  const root = await fs.mkdtemp(path.join(parent, 'openaster-tool-mode-http-'));
   const dataDir = path.join(root, 'data');
   let app, cookie, csrfToken;
   t.after(async () => {
     await app?.close();
-    assert.ok(path.resolve(root).startsWith(path.resolve(tmpdir()) + path.sep));
+    assert.equal(await fs.realpath(root), root);
+    assert.equal(path.dirname(root), parent);
     await fs.rm(root, { recursive: true, force: true });
   });
   await fs.mkdir(dataDir);

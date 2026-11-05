@@ -10,6 +10,7 @@ import { startServer } from '../server/index.mjs';
 import { Store } from '../server/store.mjs';
 import { acquireDataLock } from '../server/lock.mjs';
 import { createBackup, restoreBackup } from '../server/backup.mjs';
+import { DRAFT_LIMITS } from '../public/composer-drafts.mjs';
 
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u;
 const cleanupOperations = new Map();
@@ -149,12 +150,27 @@ test('strict JSON fields, UTF-8, individual and total limits reject before any r
     { ...base, drafts: [draft({ text: '\ud800' })] }, { ...base, drafts: [draft({ text: 'bad\0text' })] },
   ];
   for (const data of invalid) assert.equal((await f.request('/api/device-drafts', { method: 'POST', data })).status, 400);
-  for (const drafts of [Array.from({ length: 21 }, (_, i) => draft({ slot: 'draft-' + i })), [draft({ text: 'x'.repeat(16001) })], [draft({ files: [{ path: 'a', sha256: 'b'.repeat(64), bytes: 262145 }] })], Array.from({ length: 20 }, (_, i) => draft({ slot: 'large-' + i, text: '\u0001'.repeat(5000) }))]) {
-    const response = await f.request('/api/device-drafts', { method: 'POST', data: { ...base, drafts } }); assert.equal(response.status, 413);
+  const totalDrafts = Array.from({ length: 20 }, (_, i) => draft({ slot: 'large-' + i, text: '\u0001'.repeat(4320) }));
+  // Exercise the logical snapshot limit without triggering transport rejection.
+  const snapshotBytes = Buffer.byteLength(JSON.stringify({ version: 1, revision: randomUUID(), drafts: totalDrafts }));
+  const requestBytes = Buffer.byteLength(JSON.stringify({ ...base, drafts: totalDrafts }));
+  assert.ok(snapshotBytes > DRAFT_LIMITS.snapshotBytes);
+  assert.ok(requestBytes <= DRAFT_LIMITS.snapshotBytes + 1024);
+  for (const drafts of [Array.from({ length: 21 }, (_, i) => draft({ slot: 'draft-' + i })), [draft({ text: 'x'.repeat(16001) })], [draft({ files: [{ path: 'a', sha256: 'b'.repeat(64), bytes: 262145 }] })], totalDrafts]) {
+    const response = await f.request('/api/device-drafts', { method: 'POST', data: { ...base, drafts } }); assert.equal(response.status, 413); assert.equal(response.data.error.code, 'DRAFT_LIMIT');
   }
   const utf8 = await f.request('/api/device-drafts', { method: 'POST', raw: Buffer.from([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x31, 0x7d]) }); assert.equal(utf8.status, 400);
-  const oversized = await f.request('/api/device-drafts', { method: 'POST', raw: '{"padding":"' + 'x'.repeat(526000) + '"}' }); assert.equal(oversized.status, 413);
+  const raw = '{"padding":"' + 'x'.repeat(526000) + '"}';
+  assert.ok(Buffer.byteLength(raw) > DRAFT_LIMITS.snapshotBytes + 1024);
+  // An early exit from the request stream may close its socket before the 413
+  // arrives. Accept only that explicit transport rejection, never arbitrary errors.
+  await f.request('/api/device-drafts', { method: 'POST', raw }).then(response => {
+    assert.equal(response.status, 413); assert.equal(response.data.error.code, 'BODY_TOO_LARGE');
+  }, cause => {
+    assert.ok(cause instanceof TypeError && ['ECONNRESET', 'UND_ERR_SOCKET'].includes(cause.cause?.code), 'Expected a 413 response or an explicit request-stream socket reset');
+  });
   assert.equal(f.repository.calls.length, 0);
+  const health = await f.request('/api/health'); assert.equal(health.status, 200); assert.equal(health.data.ok, true);
 });
 
 test('concurrent HTTP saves with the same expected revision cannot silently overwrite each other', async t => {
