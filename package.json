@@ -1,11 +1,12 @@
 {
   "name": "openaster",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "An open, local-first agent workspace",
   "type": "module",
   "main": "desktop/main.mjs",
   "author": "OpenAster contributors",
+  "homepage": "https://github.com/yanghaitao1995/OpenAster",
   "packageManager": "pnpm@11.25.0",
   "license": "Apache-2.0",
   "engines": {
