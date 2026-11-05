@@ -210,7 +210,7 @@ export async function startServer(options={}) {
   const agentWorkspace=createComputerWorkspace({workspace,getFileAccess:()=>fileAccess,protectedRoots:[dataDir,ROOT]});
   const runtime=createRuntime({workspace:agentWorkspace,skillRegistry,steeringInbox:store.steeringInbox,providers:providerWithSecret,getSession:async id=>store.getSession(id),saveSession:async(session,metadata)=>store.putSession(session,metadata),reserveArtifact:request=>store.reserveArtifact(request),releaseArtifact:token=>store.releaseArtifact(token),emit:({sessionId,type,runId,stepId})=>type==='stream'?send('stream',{sessionId,runId,stepId}):send('update',{sessionId}),audit,createId:randomUUID,...options.runtimeOptions});
   const commandApprovals=createCommandApprovalService({runtime});
-  const state=async()=>({version:VERSION,capabilities:{contextFiles:1,toolArtifacts:1,usageOverview:1,conversationBranch:1,conversationHandoff:1,handoffDraft:1,workspaceSearch:1,workspaceIgnore:1,workspaceDirectory:1,workspaceEdit:1,providerDiagnostics:1,permissions:1,commandPolicy:1,taskInput:1,webTools:1,progressiveSkills:1,images:1,...(options.workspaceManager?{workspaceManagement:1}:{}),...(options.workspaceActions&&!gatewayOrigin?{workspaceActions:1}:{}),...(deviceDraftStore?{deviceDrafts:1}:{})},workspace:{id:options.workspaceId??null,storageId:store.getStorageIdentity(),name:options.workspaceName??'我的工作区',path:workspacePath,location:'service-host',skillsPath:skillsDirectory,projectMode:options.workspaceOptions?.projectScan===true,sensitiveFilesExcluded:options.workspaceOptions?.denySensitivePaths===true},providers:await publicProviders(),sessions:store.listSessionSummaries(),skills:await skillRegistry.catalog(),security:{localOnly:!gatewayOrigin,approvalsRequired:true,shellEnabled:true,shellApproval:"smart-or-task-grant",fileAccess,fileAccessLifetime:'service-session',webAccess:runtime.getWebAccess(),webSearchProvider:'duckduckgo',computerAccessAvailable:!gatewayOrigin,keyStorage:options.secretStore?'os-encrypted':'memory-only',gatewayEnabled:Boolean(gatewayOrigin),telemetry:false}});
+  const state=async()=>({version:VERSION,capabilities:{contextFiles:1,toolArtifacts:1,usageOverview:1,conversationBranch:1,conversationHandoff:1,handoffDraft:1,workspaceSearch:1,workspaceIgnore:1,workspaceDirectory:1,workspaceEdit:1,providerDiagnostics:1,permissions:1,commandPolicy:1,taskInput:1,webTools:1,webSearchConfiguration:1,progressiveSkills:1,images:1,...(options.workspaceManager?{workspaceManagement:1}:{}),...(options.workspaceActions&&!gatewayOrigin?{workspaceActions:1}:{}),...(deviceDraftStore?{deviceDrafts:1}:{})},workspace:{id:options.workspaceId??null,storageId:store.getStorageIdentity(),name:options.workspaceName??'我的工作区',path:workspacePath,location:'service-host',skillsPath:skillsDirectory,projectMode:options.workspaceOptions?.projectScan===true,sensitiveFilesExcluded:options.workspaceOptions?.denySensitivePaths===true},providers:await publicProviders(),sessions:store.listSessionSummaries(),skills:await skillRegistry.catalog(),security:{localOnly:!gatewayOrigin,approvalsRequired:true,shellEnabled:true,shellApproval:"smart-or-task-grant",fileAccess,fileAccessLifetime:'service-session',webAccess:runtime.getWebAccess(),webSearchProvider:runtime.getWebSearchProvider(),computerAccessAvailable:!gatewayOrigin,keyStorage:options.secretStore?'os-encrypted':'memory-only',gatewayEnabled:Boolean(gatewayOrigin),telemetry:false}});
   async function draftOperation(operation) {
     if(closing)throw error(503,'SHUTTING_DOWN','服务正在停止，未开始保存草稿。');
     const work=Promise.resolve().then(operation);draftOperations.add(work);
@@ -304,6 +304,16 @@ export async function startServer(options={}) {
           const key=auth.csrfToken;let rate=rateBuckets.get(key);if(!rate || rate.until<Date.now()) {rate={count:0,until:Date.now()+60000};rateBuckets.set(key,rate);} if(++rate.count>180) throw error(429,'RATE_LIMIT','操作过于频繁，请稍后重试。');
         }
         if(path==='/api/state' && method==='GET') return json(res,200,await state());
+        if(path==='/api/security/web-search'&&method==='POST') {
+          const value=await body(req,{maxBytes:1024,strictUTF8:true});
+          if(url.search||Object.keys(value).length!==1||typeof value.provider!=='string')throw error(400,'INVALID_SEARCH_PROVIDER','搜索设置仅接受 provider 字段。');
+          const previous=runtime.getWebSearchProvider();
+          runtime.setWebSearchProvider(value.provider);
+          try{audit({action:'web.search-provider.changed',detail:{from:previous,to:value.provider,lifetime:'service-session'}});}
+          catch(cause){runtime.setWebSearchProvider(previous);throw cause;}
+          send('state',{});
+          return json(res,200,{provider:runtime.getWebSearchProvider(),lifetime:'service-session'});
+        }
         if(path==='/api/security/web-access'&&method==='POST') {
           const value=await body(req,{maxBytes:1024,strictUTF8:true});
           if(url.search||Object.keys(value).length!==1||typeof value.enabled!=='boolean')throw error(400,'INVALID_WEB_PERMISSION','联网设置仅接受 enabled 布尔值。');
@@ -313,7 +323,7 @@ export async function startServer(options={}) {
           audit({action:'permissions.web.changed',detail:{from,to:value.enabled,lifetime:'service-session'}});
           if(value.enabled)runtime.setWebAccess(true);
           send('state',{});
-          return json(res,200,{enabled:runtime.getWebAccess(),webAccess:runtime.getWebAccess(),lifetime:'service-session',webSearchProvider:'duckduckgo'});
+          return json(res,200,{enabled:runtime.getWebAccess(),webAccess:runtime.getWebAccess(),lifetime:'service-session',webSearchProvider:runtime.getWebSearchProvider()});
         }
         if(path==='/api/projects'||path.startsWith('/api/projects/')) {
           if(!options.workspaceManager)throw error(409,'WORKSPACE_MANAGEMENT_UNAVAILABLE','此服务尚未启用项目管理，请更新主机应用后重连。');
