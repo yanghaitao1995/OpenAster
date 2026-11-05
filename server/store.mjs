@@ -1,4 +1,6 @@
 import { validateImages } from '../core/image-attachments.mjs';
+import { STEERING_LIMITS } from '../core/steering-input.mjs';
+import { createSteeringStore, validateSteeringTable, STEERING_TABLE_SQL, steeringFromRow } from './steering-store.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, lstatSync } from 'node:fs';
 import { join } from 'node:path';
@@ -96,7 +98,8 @@ export class Store {
       // A newer application may own this file. Reject before any writable pragma
       // or schema operation, rather than silently downgrading its version.
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (![0, 1, 2, 3, 4, 5, 6].includes(version)) throw new CoreError('UNSUPPORTED_DATABASE_VERSION', '此数据库由更新版本创建，请使用兼容的应用版本。', 503);
+      if (![0, 1, 2, 3, 4, 5, 6, 7].includes(version)) throw new CoreError('UNSUPPORTED_DATABASE_VERSION', '此数据库由更新版本创建，请使用兼容的应用版本。', 503);
+      if (version >= 7) validateSteeringTable(this.db);
       if (version >= 6) validateSummaryTable(this.db);
       if (version >= 4 && (!this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='usage_runs'").get()
         || !this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='usage_meta'").get())) throw new CoreError('INVALID_USAGE_PROJECTION', '用量投影表缺失，请保留数据并检查数据库。', 503);
@@ -135,6 +138,8 @@ export class Store {
       );
       CREATE INDEX IF NOT EXISTS summary_jobs_order ON summary_jobs(session_id,created_at DESC,id DESC);
       CREATE TABLE IF NOT EXISTS usage_meta (id INTEGER PRIMARY KEY CHECK(id=1), revision TEXT NOT NULL, identity TEXT NOT NULL);`);
+        this.db.exec(STEERING_TABLE_SQL);
+        this.steeringInbox = createSteeringStore(this);
         if (version < 4) this.db.prepare("INSERT OR IGNORE INTO usage_meta(id,revision,identity) VALUES(1,'0',?)").run(randomUUID());
         this.#usageRevision();
         if (!this.db.prepare('SELECT id FROM providers LIMIT 1').get()) this.putProvider({ id: 'demo', name: '本地演示', type: 'demo', model: 'deterministic-demo', baseUrl: '', enabled: true });
@@ -177,9 +182,10 @@ export class Store {
           const value = this.#summaryFromRow(row);
           this.putSummaryDraft(interruptSummaryDraft(value, { code: 'SERVICE_RESTARTED', message: '服务已重启，摘要生成已停止；已发出的请求可能已产生用量，请勿自动重试。' }));
         }
-        // Version 6 protects independent summary receipts and their usage from
-        // older writers. It does not rewrite ordinary task or run history data.
-        this.db.exec('PRAGMA user_version=6;');
+        // Version 7 protects the independent steering inbox from older writers.
+        // Restart never resumes paid requests or silently consumes queued input.
+        this.steeringInbox.interruptPending({ code: 'SERVICE_RESTARTED', message: '服务已重启，此追加消息尚未处理。请核对内容后明确重新发送；不会自动重试。' });
+        this.db.exec('PRAGMA user_version=7;');
       });
     } catch (error) {
       this.db.close();
@@ -218,16 +224,19 @@ export class Store {
         (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM sessions)
         + (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM run_history)
         + (SELECT COALESCE(SUM(length(CAST(${artifactJson} AS BLOB))),0) FROM tool_artifacts)
-        + (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM summary_jobs) AS bytes,
+        + (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM summary_jobs)
+        + (SELECT COALESCE(SUM(length(CAST(value AS BLOB))),0) FROM steering_inputs) AS bytes,
         (SELECT count(*) FROM run_history) AS historyCount,
         (SELECT count(*) FROM tool_artifacts) AS artifactCount,
-        (SELECT count(*) FROM summary_jobs) AS summaryCount`).get();
-      if (budget.bytes > maxBytes || budget.historyCount > 200000 || budget.artifactCount > 200000 || budget.summaryCount > SUMMARY_STORAGE_LIMITS.jobs) throw new CoreError('EXPORT_TOO_LARGE', '任务、执行历史、工具结果与摘要草稿超过导出上限。请停止应用后使用离线备份。', 413);
+        (SELECT count(*) FROM summary_jobs) AS summaryCount,
+        (SELECT count(*) FROM steering_inputs) AS steeringCount`).get();
+      if (budget.bytes > maxBytes || budget.historyCount > 200000 || budget.artifactCount > 200000 || budget.summaryCount > SUMMARY_STORAGE_LIMITS.jobs || budget.steeringCount > STEERING_LIMITS.records) throw new CoreError('EXPORT_TOO_LARGE', '任务、执行历史、工具结果与待处理消息超过导出上限。请停止应用后使用离线备份。', 413);
       return {
         sessions: this.db.prepare('SELECT value FROM sessions ORDER BY updated_at DESC').all().map(row => JSON.parse(row.value)),
         runHistory: this.db.prepare('SELECT value FROM run_history ORDER BY session_id,started_at DESC,run_id DESC').all().map(row => JSON.parse(row.value)),
         toolArtifacts: this.db.prepare(`SELECT ${ARTIFACT_COLUMNS} FROM tool_artifacts ORDER BY session_id,run_id,id`).all().map(artifactFromRow),
         summaryJobs: this.db.prepare('SELECT session_id,id,created_at,status,value FROM summary_jobs ORDER BY session_id,created_at,id').all().map(row => this.#summaryFromRow(row)),
+        steeringInputs: this.db.prepare('SELECT * FROM steering_inputs ORDER BY session_id,sequence').all().map(steeringFromRow),
       };
     });
   }
@@ -297,7 +306,10 @@ export class Store {
     return { sessionId: row.sessionId, updatedAt: row.updatedAt,
       run: row.runType === 'object' ? { id: row.runId, status: row.runStatus, output } : null };
   }
-  putSession(session, { artifacts = [], reservation, createOnly = false } = {}) {
+  putSession(session, { artifacts = [], reservation, createOnly = false, consumeInputs } = {}) {
+    // The inbox is canonical in its independent table. A runtime snapshot can
+    // neither overwrite inputs received during a model call nor forge receipts.
+    const { queuedInputs: _queuedInputs, ...canonical } = session; session = canonical;
     if (typeof createOnly !== 'boolean') throw new CoreError('INVALID_SESSION', '任务保存选项无效。');
     const handoff = sessionHandoff(session);
     if (Object.hasOwn(session, 'branch')) {
@@ -327,6 +339,7 @@ export class Store {
         if (!isDeepStrictEqual(previous, handoff)) throw new CoreError('CONTEXT_HANDOFF_IMMUTABLE', '已保存的交接摘要不能添加、删除或修改，请创建新续接任务。', 409);
       }
       this.db.prepare('INSERT INTO sessions(id,updated_at,value) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at,value=excluded.value').run(session.id, session.updatedAt, json);
+      if (consumeInputs !== undefined) this.steeringInbox.consume(session, consumeInputs);
       this.#saveArtifacts(session.id, session.run, artifacts, reservation);
       if (history) this.putRunHistory(history);
       else this.#putUsage(session.id, session.run, 'current');

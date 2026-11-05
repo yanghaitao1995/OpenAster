@@ -9,6 +9,8 @@ import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { isDeepStrictEqual } from 'node:util';
 import { Store, SUMMARY_STORAGE_LIMITS } from './store.mjs';
+import { STEERING_LIMITS, validateSteeringRecord } from '../core/steering-input.mjs';
+import { STEERING_COLUMNS, validateSteeringTable } from './steering-store.mjs';
 import { acquireDataLock } from './lock.mjs';
 import { validateRelativePath } from '../core/workspace.mjs';
 import { validateOperationPath } from '../core/access-path.mjs';
@@ -31,7 +33,7 @@ const usageFields = ['inputTokens', 'outputTokens', 'totalTokens', 'cachedInputT
 const hash = value => createHash('sha256').update(value).digest('hex');
 const bytes = value => Buffer.byteLength(JSON.stringify(value));
 const fail = (code, message) => Object.assign(new Error(message), { code });
-const invalid = () => fail('INVALID_BACKUP', '备份内容不符合 OpenAster v1/v2/v3/v4/v5/v6/v7 数据格式或容量限制。');
+const invalid = () => fail('INVALID_BACKUP', '备份内容不符合 OpenAster v1–v9 数据格式或容量限制。');
 const requireValue = condition => { if (!condition) throw invalid(); };
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 function shape(value, allowed, required = allowed) {
@@ -220,8 +222,8 @@ function validateRunHistory(record, sessions, version) {
   }
   requireValue(bytes(record) <= BACKUP_LIMITS.sessionBytes);
 }
-function validatePayload(payload, version = 8) {
-  shape(payload, ['createdAt', 'providers', 'sessions', 'audit', 'workspace', ...(version >= 2 ? ['runHistory'] : []), ...(version >= 4 ? ['toolArtifacts'] : []), ...(version >= 7 ? ['summaryJobs'] : [])]); timestamp(payload.createdAt);
+function validatePayload(payload, version = 9) {
+  shape(payload, ['createdAt', 'providers', 'sessions', 'audit', 'workspace', ...(version >= 2 ? ['runHistory'] : []), ...(version >= 4 ? ['toolArtifacts'] : []), ...(version >= 7 ? ['summaryJobs'] : []), ...(version >= 9 ? ['steeringInputs'] : [])]); timestamp(payload.createdAt);
   limitedArray(payload.providers, BACKUP_LIMITS.providers); limitedArray(payload.sessions, BACKUP_LIMITS.sessions);
   limitedArray(payload.audit, BACKUP_LIMITS.audit); limitedArray(payload.workspace, BACKUP_LIMITS.entries);
   const providerIds = unique(payload.providers); requireValue(providerIds.has('demo'));
@@ -280,13 +282,30 @@ function validatePayload(payload, version = 8) {
       requireValue(count <= SUMMARY_STORAGE_LIMITS.perSession && size <= SUMMARY_STORAGE_LIMITS.jobBytes && total <= SUMMARY_STORAGE_LIMITS.bytes);
     }
   }
+  if (version >= 9) {
+    limitedArray(payload.steeringInputs, STEERING_LIMITS.records);
+    const sessions = new Map(payload.sessions.map(session => [session.id, session])), keys = new Set(), sequences = new Set(), counts = new Map(), sizes = new Map(); let total = 0;
+    const runIds = new Set([...payload.sessions.filter(session => session.run).map(session => `${session.id}\0${session.run.id}`), ...payload.runHistory.map(record => `${record.sessionId}\0${record.run.id}`)]);
+    for (const raw of payload.steeringInputs) {
+      let value; try { value = validateSteeringRecord(raw); } catch { throw invalid(); }
+      const session = sessions.get(value.sessionId), key = `${value.sessionId}\0${value.requestId}`, sequence = `${value.sessionId}\0${value.sequence}`;
+      requireValue(session && !keys.has(key) && !sequences.has(sequence)); keys.add(key); sequences.add(sequence);
+      const count = (counts.get(value.sessionId) ?? 0) + 1, size = (sizes.get(value.sessionId) ?? 0) + bytes(value); counts.set(value.sessionId, count); sizes.set(value.sessionId, size); total += bytes(value);
+      requireValue(count <= STEERING_LIMITS.perSession && size <= STEERING_LIMITS.sessionBytes && total <= STEERING_LIMITS.bytes);
+      if (value.status === 'consumed') {
+        const message = session.messages.find(message => message.id === value.requestId);
+        requireValue(runIds.has(`${value.sessionId}\0${value.runId}`) && message?.role === 'user' && message.content === value.content
+          && isDeepStrictEqual(message.images ?? [], value.images) && isDeepStrictEqual(message.contextFiles ?? [], value.contextFiles));
+      }
+    }
+  }
   unique(payload.audit);
   for (const entry of payload.audit) {
     shape(entry, ['id', 'time', 'action', 'detail', 'sessionId']);
     requireValue(Number.isSafeInteger(entry.id) && entry.id > 0); timestamp(entry.time); text(entry.action, 100); text(entry.detail, 2000);
     if (entry.sessionId !== null) id(entry.sessionId); // Deleted sessions remain in the audit trail.
   }
-  let size = bytes(payload.providers) + bytes(payload.sessions) + bytes(payload.audit) + (version >= 2 ? bytes(payload.runHistory) : 0) + (version >= 4 ? bytes(payload.toolArtifacts) : 0) + (version >= 7 ? bytes(payload.summaryJobs) : 0);
+  let size = bytes(payload.providers) + bytes(payload.sessions) + bytes(payload.audit) + (version >= 2 ? bytes(payload.runHistory) : 0) + (version >= 4 ? bytes(payload.toolArtifacts) : 0) + (version >= 7 ? bytes(payload.summaryJobs) : 0) + (version >= 9 ? bytes(payload.steeringInputs) : 0);
   const paths = new Map();
   for (const entry of payload.workspace) {
     requireValue(object(entry));
@@ -464,8 +483,9 @@ async function readLogicalData(dataDir, validateRoot) {
   try {
     db.exec('PRAGMA query_only=ON; PRAGMA trusted_schema=OFF; BEGIN;');
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    // Usage remains a derived projection; schema 6 adds canonical summary jobs.
-    requireValue([1, 2, 3, 4, 5, 6].includes(version));
+    // Usage is derived; schema 6 adds summary jobs, schema 7 the durable inbox.
+    requireValue([1, 2, 3, 4, 5, 6, 7].includes(version));
+    if (version >= 7) { try { validateSteeringTable(db); } catch { throw invalid(); } }
     for (const table of ['providers', 'sessions', 'audit', ...(version >= 2 ? ['run_history'] : []), ...(version >= 3 ? ['tool_artifacts'] : []), ...(version >= 6 ? ['summary_jobs'] : [])]) {
       const item = db.prepare('SELECT type,sql FROM sqlite_schema WHERE name=?').get(table);
       requireValue(item?.type === 'table' && /^CREATE TABLE /i.test(item.sql) && !/\bVIRTUAL\b/i.test(item.sql));
@@ -495,6 +515,7 @@ async function readLogicalData(dataDir, validateRoot) {
     if (version >= 2) tables.push(['run_history', ['session_id', 'run_id', 'started_at', 'summary_json', 'value'], BACKUP_LIMITS.runHistory, BACKUP_LIMITS.sessionBytes + 4096]);
     if (version >= 3) tables.push(['tool_artifacts', artifactColumns, BACKUP_LIMITS.toolArtifacts, TOOL_ARTIFACT_LIMITS.maxBytes + 4096]);
     if (version >= 6) tables.push(['summary_jobs', summaryColumns, BACKUP_LIMITS.summaryJobs, SUMMARY_STORAGE_LIMITS.jobBytes + 400]);
+    if (version >= 7) tables.push(['steering_inputs', STEERING_COLUMNS, STEERING_LIMITS.records, STEERING_LIMITS.recordBytes + 400]);
     for (const [table, columns, count, rowLimit] of tables) {
       const expression = columns.map(column => `COALESCE(length(CAST(${column} AS BLOB)),0)`).join('+');
       const size = db.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(${expression}),0) AS size, COALESCE(MAX(${expression}),0) AS largest FROM ${table}`).get();
@@ -532,7 +553,11 @@ async function readLogicalData(dataDir, validateRoot) {
       requireValue(draft.sessionId === row.session_id && draft.id === row.id && draft.createdAt === row.created_at && draft.status === row.status);
       return draft;
     });
-    return { providers, sessions, audit, runHistory, toolArtifacts, summaryJobs };
+    const steeringInputs = version < 7 ? [] : db.prepare('SELECT session_id,request_id,sequence,status,CAST(value AS BLOB) AS value FROM steering_inputs ORDER BY session_id,sequence').all().map(row => {
+      let value; try { value = validateSteeringRecord(parse(row.value)); } catch { throw invalid(); }
+      requireValue(value.sessionId === row.session_id && value.requestId === row.request_id && value.sequence === row.sequence && value.status === row.status); return value;
+    });
+    return { providers, sessions, audit, runHistory, toolArtifacts, summaryJobs, steeringInputs };
   } finally { db.close(); }
 }
 async function unlinkOwned(file, original, root, rootIdentity) {
@@ -564,7 +589,7 @@ export async function createBackup({ dataDir, output, workspace = path.join(data
     const logical = await readLogicalData(source.path, validateRoot);
     const snapshot = await workspaceSnapshot(work.path, bytes(logical), { validateRoot, denySensitivePaths });
     const payload = validatePayload({ createdAt: new Date().toISOString(), ...logical, workspace: snapshot.entries });
-    const envelope = { format: 'openaster-backup', version: 8, payload, sha256: hash(JSON.stringify(payload)) };
+    const envelope = { format: 'openaster-backup', version: 9, payload, sha256: hash(JSON.stringify(payload)) };
     const serialized = JSON.stringify(envelope);
     if (Buffer.byteLength(serialized) > BACKUP_LIMITS.archiveBytes) throw fail('BACKUP_LIMIT', 'JSON 备份超过 128 MiB。');
     await sameDirectory(source.path, source.stat); await snapshot.verify();
@@ -574,7 +599,7 @@ export async function createBackup({ dataDir, output, workspace = path.join(data
     await snapshot.verify(); await sameDirectory(source.path, source.stat);
     const finished = await inspectAbsolute(target.path, 'file');
     if (identity(finished.stat) !== identity(owned)) throw fail('SOURCE_CHANGED', '备份输出在写入期间被替换。');
-    return { path: target.path, sha256: hash(serialized), payloadSha256: envelope.sha256, bytes: Buffer.byteLength(serialized), sessions: payload.sessions.length, runHistory: payload.runHistory.length, toolArtifacts: payload.toolArtifacts.length, summaryJobs: payload.summaryJobs.length, audit: payload.audit.length, workspaceEntries: payload.workspace.length };
+    return { path: target.path, sha256: hash(serialized), payloadSha256: envelope.sha256, bytes: Buffer.byteLength(serialized), sessions: payload.sessions.length, runHistory: payload.runHistory.length, toolArtifacts: payload.toolArtifacts.length, summaryJobs: payload.summaryJobs.length, steeringInputs: payload.steeringInputs.length, audit: payload.audit.length, workspaceEntries: payload.workspace.length };
   } catch (error) {
     await handle?.close().catch(() => {});
     if (owned) {
@@ -608,7 +633,7 @@ export async function restoreBackup({ input, dataDir }) {
   let envelope;
   try { envelope = JSON.parse(data.content); } catch { throw invalid(); }
   shape(envelope, ['format', 'version', 'payload', 'sha256']);
-    requireValue(envelope.format === 'openaster-backup' && [1, 2, 3, 4, 5, 6, 7, 8].includes(envelope.version) && typeof envelope.sha256 === 'string' && HASH.test(envelope.sha256));
+    requireValue(envelope.format === 'openaster-backup' && [1, 2, 3, 4, 5, 6, 7, 8, 9].includes(envelope.version) && typeof envelope.sha256 === 'string' && HASH.test(envelope.sha256));
   if (hash(JSON.stringify(envelope.payload)) !== envelope.sha256) throw fail('BACKUP_HASH_MISMATCH', '备份 payload SHA256 不匹配；没有恢复任何内容。');
   const payload = validatePayload(envelope.payload, envelope.version);
   let rootStat, release, store, restoredHistoryCount = 0;
@@ -668,7 +693,7 @@ export async function restoreBackup({ input, dataDir }) {
     const restoredFiles = await workspaceSnapshot(work, 0);
     const expectedEntries = new Map(payload.workspace.map(entry => [entry.path, entry]));
     requireValue(restoredFiles.entries.length === expectedEntries.size && restoredFiles.entries.every(entry => entry.sha256 === expectedEntries.get(entry.path)?.sha256));
-    store.db.exec('BEGIN IMMEDIATE; DELETE FROM summary_jobs; DELETE FROM tool_artifacts; DELETE FROM run_history; DELETE FROM providers; DELETE FROM sessions; DELETE FROM audit;');
+    store.db.exec('BEGIN IMMEDIATE; DELETE FROM steering_inputs; DELETE FROM summary_jobs; DELETE FROM tool_artifacts; DELETE FROM run_history; DELETE FROM providers; DELETE FROM sessions; DELETE FROM audit;');
     try {
       for (const provider of payload.providers) store.putProvider({ ...provider, enabled: provider.type === 'demo' });
       const now = new Date().toISOString();
@@ -683,6 +708,7 @@ export async function restoreBackup({ input, dataDir }) {
       // are authoritative and replace that projection once, within this transaction.
       for (const record of payload.runHistory ?? []) store.putRunHistory(record, { artifacts: byRun.get(`${record.sessionId}\0${record.run.id}`) ?? [] });
       for (const draft of payload.summaryJobs ?? []) store.putSummaryDraft(interruptSummaryDraft(draft, { code: 'BACKUP_RESTORED', message: '摘要草稿已从备份恢复；中断的请求不会自动重新发送。' }));
+      for (const value of payload.steeringInputs ?? []) store.steeringInbox.import(value.status === 'pending' ? { ...value, status: 'failed', error: { code: 'BACKUP_RESTORED', message: '追加消息已从备份恢复且尚未处理，请明确重新发送；不会自动执行。' } } : value);
       const insert = store.db.prepare('INSERT INTO audit(id,time,action,detail,session_id) VALUES(?,?,?,?,?)');
       for (const entry of payload.audit) insert.run(entry.id, entry.time, entry.action, entry.detail, entry.sessionId);
       restoredHistoryCount = store.db.prepare('SELECT COUNT(*) AS n FROM run_history').get().n;
@@ -691,7 +717,7 @@ export async function restoreBackup({ input, dataDir }) {
     store.close(); store = null;
     await sameDirectory(target.path, rootStat);
     await release(); release = null;
-    return { path: target.path, sessions: payload.sessions.length, runHistory: restoredHistoryCount, toolArtifacts: payload.toolArtifacts?.length ?? 0, summaryJobs: payload.summaryJobs?.length ?? 0, audit: payload.audit.length, workspaceEntries: payload.workspace.length, disabledProviders: payload.providers.filter(value => value.type !== 'demo').length };
+    return { path: target.path, sessions: payload.sessions.length, runHistory: restoredHistoryCount, toolArtifacts: payload.toolArtifacts?.length ?? 0, summaryJobs: payload.summaryJobs?.length ?? 0, steeringInputs: payload.steeringInputs?.length ?? 0, audit: payload.audit.length, workspaceEntries: payload.workspace.length, disabledProviders: payload.providers.filter(value => value.type !== 'demo').length };
   } catch (error) {
     // If a second process claimed our newly visible directory before us, its OS lock
     // must remain intact. Unlinking a locked inode is possible on POSIX.

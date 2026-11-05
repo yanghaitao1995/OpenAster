@@ -17,13 +17,14 @@ import { previewConversationHandoff, prepareConversationHandoff, validateHandoff
 import { createWorkspaceSearch } from './workspace-search.mjs';
 import { createManualFileEditor, FILE_EDIT_BODY_BYTES } from './manual-file-edit.mjs';
 import { createProviderDiagnostics, validateProviderDiagnosticsRequest } from './provider-diagnostics.mjs';
+import { createCommandApprovalService } from './command-authorization.mjs';
 import { createSummaryDraftRunner } from './summary-drafts.mjs';
 import { planSummaryDraft, validateSummaryPreviewRequest, validateSummaryRequest, summaryRequestHash, createSummaryDraft, generateSummaryDraft, interruptSummaryDraft } from '../core/summary-draft.mjs';
 import { CoreError, publicError } from '../core/errors.mjs';
 import { DRAFT_LIMITS, validateDraftList, validateDraftSnapshot } from '../public/composer-drafts.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const VERSION = '0.1.0';
+import { APP_VERSION as VERSION } from '../core/app-version.mjs';
 const ACTIVE = new Set(['running', 'awaiting_approval']);
 const MAX_BODY = 1024 * 1024;
 const COOKIE = 'openaster_session';
@@ -207,8 +208,9 @@ export async function startServer(options={}) {
   let fileAccess='workspace'; // Explicit grant lasts only for this service session.
   let workspaceActionPending=false;
   const agentWorkspace=createComputerWorkspace({workspace,getFileAccess:()=>fileAccess,protectedRoots:[dataDir,ROOT]});
-  const runtime=createRuntime({workspace:agentWorkspace,skillRegistry,providers:providerWithSecret,getSession:async id=>store.getSession(id),saveSession:async(session,metadata)=>store.putSession(session,metadata),reserveArtifact:request=>store.reserveArtifact(request),releaseArtifact:token=>store.releaseArtifact(token),emit:({sessionId,type,runId,stepId})=>type==='stream'?send('stream',{sessionId,runId,stepId}):send('update',{sessionId}),audit,createId:randomUUID,...options.runtimeOptions});
-  const state=async()=>({version:VERSION,capabilities:{contextFiles:1,toolArtifacts:1,usageOverview:1,conversationBranch:1,conversationHandoff:1,handoffDraft:1,workspaceSearch:1,workspaceIgnore:1,workspaceDirectory:1,workspaceEdit:1,providerDiagnostics:1,permissions:1,progressiveSkills:1,images:1,...(options.workspaceActions&&!gatewayOrigin?{workspaceActions:1}:{}),...(deviceDraftStore?{deviceDrafts:1}:{})},workspace:{id:options.workspaceId??null,storageId:store.getStorageIdentity(),name:options.workspaceName??'我的工作区',path:workspacePath,skillsPath:skillsDirectory,projectMode:options.workspaceOptions?.projectScan===true,sensitiveFilesExcluded:options.workspaceOptions?.denySensitivePaths===true},providers:await publicProviders(),sessions:store.listSessionSummaries(),skills:await skillRegistry.catalog(),security:{localOnly:!gatewayOrigin,approvalsRequired:true,shellEnabled:true,fileAccess,fileAccessLifetime:'service-session',computerAccessAvailable:!gatewayOrigin,keyStorage:options.secretStore?'os-encrypted':'memory-only',gatewayEnabled:Boolean(gatewayOrigin),telemetry:false}});
+  const runtime=createRuntime({workspace:agentWorkspace,skillRegistry,steeringInbox:store.steeringInbox,providers:providerWithSecret,getSession:async id=>store.getSession(id),saveSession:async(session,metadata)=>store.putSession(session,metadata),reserveArtifact:request=>store.reserveArtifact(request),releaseArtifact:token=>store.releaseArtifact(token),emit:({sessionId,type,runId,stepId})=>type==='stream'?send('stream',{sessionId,runId,stepId}):send('update',{sessionId}),audit,createId:randomUUID,...options.runtimeOptions});
+  const commandApprovals=createCommandApprovalService({runtime});
+  const state=async()=>({version:VERSION,capabilities:{contextFiles:1,toolArtifacts:1,usageOverview:1,conversationBranch:1,conversationHandoff:1,handoffDraft:1,workspaceSearch:1,workspaceIgnore:1,workspaceDirectory:1,workspaceEdit:1,providerDiagnostics:1,permissions:1,commandPolicy:1,taskInput:1,webTools:1,progressiveSkills:1,images:1,...(options.workspaceManager?{workspaceManagement:1}:{}),...(options.workspaceActions&&!gatewayOrigin?{workspaceActions:1}:{}),...(deviceDraftStore?{deviceDrafts:1}:{})},workspace:{id:options.workspaceId??null,storageId:store.getStorageIdentity(),name:options.workspaceName??'我的工作区',path:workspacePath,location:'service-host',skillsPath:skillsDirectory,projectMode:options.workspaceOptions?.projectScan===true,sensitiveFilesExcluded:options.workspaceOptions?.denySensitivePaths===true},providers:await publicProviders(),sessions:store.listSessionSummaries(),skills:await skillRegistry.catalog(),security:{localOnly:!gatewayOrigin,approvalsRequired:true,shellEnabled:true,shellApproval:"smart-or-task-grant",fileAccess,fileAccessLifetime:'service-session',webAccess:runtime.getWebAccess(),webSearchProvider:'duckduckgo',computerAccessAvailable:!gatewayOrigin,keyStorage:options.secretStore?'os-encrypted':'memory-only',gatewayEnabled:Boolean(gatewayOrigin),telemetry:false}});
   async function draftOperation(operation) {
     if(closing)throw error(503,'SHUTTING_DOWN','服务正在停止，未开始保存草稿。');
     const work=Promise.resolve().then(operation);draftOperations.add(work);
@@ -225,6 +227,7 @@ export async function startServer(options={}) {
     return current;
   }
   const requireSession=id=>{const s=store.getSession(id);if(!s) throw error(404,'SESSION_NOT_FOUND','任务不存在。');return s;};
+  const sessionView=id=>({...requireSession(id),queuedInputs:store.steeringInbox.list(id)});
   const assertIdle=(s,{allowSummary=false}={})=>{if(!allowSummary&&summarySources.has(s.id))throw error(409,'SUMMARY_SOURCE_BUSY','正在根据此任务生成摘要，请停止或等待完成。');if(branchSources.has(s.id))throw error(409,'BRANCH_SOURCE_BUSY','正在从此任务创建关联任务，请稍后重试。');if(runtime.isActive(s.id)||ACTIVE.has(s.run?.status)) throw error(409,'RUN_ACTIVE','请先停止正在运行的任务。');};
   function startSummary(plan,request) {
     if(closing)throw error(503,'SHUTTING_DOWN','服务正在停止，未开始摘要生成。');
@@ -279,7 +282,7 @@ export async function startServer(options={}) {
       const localOrigins=new Set([origin,`http://localhost:${server.address().port}`,`http://127.0.0.1:${server.address().port}`,`http://[::1]:${server.address().port}`]);
       const originAllowed=!requestOrigin || localOrigins.has(requestOrigin) || (gatewayOrigin && (requestOrigin===gatewayOrigin || mobileOrigins.has(requestOrigin)));
       if(!originAllowed || (!gatewayOrigin && ['cross-site'].includes(req.headers['sec-fetch-site']))) throw error(403,'INVALID_ORIGIN','请求来源不受信任。');
-      if(gatewayOrigin && requestOrigin && (mobileOrigins.has(requestOrigin) || requestOrigin===gatewayOrigin)) {res.setHeader('Access-Control-Allow-Origin',requestOrigin);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type, X-CSRF-Token');res.setHeader('Access-Control-Allow-Methods','GET, POST, PATCH, DELETE, OPTIONS');}
+      if(gatewayOrigin && requestOrigin && (mobileOrigins.has(requestOrigin) || requestOrigin===gatewayOrigin)) {res.setHeader('Access-Control-Allow-Origin',requestOrigin);res.setHeader('Vary','Origin');res.setHeader('Access-Control-Allow-Headers','Authorization, Content-Type, X-CSRF-Token');res.setHeader('Access-Control-Allow-Methods','GET, POST, PUT, PATCH, DELETE, OPTIONS');}
       if(req.method==='OPTIONS') {res.writeHead(204);return res.end();}
       const url=new URL(req.url,origin); const path=url.pathname; const method=req.method;
       if(path==='/api/health' && method==='GET') return json(res,200,{ok:true,version:VERSION});
@@ -301,18 +304,47 @@ export async function startServer(options={}) {
           const key=auth.csrfToken;let rate=rateBuckets.get(key);if(!rate || rate.until<Date.now()) {rate={count:0,until:Date.now()+60000};rateBuckets.set(key,rate);} if(++rate.count>180) throw error(429,'RATE_LIMIT','操作过于频繁，请稍后重试。');
         }
         if(path==='/api/state' && method==='GET') return json(res,200,await state());
+        if(path==='/api/security/web-access'&&method==='POST') {
+          const value=await body(req,{maxBytes:1024,strictUTF8:true});
+          if(url.search||Object.keys(value).length!==1||typeof value.enabled!=='boolean')throw error(400,'INVALID_WEB_PERMISSION','联网设置仅接受 enabled 布尔值。');
+          const from=runtime.getWebAccess();
+          // Revocation takes effect even if a subsequent audit write fails.
+          if(!value.enabled)runtime.setWebAccess(false);
+          audit({action:'permissions.web.changed',detail:{from,to:value.enabled,lifetime:'service-session'}});
+          if(value.enabled)runtime.setWebAccess(true);
+          send('state',{});
+          return json(res,200,{enabled:runtime.getWebAccess(),webAccess:runtime.getWebAccess(),lifetime:'service-session',webSearchProvider:'duckduckgo'});
+        }
+        if(path==='/api/projects'||path.startsWith('/api/projects/')) {
+          if(!options.workspaceManager)throw error(409,'WORKSPACE_MANAGEMENT_UNAVAILABLE','此服务尚未启用项目管理，请更新主机应用后重连。');
+          if(url.search)throw error(400,'INVALID_PROJECT_REQUEST','项目管理请求不接受查询参数。');
+          const context={remote:Boolean(gatewayOrigin),owner:auth.csrfToken},manager=options.workspaceManager;
+          if(path==='/api/projects'&&method==='GET')return json(res,200,await manager.list(context));
+          if(path==='/api/projects/browse'&&method==='POST')return json(res,200,await manager.browse(await body(req,{maxBytes:16384,strictUTF8:true}),context));
+          if(path==='/api/projects/prepare'&&method==='POST')return json(res,200,await manager.prepare(await body(req,{maxBytes:16384,strictUTF8:true}),context));
+          if(path==='/api/projects/activate'&&method==='POST') {
+            const value=await body(req,{maxBytes:1024,strictUTF8:true});
+            if(pendingRequests>1||summaryDrafts.active||store.listSessionSummaries().some(session=>runtime.isActive(session.id)||ACTIVE.has(session.run?.status)))throw error(409,'WORKSPACE_BUSY','任务或文件操作尚未结束，请先结束后再切换项目。');
+            const operation=await manager.reserve(value,context);
+            res.once('finish',()=>setImmediate(()=>void operation.run()));
+            return json(res,202,{operationId:operation.id,status:'pending'});
+          }
+          const projectOperation=path.match(/^\/api\/projects\/operations\/([0-9a-f-]{36})$/u);
+          if(projectOperation&&method==='GET')return json(res,200,{operation:manager.operation(projectOperation[1])});
+          throw error(404,'NOT_FOUND','项目管理接口不存在。');
+        }
         const skillView=path.match(/^\/api\/skills\/([a-z0-9_-]+)$/u);
         if(skillView&&method==='GET')return json(res,200,{skill:await skillRegistry.load(skillView[1])});
         if(path==='/api/permissions'&&['GET','PUT'].includes(method)) {
-          if(method==='GET')return json(res,200,{fileAccess,lifetime:'service-session',computerAccessAvailable:!gatewayOrigin,shellApproval:'every-command'});
+          if(method==='GET')return json(res,200,{fileAccess,lifetime:'service-session',computerAccessAvailable:!gatewayOrigin,shellApproval:"smart-or-task-grant"});
           if(gatewayOrigin)throw error(403,'LOCAL_PERMISSION_REQUIRED','电脑文件访问权限只能在本机工作台设置。');
           const value=await body(req);
           if(Object.keys(value).some(key=>!['fileAccess','confirmComputerAccess'].includes(key))||!['workspace','computer'].includes(value.fileAccess))throw error(400,'INVALID_PERMISSION','请选择工作区文件或电脑文件访问。');
           if(value.fileAccess==='computer'&&value.confirmComputerAccess!==true)throw error(400,'PERMISSION_CONFIRMATION_REQUIRED','请明确确认电脑文件可能被读取并发送给所选模型。');
           if(runtime.hasActiveRuns()||store.listSessionSummaries().some(session=>ACTIVE.has(session.run?.status)))throw error(409,'PERMISSION_BUSY','请先停止正在运行或等待批准的任务，再修改访问权限。');
           audit({action:'permissions.changed',detail:{from:fileAccess,to:value.fileAccess,lifetime:'service-session'}});
-          fileAccess=value.fileAccess;send('state',{});
-          return json(res,200,{fileAccess,lifetime:'service-session',computerAccessAvailable:true,shellApproval:'every-command'});
+          runtime.revokeCommandPolicies();fileAccess=value.fileAccess;send('state',{});
+          return json(res,200,{fileAccess,lifetime:'service-session',computerAccessAvailable:true,shellApproval:"smart-or-task-grant"});
         }
         if(['/api/workspace/open','/api/workspace/create'].includes(path)&&method==='POST') {
           if(gatewayOrigin||!options.workspaceActions)throw error(409,'DESKTOP_REQUIRED','请在桌面应用中打开或新建项目；命令行可通过 OPENASTER_WORKSPACE 指定目录。');
@@ -538,14 +570,28 @@ export async function startServer(options={}) {
           if(!output)throw error(404,'SESSION_NOT_FOUND','任务不存在。');
           return json(res,200,output);
         }
+        const commandPolicyMatch=path.match(/^\/api\/sessions\/([^/]+)\/command-policy$/u);
+        if(commandPolicyMatch&&['GET','PUT'].includes(method)) {
+          if(url.search)throw error(400,'INVALID_COMMAND_POLICY','命令权限请求不接受查询参数。');
+          const id=historyId(commandPolicyMatch[1]);
+          if(method==='GET')return json(res,200,await commandApprovals.read(id));
+          const result=await commandApprovals.update(id,await body(req,{maxBytes:16384,strictUTF8:true}));send('state',{});return json(res,200,result);
+        }
         const sessionMatch=path.match(/^\/api\/sessions\/([^/]+)(\/(messages|cancel))?$/);
         if(sessionMatch) {
           const [,id,,action]=sessionMatch;const session=requireSession(id);
-          if(!action&&method==='GET')return json(res,200,{session});
+          if(!action&&method==='GET')return json(res,200,{session:sessionView(id)});
           if(!action&&method==='PATCH') {const value=await body(req);const current=requireSession(id);assertIdle(current);if(value.title!==undefined)current.title=textField(value.title,'任务标题',160);if(value.providerId!==undefined){assertProviderAvailable(value.providerId);if(!store.getProvider(value.providerId))throw error(400,'PROVIDER_NOT_FOUND','模型连接不存在。');current.providerId=value.providerId;}current.updatedAt=new Date().toISOString();store.putSession(current);send('state',{});return json(res,200,{session:current});}
-          if(!action&&method==='DELETE') {assertIdle(session);store.deleteSession(id,{audit:{action:'session.deleted',detail:session.title,sessionId:id}});send('state',{});return json(res,200,{ok:true});}
+          if(!action&&method==='DELETE') {assertIdle(session);runtime.revokeCommandPolicies(id);store.deleteSession(id,{audit:{action:'session.deleted',detail:session.title,sessionId:id}});send('state',{});return json(res,200,{ok:true});}
           if(action==='messages'&&method==='POST') {
-            const value=await body(req,{maxBytes:2*1024*1024});const current=requireSession(id);const content=value.images?.length&&typeof value.content==='string'&&!value.content.trim()?value.content:textField(value.content,'消息',16000);const providerId=value.providerId??current.providerId;
+            const value=await body(req,{maxBytes:2*1024*1024,strictUTF8:true});const current=requireSession(id);
+            if(Object.hasOwn(value,'mode')) {
+              assertProviderAvailable(current.providerId);
+              const accepted=await withProviderRead(current.providerId,()=>runtime.steer(id,value));send('state',{});
+              return json(res,202,{...accepted,session:sessionView(id)});
+            }
+            if(Object.hasOwn(value,'requestId')||Object.hasOwn(value,'expectedRunId'))throw error(400,'INVALID_STEERING_INPUT','运行中追加消息须指定 queue 或 interrupt 模式。');
+            const content=value.images?.length&&typeof value.content==='string'&&!value.content.trim()?value.content:textField(value.content,'消息',16000);const providerId=value.providerId??current.providerId;
              assertIdle(current);
             assertProviderAvailable(providerId);
             if(!store.getProvider(providerId))throw error(400,'PROVIDER_NOT_FOUND','请先配置模型连接。');
@@ -553,12 +599,12 @@ export async function startServer(options={}) {
             if(current.messages.length>=200)throw error(409,'MESSAGE_LIMIT','此任务已达到 200 条消息，可从任务详情整理后续接，或新建任务。');
             // Pin the selected connection through file preflight. Before start()
             // persists it, the session may still refer to a different provider.
-            const started=await withProviderRead(providerId,()=>runtime.start(id,{content,providerId,selectedSkillId:skill.id,files:value.files,images:value.images}));send('state',{});return json(res,202,{session:store.getSession(id),...started});
+            const started=await withProviderRead(providerId,()=>runtime.start(id,{content,providerId,selectedSkillId:skill.id,files:value.files,images:value.images}));send('state',{});return json(res,202,{session:sessionView(id),...started});
           }
           if(action==='cancel'&&method==='POST') {await body(req);await runtime.cancel(id);return json(res,200,{ok:true});}
         }
         const approvalMatch=path.match(/^\/api\/approvals\/([^/]+)$/);
-        if(approvalMatch&&method==='POST') {const value=await body(req);if(!['approve','deny'].includes(value.decision))throw error(400,'INVALID_DECISION','请选择批准或拒绝。');await runtime.decide(approvalMatch[1],value.decision);return json(res,200,{ok:true});}
+        if(approvalMatch&&method==='POST') {const value=await body(req);await commandApprovals.decide(approvalMatch[1],value);return json(res,200,{ok:true});}
         if(path==='/api/workspace'&&method==='GET') {
           const options=workspaceQuery(url);
           if(indexReads.size>=2)throw error(429,'WORKSPACE_INDEX_BUSY','另一些文件索引仍在读取或结束，请稍后重试。');
@@ -679,7 +725,11 @@ export async function startServer(options={}) {
 }
 
 if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
-  const app=await startServer({port:Number(process.env.PORT??4317),gatewayOrigin:process.env.OPENASTER_GATEWAY_ORIGIN,token:process.env.OPENASTER_GATEWAY_TOKEN,allowedOrigins:process.env.OPENASTER_ALLOWED_ORIGINS?.split(',').map(x=>x.trim()).filter(Boolean)});
-  console.log(`OpenAster ${VERSION} — ${app.url}`);
-  for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{app.close().then(()=>process.exit(0));});
+  // Finish evaluating this module before workspace-host imports startServer.
+  // Awaiting that import at top level would deadlock the CLI's module cycle.
+  import('./workspace-host.mjs').then(async({startWorkspaceHost})=>{
+    const app=await startWorkspaceHost({port:Number(process.env.PORT??4317),gatewayOrigin:process.env.OPENASTER_GATEWAY_ORIGIN,token:process.env.OPENASTER_GATEWAY_TOKEN,allowedOrigins:process.env.OPENASTER_ALLOWED_ORIGINS?.split(',').map(x=>x.trim()).filter(Boolean)});
+    console.log(`OpenAster ${VERSION} — ${app.url}`);
+    for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>{app.close().then(()=>process.exit(0));});
+  }).catch(cause=>{const failure=publicError(cause);console.error(`OpenAster startup failed: ${failure.code}: ${failure.message}`);process.exitCode=1;});
 }
