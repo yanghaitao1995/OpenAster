@@ -33,7 +33,7 @@ await writeFile(path.join(output, 'public/build-info.json'), JSON.stringify({ ..
 await mkdir(path.join(output, 'scripts'));
 await cp(path.join(root, 'scripts', 'backup.mjs'), path.join(output, 'scripts', 'backup.mjs'));
 const distributedPackage = {
-  name: packageInfo.name, version: packageInfo.version, description: packageInfo.description, author: packageInfo.author,
+  name: packageInfo.name, version: packageInfo.version, description: packageInfo.description, author: packageInfo.author, homepage: packageInfo.homepage,
   type: 'module', license: packageInfo.license, engines: packageInfo.engines,
   main: 'desktop/main.mjs', scripts: { start: 'node server/index.mjs', backup: 'node scripts/backup.mjs' },
 };
