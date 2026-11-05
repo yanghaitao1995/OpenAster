@@ -1,0 +1,19 @@
+{
+  "name": "OpenAster 智能体工作台",
+  "short_name": "OpenAster",
+  "description": "开源、本地优先的智能体工作台",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f6f7f9",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
