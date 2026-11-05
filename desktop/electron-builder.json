@@ -76,6 +76,7 @@
     "hardenedRuntime": true
   },
   "linux": {
+    "maintainer": "OpenAster contributors <96247128+yanghaitao1995@users.noreply.github.com>",
     "target": [
       "AppImage",
       "deb"
