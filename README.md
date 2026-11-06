@@ -2,7 +2,7 @@
 
 一个可以连接自己的模型、读写项目文件并运行命令的开源智能体工作台。浏览器、桌面应用和移动客户端使用同一套任务界面。
 
-OpenAster 通过 **Vibe Coding** 开发：使用自然语言与 AI 编程工具迭代实现，再检查代码和运行测试。它是个人学习与探索项目，当前版本为 **0.2.1 预览版**。
+OpenAster 通过 **Vibe Coding** 开发：使用自然语言与 AI 编程工具迭代实现，再检查代码和运行测试。它是个人学习与探索项目，当前版本为 **0.2.2 预览版**。
 
 [上手教程](docs/TUTORIAL.md) · [使用说明](docs/GETTING_STARTED.md) · [下载与平台状态](docs/PLATFORMS.md) · [开发指南](docs/DEVELOPMENT.md)
 

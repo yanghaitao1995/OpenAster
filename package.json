@@ -1,6 +1,6 @@
 {
   "name": "openaster",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "An open, local-first agent workspace",
   "type": "module",
