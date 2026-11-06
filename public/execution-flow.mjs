@@ -8,6 +8,16 @@ const time = value => typeof value === 'string' && Number.isFinite(Date.parse(va
 const duration = value => { const seconds = Math.max(0, Math.floor(value / 1000)); return seconds >= 60 ? `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒` : `${seconds} 秒`; };
 const detailText = value => typeof value === 'string' ? value : value == null ? '' : JSON.stringify(value, null, 2);
 export const webToolNames = Object.freeze({ search_web: '搜索网页', read_webpage: '阅读网页' });
+export function modelStepTitle(step) {
+  if (step.purpose === 'compaction') return step.title || (step.status === 'running' ? '正在压缩上下文' : '压缩上下文');
+  if (step.purpose === 'continuation') return '继续生成';
+  return step.title || (step.type === 'tool' ? '工具操作' : '模型处理');
+}
+export function contextUsageText(value) {
+  if (!value || !Number.isSafeInteger(value.estimatedInputTokens) || !Number.isSafeInteger(value.contextWindowTokens) || value.estimatedInputTokens < 0 || value.contextWindowTokens < 1) return '';
+  const percent = Math.ceil(value.estimatedInputTokens / value.contextWindowTokens * 100), format = number => number.toLocaleString('zh-CN');
+  return `上下文约 ${percent}% · 输入约 ${format(value.estimatedInputTokens)} / ${format(value.contextWindowTokens)} token${Number.isSafeInteger(value.reservedOutputTokens) ? ` · 预留输出 ${format(value.reservedOutputTokens)}` : ''}`;
+}
 function webSource(title, address) {
   if (typeof address !== 'string' || address.length > 2048 || /[\s\x00-\x1f\x7f]/u.test(address)) return null;
   let url; try { url = new URL(address); } catch { return null; }
@@ -66,7 +76,7 @@ export function createModelStepNotes() {
     if (step.type === 'model') {
       const interrupted = step.phase === 'retrying' || ['failed', 'cancelled'].includes(step.status);
       if (typeof step.publicReasoning === 'string' && step.publicReasoning) notes.push({ key: 'reasoning', className: 'execution-model-reasoning', label: interrupted ? '模型公开解释 · 未完成' : '模型公开解释', caption: interrupted ? '中断前由服务商返回的可见片段。' : step.status === 'running' ? '服务商返回的可见内容 · 生成中。' : '服务商返回的可见内容。', parts: [{ text: step.publicReasoning }] });
-      if (typeof step.publicSummary === 'string' && step.publicSummary) notes.push({ key: 'output', className: 'execution-model-summary', label: step.publicSummaryTruncated ? '模型输出 · 已截取' : '模型输出', caption: step.publicSummaryTruncated ? '此旧记录只保存了部分正文。' : '本轮模型返回的公开正文。', parts: [{ text: step.publicSummary }] });
+      if (typeof step.publicSummary === 'string' && step.publicSummary) notes.push({ key: 'output', className: 'execution-model-summary', label: step.purpose === 'compaction' ? '压缩摘要' : step.publicSummaryTruncated ? '模型输出 · 已截取' : '模型输出', caption: step.purpose === 'compaction' ? '压缩过程中生成的摘要，只有压缩成功后才用于后续请求。原始对话仍保留；摘要可能遗漏细节。' : step.publicSummaryTruncated ? '此旧记录只保存了部分正文。' : '本轮模型返回的公开正文。', parts: [{ text: step.publicSummary }] });
       if (Array.isArray(step.interruptedOutputs)) for (const [index, output] of step.interruptedOutputs.entries()) {
         if (!Number.isSafeInteger(output?.attempt) || output.attempt < 1) continue;
         const parts = [];
@@ -96,6 +106,8 @@ export function createExecutionFlow({ onOpenToolResult } = {}) {
   function stepStatus(step, run) {
     if (step.status === 'running' && run.status === 'awaiting_approval' && step.type === 'tool') return '等待你的批准';
     if (step.status === 'running' && step.phase === 'retrying') return '等待重连';
+    if (step.status === 'running' && step.purpose === 'compaction') return '正在压缩';
+    if (step.status === 'running' && step.purpose === 'continuation') return '继续生成';
     if (step.status === 'running' && step.type === 'model' && (run.output?.stepId === step.id && run.output?.status === 'streaming' && !run.output?.content && run.output?.publicReasoning)) return '正在思考';
     if (step.status === 'running' && (step.phase === 'streaming' || (run.output?.stepId === step.id && run.output?.status === 'streaming' && run.output?.content))) return '正在生成';
     if (step.status === 'running' && step.type === 'model') return '正在连接模型';
@@ -103,10 +115,10 @@ export function createExecutionFlow({ onOpenToolResult } = {}) {
   }
   function updateClocks(force = false) {
     if (!current || (!force && !current.root.isConnected) || document.hidden) return;
-    const { run, elapsed, entries } = current, now = Date.now(), start = time(run.startedAt), finish = time(run.finishedAt);
+    const { run, elapsed, entries } = current, now = Date.now(), start = time(run.startedAt), finish = time(run.finishedAt), stepsById = new Map((run.steps || []).map(step => [step.id, step]));
     elapsed.textContent = start === null ? '' : duration((finish ?? now) - start);
     for (const [key, entry] of entries) {
-      const step = (run.steps || []).find(item => item.id === key); if (!step) continue;
+      const step = stepsById.get(key); if (!step) continue;
       const from = time(step.createdAt), to = time(step.finishedAt);
       entry.clock.textContent = from === null ? '' : to !== null ? duration(to - from) : step.status === 'running' ? duration(now - from) : '';
       const retryAt = time(step.connection?.nextRetryAt), retrying = step.status === 'running' && step.phase === 'retrying';
@@ -121,16 +133,17 @@ export function createExecutionFlow({ onOpenToolResult } = {}) {
       const title = node('span', 'execution-flow-title'), elapsed = node('span', 'execution-flow-elapsed'); elapsed.setAttribute('aria-hidden', 'true');
       const chevron = node('span', 'execution-flow-chevron', '⌄'); chevron.setAttribute('aria-hidden', 'true');
       heading.append(mark, title, elapsed, chevron);
-      const body = node('div', 'execution-flow-body'), meta = node('p', 'execution-flow-meta'), list = node('ol', 'execution-flow-list');
+      const body = node('div', 'execution-flow-body'), meta = node('p', 'execution-flow-meta'), context = node('p', 'execution-flow-context'), list = node('ol', 'execution-flow-list');
       const status = node('p', 'execution-flow-current'); status.setAttribute('role', 'status');
-      body.append(meta, list, status); root.append(heading, body);
-      current = { key, root, title, elapsed, meta, list, status, entries: new Map(), run };
+      body.append(meta, context, list, status); root.append(heading, body);
+      current = { key, root, title, elapsed, meta, context, list, status, entries: new Map(), run };
     }
     current.run = run; current.root.dataset.status = run.status;
     const steps = Array.isArray(run.steps) ? run.steps : [], active = [...steps].reverse().find(step => step.status === 'running');
     const modelCount = steps.filter(step => step.type === 'model').length, toolCount = steps.filter(step => step.type === 'tool').length;
-    current.title.textContent = run.status === 'running' ? active?.phase === 'retrying' ? '模型连接中断，正在重试' : active?.type === 'model' ? '正在思考' : active?.title || '正在准备任务' : statuses[run.status] || '执行过程';
-    current.meta.textContent = [providerName, modelCount ? `${modelCount} 轮模型处理` : '', toolCount ? `${toolCount} 次工具调用` : ''].filter(Boolean).join(' · ');
+    current.title.textContent = run.status === 'running' ? active?.phase === 'retrying' ? '模型连接中断，正在重试' : active?.purpose === 'compaction' ? '正在压缩上下文' : active?.purpose === 'continuation' ? '继续生成' : active?.type === 'model' ? '正在思考' : active?.title || '正在准备任务' : statuses[run.status] || '执行过程';
+    current.meta.textContent = [providerName, run.budget ? `主对话模型请求 ${run.budget.modelCalls} / ${run.budget.maxModelCalls}` : modelCount ? `${modelCount} 轮模型处理` : '', run.budget ? `工具操作 ${run.budget.toolCalls} / ${run.budget.maxTools}` : toolCount ? `${toolCount} 次工具调用` : ''].filter(Boolean).join(' · ');
+    current.context.textContent = contextUsageText([...steps].reverse().find(step => step.contextUsage)?.contextUsage); current.context.hidden = !current.context.textContent;
     current.status.textContent = run.status === 'awaiting_approval' ? '核对下方操作内容，批准后继续。' : active?.phase === 'retrying' ? detailText(active.connection?.lastError?.message) || '模型服务暂时不可用，可随时停止任务。' : '';
     current.status.hidden = !current.status.textContent;
     const keys = new Set();
@@ -149,12 +162,12 @@ export function createExecutionFlow({ onOpenToolResult } = {}) {
         toolResult.addEventListener('click', () => { const latest = current?.run?.steps?.find(item => item.id === stepKey); if (latest?.toolResultRef) onOpenToolResult?.(latest, current.run); });
       }
       const text = detailText(step.detail); entry.row.dataset.stepId = stepKey; entry.row.dataset.status = step.status;
-      entry.title.textContent = step.title || (step.type === 'tool' ? '工具操作' : '模型处理');
+      entry.title.textContent = modelStepTitle(step);
       entry.mark.textContent = step.status === 'completed' ? '✓' : step.status === 'failed' ? '!' : step.type === 'tool' ? '›_' : '·';
       entry.preview.textContent = text.split('\n')[0].slice(0,160); entry.preview.hidden = !text;
       entry.status.textContent = stepStatus(step, run);
       const artifact = step.toolResultRef;
-      entry.detail.textContent = [text || '此步骤没有附加说明。', artifact ? `结果已保存：${artifact.name}${artifact.path ? ` · ${artifact.path}` : ''} · ${artifact.bytes} 字节。完整原记录可在任务详情中展开查看。` : '', step.connection?.attempt ? `连接次数：${step.connection.attempt}${step.connection.retryCount ? ` · 已重试 ${step.connection.retryCount} 次。重试连接的用量可能未回报，以服务商账单为准。` : ''}` : ''].filter(Boolean).join('\n\n');
+      entry.detail.textContent = [text || '此步骤没有附加说明。', contextUsageText(step.contextUsage), artifact ? `结果已保存：${artifact.name}${artifact.path ? ` · ${artifact.path}` : ''} · ${artifact.bytes} 字节。完整原记录可在任务详情中展开查看。` : '', step.connection?.attempt ? `连接次数：${step.connection.attempt}${step.connection.retryCount ? ` · 已重试 ${step.connection.retryCount} 次。重试连接的用量可能未回报，以服务商账单为准。` : ''}` : ''].filter(Boolean).join('\n\n');
       entry.notes.render(step); entry.toolResult.hidden = !(step.type === 'tool' && artifact && onOpenToolResult);
       if (current.list.children[index] !== entry.row) current.list.insertBefore(entry.row, current.list.children[index] || null);
     });

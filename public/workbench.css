@@ -386,6 +386,8 @@
 .execution-flow[open] .execution-flow-chevron { transform: rotate(0); }
 .execution-flow-body { margin-left: 7px; padding: 2px 0 2px 17px; border-left: 1px solid var(--line); }
 .execution-flow-meta { font-size: 11px; color: var(--muted); margin: 3px 0 9px; }
+.execution-flow-context { font-size: 11px; color: var(--muted); margin: 0 0 12px; overflow-wrap: anywhere; }
+.run-error .button { display: block; margin-top: 10px; }
 .execution-flow-list { list-style: none; margin: 0; padding: 0; }
 .execution-step { padding: 0; margin: 0 0 6px; }
 .execution-step summary { display: flex; align-items: center; gap: 9px; min-height: 42px; border-radius: 5px; list-style: none; cursor: pointer; }
