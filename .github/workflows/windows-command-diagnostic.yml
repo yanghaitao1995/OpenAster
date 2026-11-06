@@ -11,6 +11,7 @@ jobs:
       - name: Checkout diagnostic test
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: 9d888f07d2f06759be454a467fa532134c569d7c
           path: diagnostic-tools
           persist-credentials: false
       - name: Checkout unchanged published implementation
@@ -29,6 +30,9 @@ jobs:
           $expected = '3a4ee6915312dcafd9e56ea5c40440c9b39c5985'
           $actual = (& git -C published-source rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) { throw 'Published source identity differs' }
+          $expectedDiagnosticTools = '9d888f07d2f06759be454a467fa532134c569d7c'
+          $diagnosticToolsCommit = (& git -C diagnostic-tools rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $diagnosticToolsCommit -ne $expectedDiagnosticTools) { throw 'Historical diagnostic tools identity differs' }
           New-Item -ItemType Directory -Path command-evidence | Out-Null
           Copy-Item -LiteralPath diagnostic-tools/tests/command-runner.test.mjs -Destination published-source/tests/command-runner.test.mjs
           $changed = @(& git -C published-source diff --name-only)
@@ -38,7 +42,7 @@ jobs:
             $hashes[$file] = (Get-FileHash -LiteralPath (Join-Path published-source $file) -Algorithm SHA256).Hash.ToLowerInvariant()
           }
           $hashes['diagnostic-tools/scripts/diagnose-windows-command-startup.mjs'] = (Get-FileHash -LiteralPath diagnostic-tools/scripts/diagnose-windows-command-startup.mjs -Algorithm SHA256).Hash.ToLowerInvariant()
-          @{ sourceCommit = $actual; verificationCommit = $env:GITHUB_SHA; hashes = $hashes; realModelCalls = 0 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath command-evidence/source.json -Encoding utf8
+          @{ sourceCommit = $actual; diagnosticToolsCommit = $diagnosticToolsCommit; verificationCommit = $env:GITHUB_SHA; hashes = $hashes; realModelCalls = 0 } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath command-evidence/source.json -Encoding utf8
       - run: npm install --global pnpm@11.25.0
       - name: Install fixed dependencies
         working-directory: published-source
