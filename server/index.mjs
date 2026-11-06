@@ -395,6 +395,7 @@ export async function startServer(options={}) {
           if(value.envKey!==undefined) {if(typeof value.envKey!=='string' || !/^OPENASTER_KEY_[A-Z0-9_]{1,80}$/.test(value.envKey)) throw error(400,'ENV_KEY','环境变量必须以 OPENASTER_KEY_ 开头。');p.envKey=value.envKey;}
           if(value.tokenParameter!==undefined)p.tokenParameter=value.tokenParameter;
           if(value.maxTokens!==undefined)p.maxTokens=value.maxTokens;
+          for(const key of ['contextWindowTokens','autoCompact','autoContinue','maxModelCalls','maxTools','maxRunMinutes'])if(value[key]!==undefined)p[key]=value[key];
           if(value.streaming!==undefined)p.streaming=value.streaming;
           p.toolMode=value.toolMode===undefined?'workspace':value.toolMode;
           Object.assign(p,validateProvider(p));
@@ -417,6 +418,7 @@ export async function startServer(options={}) {
             if(!['openai','responses','anthropic','ollama'].includes(next.type))throw error(400,'PROVIDER_TYPE','请选择受支持的接口协议。');
             if(value.tokenParameter!==undefined)next.tokenParameter=value.tokenParameter;
             if(value.maxTokens!==undefined)next.maxTokens=value.maxTokens;
+            for(const key of ['contextWindowTokens','autoCompact','autoContinue','maxModelCalls','maxTools','maxRunMinutes'])if(value[key]!==undefined)next[key]=value[key];
             if(value.streaming!==undefined)next.streaming=value.streaming;
             if(value.toolMode!==undefined)next.toolMode=value.toolMode;
             if(value.enabled!==undefined) {

@@ -1,5 +1,6 @@
 import { validateProviderConnection } from '../core/provider-retry.mjs';
 import { validatePublicOutput, validateInterruptedOutputs } from '../core/provider-progress.mjs';
+import { MIN_OUTPUT_TOKENS, MAX_OUTPUT_TOKENS, MAX_MODEL_OUTPUT_BYTES } from '../core/model-limits.mjs';
 // SPDX-License-Identifier: Apache-2.0
 import { validateImages } from '../core/image-attachments.mjs';
 import * as fs from 'node:fs/promises';
@@ -18,7 +19,7 @@ import { isSensitiveSegment } from '../core/sensitive-paths.mjs';
 import { validateProvider, PROVIDER_TYPES } from '../core/providers.mjs';
 import { sanitizeUsage } from '../core/usage.mjs';
 import { validateCommand, validateCommandHistory } from '../core/command-schema.mjs';
-import { createRunHistoryRecord, validateRunHistoryRecord, summarizeRunHistory, validateRunArtifactLinks } from '../core/run-history.mjs';
+import { createRunHistoryRecord, validateRunHistoryRecord, summarizeRunHistory, validateRunArtifactLinks, validateRunBudget, validateContextUsage, RUN_HISTORY_MAX_STEPS, RUN_HISTORY_MAX_APPROVALS } from '../core/run-history.mjs';
 import { validateContextFiles } from '../core/context-files.mjs';
 import { validateBranchMetadata } from '../core/conversation-branch.mjs';
 import { validateContextHandoff } from '../core/conversation-handoff.mjs';
@@ -56,13 +57,15 @@ function safeRelative(value) {
   requireValue(!names.some(name => /^(?:\.env(?:\..*)?|secrets|credentials(?:\..*)?|openaster\.sqlite(?:-.*)?|\.instance\.sqlite(?:-.*)?)$/.test(name) || name.endsWith('.secret')));
   return value;
 }
-const providerFields = ['id', 'name', 'type', 'model', 'baseUrl', 'enabled', 'tokenParameter', 'maxTokens', 'streaming', 'toolMode'];
+const providerFields = ['id', 'name', 'type', 'model', 'baseUrl', 'enabled', 'tokenParameter', 'maxTokens', 'streaming', 'toolMode', 'contextWindowTokens', 'autoCompact', 'autoContinue', 'maxModelCalls', 'maxTools', 'maxRunMinutes'];
 function providerConfig(value, stripSecrets = false) {
   shape(value, [...providerFields, ...(stripSecrets ? ['apiKey', 'hasKey', 'envKey', 'credential', 'credentials'] : [])], ['id', 'name', 'type', 'model', 'baseUrl', 'enabled']);
   const clean = Object.fromEntries(providerFields.filter(key => Object.hasOwn(value, key)).map(key => [key, value[key]]));
   id(clean.id); text(clean.name, 80, { empty: false }); requireValue(typeof clean.enabled === 'boolean');
   optional(clean, 'streaming', item => requireValue(typeof item === 'boolean'));
-  optional(clean, 'maxTokens', item => requireValue(Number.isSafeInteger(item) && item >= 128 && item <= 16384));
+  optional(clean, 'maxTokens', item => requireValue(Number.isSafeInteger(item) && item >= MIN_OUTPUT_TOKENS && item <= MAX_OUTPUT_TOKENS));
+  for (const [key, min, max] of [['contextWindowTokens', 8192, 2000000], ['maxModelCalls', 1, 512], ['maxTools', 1, 2048], ['maxRunMinutes', 1, 240]]) if (Object.hasOwn(clean, key)) requireValue(Number.isSafeInteger(clean[key]) && clean[key] >= min && clean[key] <= max);
+  for (const key of ['autoCompact', 'autoContinue']) if (Object.hasOwn(clean, key)) requireValue(typeof clean[key] === 'boolean');
   optional(clean, 'tokenParameter', item => requireValue(['max_tokens', 'max_completion_tokens'].includes(item)));
   if (Object.hasOwn(clean, 'toolMode')) requireValue(['workspace', 'none'].includes(clean.toolMode) && (clean.type !== 'demo' || clean.toolMode === 'workspace'));
   requireValue((clean.id === 'demo') === (clean.type === 'demo'));
@@ -104,7 +107,8 @@ function validateApproval(value, sessionId, version) {
   if (value.hashes != null) { shape(value.hashes, ['original', 'proposed']); hashOrNull(value.hashes.original); hashOrNull(value.hashes.proposed); }
 }
 function validateRun(run, session, historical = false, version = 6) {
-    shape(run, ['id', 'status', 'steps', 'output', 'startedAt', 'finishedAt', 'error', 'connection', 'requestMessageId', 'requestPreview'], ['id', 'status']);
+    shape(run, ['id', 'status', 'steps', 'output', 'startedAt', 'finishedAt', 'error', 'connection', 'requestMessageId', 'requestPreview', 'budget'], ['id', 'status']);
+    if (Object.hasOwn(run, 'budget')) { try { validateRunBudget(run.budget); } catch { throw invalid(); } }
     id(run.id); requireValue((historical ? ['completed', 'failed', 'cancelled'] : ['running', 'awaiting_approval', 'completed', 'failed', 'cancelled']).includes(run.status));
     if (Object.hasOwn(run, 'connection')) {
       shape(run.connection, ['providerId', 'name', 'type', 'model', 'toolMode']);
@@ -119,13 +123,15 @@ function validateRun(run, session, historical = false, version = 6) {
     if (Object.hasOwn(run, 'requestPreview')) text(run.requestPreview, 240);
     for (const key of ['startedAt', 'finishedAt']) optional(run, key, timestamp);
     if (run.steps != null) {
-      limitedArray(run.steps, 64);
+      limitedArray(run.steps, RUN_HISTORY_MAX_STEPS);
       if (historical) unique(run.steps.filter(step => object(step) && Object.hasOwn(step, 'id')));
       else unique(run.steps);
       for (const step of run.steps) {
-        shape(step, ['id', 'type', 'title', 'detail', 'status', 'createdAt', 'usage', 'finishedAt', 'phase', 'connection', 'publicSummary', 'publicSummaryTruncated', 'publicReasoning', 'interruptedOutputs', ...(version >= 4 ? ['toolResultRef', 'contextPlan'] : [])], historical ? [] : ['id', 'type', 'title', 'detail', 'status', 'createdAt']);
+        shape(step, ['id', 'type', 'title', 'detail', 'status', 'createdAt', 'usage', 'finishedAt', 'phase', 'connection', 'publicSummary', 'publicSummaryTruncated', 'publicReasoning', 'interruptedOutputs', 'purpose', 'contextUsage', ...(version >= 4 ? ['toolResultRef', 'contextPlan'] : [])], historical ? [] : ['id', 'type', 'title', 'detail', 'status', 'createdAt']);
         if (Object.hasOwn(step, 'id')) id(step.id);
         if (Object.hasOwn(step, 'type')) requireValue(['model', 'tool'].includes(step.type));
+        if (Object.hasOwn(step, 'purpose')) requireValue(step.type === 'model' && ['response', 'compaction', 'continuation'].includes(step.purpose));
+        if (Object.hasOwn(step, 'contextUsage')) { requireValue(step.type === 'model'); try { validateContextUsage(step.contextUsage); } catch { throw invalid(); } }
         if (Object.hasOwn(step, 'status')) requireValue(['running', 'completed', 'failed', 'cancelled'].includes(step.status));
         if (Object.hasOwn(step, 'title')) text(step.title, historical ? BACKUP_LIMITS.sessionBytes : 512);
         if (Object.hasOwn(step, 'detail')) text(step.detail, historical ? BACKUP_LIMITS.sessionBytes : 4000);
@@ -164,7 +170,7 @@ function validateRun(run, session, historical = false, version = 6) {
       }
     }
     if (run.output != null) {
-      shape(run.output, ['stepId', 'content', 'status', 'publicReasoning'], ['stepId', 'content', 'status']); id(run.output.stepId); content(run.output.content, historical ? BACKUP_LIMITS.sessionBytes : 256 * 1024); requireValue(['streaming', 'processing', 'interrupted'].includes(run.output.status));
+      shape(run.output, ['stepId', 'content', 'status', 'publicReasoning'], ['stepId', 'content', 'status']); id(run.output.stepId); content(run.output.content, MAX_MODEL_OUTPUT_BYTES); requireValue(['streaming', 'processing', 'interrupted'].includes(run.output.status));
       if (Object.hasOwn(run.output, 'publicReasoning')) { try { validatePublicOutput(run.output.publicReasoning); } catch { throw invalid(); } }
     }
     if (run.error != null) {
@@ -177,11 +183,11 @@ function validateSession(value, providerIds, version) {
   shape(value, [...fields, ...(version >= 5 ? ['branch'] : [])], fields);
   id(value.id); id(value.providerId); requireValue(providerIds.has(value.providerId));
   text(value.title, 160, { empty: false }); timestamp(value.createdAt); timestamp(value.updatedAt);
-  limitedArray(value.messages, 201); limitedArray(value.approvals, 64);
+  limitedArray(value.messages, 201); limitedArray(value.approvals, RUN_HISTORY_MAX_APPROVALS);
   unique(value.messages); unique(value.approvals);
   for (const [index, message] of value.messages.entries()) {
     shape(message, ['id', 'role', 'content', 'createdAt', ...(version >= 3 ? ['contextFiles'] : []), ...(version >= 6 ? ['contextHandoff'] : []), ...(version >= 8 ? ['images'] : [])], ['id', 'role', 'content', 'createdAt']); id(message.id);
-    requireValue(['user', 'assistant'].includes(message.role)); content(message.content); timestamp(message.createdAt);
+    requireValue(['user', 'assistant'].includes(message.role)); content(message.content, message.role === 'assistant' ? MAX_MODEL_OUTPUT_BYTES : 256 * 1024); timestamp(message.createdAt);
     if(Object.hasOwn(message,'images')) { requireValue(message.role==='user'); try { validateImages(message.images); } catch { throw invalid(); } }
     if (Object.hasOwn(message, 'contextFiles')) {
       requireValue(message.role === 'user');
@@ -206,7 +212,7 @@ function validateRunHistory(record, sessions, version) {
   shape(record, ['sessionId', 'run', 'approvals']); id(record.sessionId);
   const session = sessions.get(record.sessionId); requireValue(Boolean(session));
   validateRun(record.run, session, true, version);
-  limitedArray(record.approvals, 64); unique(record.approvals);
+  limitedArray(record.approvals, RUN_HISTORY_MAX_APPROVALS); unique(record.approvals);
   for (const approval of record.approvals) {
     shape(approval, ['id', 'tool', 'path', 'status', 'createdAt', 'resolvedAt', 'appliedAt', 'originalHash', 'proposedHash', ...(approval.tool === 'run_command' ? ['command', 'startedAt'] : [])]);
     id(approval.id); requireValue(approval.tool === null || ['write_file', 'edit_file', ...(version >= 7 ? ['run_command'] : [])].includes(approval.tool));
