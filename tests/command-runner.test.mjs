@@ -65,8 +65,18 @@ test('real shell starts only after its checkpoint, returns Unicode, cwd, stderr 
   const command = windows ? '[Console]::Out.WriteLine("中文"); [Console]::Out.WriteLine((Get-Location).Path); [Console]::Error.WriteLine("stderr"); exit 7'
     : 'printf "中文\\n"; pwd; printf stderr >&2; exit 7';
   const proposal = await runner.prepare({ command, cwd: 'sub', timeoutMs: 30000 });
-  let started = 0;
-  const result = await runner.execute(proposal, { onStarted: async () => { started++; } });
+  let started = 0, readyElapsedMs = null, result;
+  const executionStarted = performance.now();
+  try {
+    result = await runner.execute(proposal, { onStarted: async () => { started++; readyElapsedMs = Math.round(performance.now() - executionStarted); } });
+  } finally {
+    t.diagnostic(JSON.stringify({ event: 'real-shell-checkpoint-timing', started, readyElapsedMs,
+      elapsedMs: Math.round(performance.now() - executionStarted),
+      ...(result ? { durationMs: result.durationMs, exitCode: result.exitCode, timedOut: result.timedOut,
+        cancelled: result.cancelled, stdoutBytes: Buffer.byteLength(result.stdout), stderrBytes: Buffer.byteLength(result.stderr),
+        unicodeArrived: result.stdout.includes('中文'), selectedDirectoryArrived: result.stdout.includes(path.join(root, 'sub')),
+        stderrFixtureArrived: result.stderr.includes('stderr') } : { resultReceived: false }) }));
+  }
   assert.equal(started, 1); assert.equal(result.exitCode, 7); assert.equal(result.shell, windows ? 'powershell' : 'sh');
   assert.equal(result.cwd, 'sub'); assert.match(result.stdout, /中文/); assert.ok(result.stdout.includes(path.join(root, 'sub')));
   assert.match(result.stderr, /stderr/); assert.equal(result.cancelled, false); assert.equal(result.timedOut, false);
