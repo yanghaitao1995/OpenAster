@@ -25,6 +25,23 @@ function exact(value, keys) {
   } catch { return false; }
 }
 const validPhase = phase => Number.isInteger(phase) && phase >= 0 && phase <= 4;
+const CHECK_STAGES = new Set(['page', 'workspace-menu', 'keychain', 'draft', 'relaunch', 'fixture', 'handoff', 'summary-draft',
+  'cancel', 'backup', 'reopen-original', 'restore', 'reopen-restored']);
+const STAGE_PREFIX = 'OPENASTER_SMOKE_STAGE_DIAGNOSTIC ';
+
+export function createSmokeStageDiagnostic(stage) {
+  return { version: 1, stage: CHECK_STAGES.has(stage) ? stage : 'unknown', code: 'SMOKE_CHECK_FAILED' };
+}
+
+export function parseSmokeStageDiagnostic(line) {
+  try {
+    if (typeof line !== 'string' || line.length > 256 || /[\r\n]/u.test(line) || !line.startsWith(STAGE_PREFIX)) return null;
+    const value = JSON.parse(line.slice(STAGE_PREFIX.length));
+    if (!exact(value, ['version', 'stage', 'code']) || value.version !== 1 || value.code !== 'SMOKE_CHECK_FAILED'
+      || !(CHECK_STAGES.has(value.stage) || value.stage === 'unknown')) return null;
+    return createSmokeStageDiagnostic(value.stage);
+  } catch { return null; }
+}
 
 export function createSmokeFailure(error, { phase, action, reason = 'native-menu-failed' }) {
   if (!validPhase(phase) || !ACTIONS.has(action) || !REASONS.has(reason)) throw invalid();

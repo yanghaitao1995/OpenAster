@@ -5,12 +5,29 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createSmokeFailure, validateSmokeFailure, createSmokeController, assertSmokeTransition } from './smoke-diagnostics.mjs';
+import { createSmokeFailure, validateSmokeFailure, createSmokeController, assertSmokeTransition, createSmokeStageDiagnostic, parseSmokeStageDiagnostic } from './smoke-diagnostics.mjs';
 import { createDesktopLifecycle } from './lifecycle.mjs';
 import { openRelaunchSmokeState, readSmokeRecord } from './relaunch-smoke-state.mjs';
 
 const gate = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const native = code => Object.assign(new Error('secret/raw/path must not escape'), { code, stack: 'secret-stack', orphanPath: 'C:/secret/path', token: 'secret-token' });
+
+test('stage diagnostics only retain fixed stage names and reject arbitrary output', () => {
+  const prefix = 'OPENASTER_SMOKE_STAGE_DIAGNOSTIC ';
+  for (const stage of ['page', 'workspace-menu', 'keychain', 'draft', 'relaunch', 'fixture', 'handoff', 'summary-draft', 'cancel', 'backup', 'reopen-original', 'restore', 'reopen-restored']) {
+    const value = { version: 1, stage, code: 'SMOKE_CHECK_FAILED' };
+    assert.deepEqual(createSmokeStageDiagnostic(stage), value);
+    assert.deepEqual(parseSmokeStageDiagnostic(prefix + JSON.stringify(value)), value);
+  }
+  const unknown = { version: 1, stage: 'unknown', code: 'SMOKE_CHECK_FAILED' };
+  assert.deepEqual(createSmokeStageDiagnostic('C:/private/path'), unknown);
+  assert.deepEqual(createSmokeStageDiagnostic(native('EPERM')), unknown);
+  for (const line of [prefix + '{', prefix + JSON.stringify({ ...unknown, path: 'secret' }),
+    prefix + JSON.stringify({ ...unknown, stage: 'secret' }), prefix + JSON.stringify({ ...unknown, code: 'EPERM' }),
+    prefix + JSON.stringify(unknown) + '\n', 'secret ' + prefix + JSON.stringify(unknown), prefix + ' '.repeat(257)]) {
+    assert.equal(parseSmokeStageDiagnostic(line), null);
+  }
+});
 function fixture(options = {}) {
   const events = [], records = [], outputs = [];
   const controller = createSmokeController({ phase: 2,

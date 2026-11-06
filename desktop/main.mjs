@@ -21,7 +21,7 @@ import { runBackupJob } from './backup-worker-client.mjs';
 import { createWorkspace } from '../core/workspace.mjs';
 import { openRelaunchSmokeState } from './relaunch-smoke-state.mjs';
 import { createRelaunchSmokeScenario } from './relaunch-smoke.mjs';
-import { createSmokeController } from './smoke-diagnostics.mjs';
+import { createSmokeController, createSmokeStageDiagnostic } from './smoke-diagnostics.mjs';
 import { createSmokeReadiness } from './smoke-readiness.mjs';
 
 app.setName('OpenAster');
@@ -250,7 +250,7 @@ async function configureWorkspaceActions() {
     // Real source/directory/staged relaunch scenarios use the full handshake.
     prepareTransition: backupSmokeMode && !relaunchSmokeMode ? undefined : options => nativeLeave.acquire(options),
     closeService: options => {
-    if (relaunchSmokeMode) smokeReadiness?.beginClosing();
+    if (backupSmokeMode) smokeReadiness?.beginClosing();
     return service.close(options);
   }, reportError: backupSmokeMode ? async error => {
     // Latch before lifecycle's finally can attempt a relaunch or quit.
@@ -326,6 +326,9 @@ async function startProfileService() {
 async function verifySmokeBackupLifecycle() {
   smokeCheckStage = 'fixture';
   const check = value => { if (!value) throw new Error('Native backup smoke assertion failed'); };
+  const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  const toolRecords = values => JSON.stringify(canonical([...values].sort((a, b) => a.id.localeCompare(b.id))));
   const connect = async () => {
     const first = await fetch(service.url + '/api/bootstrap'), bootstrap = await first.json();
     const headers = { cookie: first.headers.get('set-cookie').split(';')[0], 'X-CSRF-Token': bootstrap.csrfToken, 'Content-Type': 'application/json' };
@@ -354,11 +357,11 @@ async function verifySmokeBackupLifecycle() {
     await new Promise(resolve => setTimeout(resolve, 20));
   }
   check(completed.run?.status === 'completed');
-  const ref = completed.run.steps.find(step => step.toolResultRef?.name === 'read_file')?.toolResultRef
-    ?? completed.run.steps.filter(step => step.toolResultRef).at(-1)?.toolResultRef;
-  check(ref);
+  const ref = completed.run.steps.find(step => step.toolResultRef?.name === 'read_file' && step.toolResultRef.path === 'native-note.txt')?.toolResultRef;
+  check(ref && ref.isError === false);
   const artifactRoute = `${route}/runs/${completed.run.id}/artifacts/${ref.artifactId}`;
   const originalArtifact = await client.request(artifactRoute);
+  check(JSON.parse(originalArtifact.page.content).result.content === note);
   smokeCheckStage = 'handoff';
   check(client.bootstrap.capabilities.conversationHandoff === 1);
   const preview = await client.request(route + '/handoff-preview');
@@ -419,14 +422,25 @@ async function verifySmokeBackupLifecycle() {
     await new Promise(resolve => { summaryFixture.close(resolve); summaryFixture.closeIdleConnections(); });
   }
   const savedSummaryDraft = JSON.stringify(summaryDraft);
+  const exportedToolArtifacts = (await client.request('/api/export')).toolArtifacts;
+  const savedToolArtifacts = toolRecords(exportedToolArtifacts);
   smokeCheckStage = 'cancel';
   const cancelled = await click('备份当前工作区…'); check(cancelled === false && smokeLifecycleEvents.length === 0);
   check((await client.request(route)).session.id === task.id);
   smokeBackupOutput = path.join(smokeDirectory, 'native-backup.json');
   smokeCheckStage = 'backup';
-  const backup = await click('备份当前工作区…'); check(backup?.sessions === 2 && backup.toolArtifacts >= 2 && backup.summaryJobs === 1);
+  // Pause only new renderer/Service Worker requests after the cancellation
+  // check. The existing server close still rejects any genuinely active task.
+  const rendererReadiness = await smokeReadiness.seal();
+  check(rendererReadiness.version === 1 && rendererReadiness.policy === 'pause-new-background-requests-before-transition'
+    && rendererReadiness.allAdmittedRequestsSettled === true && rendererReadiness.allStartedHandlersSettled === true
+    && Number.isSafeInteger(rendererReadiness.handlersStarted) && rendererReadiness.handlersStarted > 0
+    && rendererReadiness.handlersStarted === rendererReadiness.handlersSettled);
+  const backup = await click('备份当前工作区…'); check(backup?.sessions === 2 && backup.toolArtifacts === exportedToolArtifacts.length && backup.summaryJobs === 1);
   const archive = JSON.parse(await readFile(smokeBackupOutput, 'utf8'));
-  check(archive.version === 7 && JSON.stringify(archive.payload.sessions.find(item => item.id === continuation.id)?.messages[0]?.contextHandoff) === savedHandoff);
+  check(archive.format === 'openaster-backup' && archive.version === 9 && Array.isArray(archive.payload.steeringInputs) && archive.payload.steeringInputs.length === 0);
+  check(JSON.stringify(archive.payload.sessions.find(item => item.id === continuation.id)?.messages[0]?.contextHandoff) === savedHandoff);
+  check(toolRecords(archive.payload.toolArtifacts) === savedToolArtifacts);
   check(JSON.stringify(archive.payload.summaryJobs[0]) === savedSummaryDraft);
   check(smokeLifecycleEvents.join(',') === 'relaunch,quit');
   smokeCheckStage = 'reopen-original';
@@ -442,6 +456,7 @@ async function verifySmokeBackupLifecycle() {
   check(JSON.stringify((await client.request(route + '/summary-drafts', summaryRequest)).draft) === savedSummaryDraft && summaryCalls === 1);
   check((await client.request('/api/usage')).summary.tokens.totalTokens.knownSum === '5');
   check(JSON.stringify(await client.request(artifactRoute)) === JSON.stringify(originalArtifact));
+  check(toolRecords((await client.request('/api/export')).toolArtifacts) === savedToolArtifacts);
   check(await readFile(path.join(activeProfile.workspace, 'native-note.txt'), 'utf8') === note);
   check(await readFile(path.join(app.getPath('userData'), 'workspace', 'native-note.txt'), 'utf8') === note);
   check(smokeLifecycleEvents.join(',') === 'relaunch,quit,relaunch,quit');
@@ -451,6 +466,7 @@ async function verifySmokeBackupLifecycle() {
     handoffSnapshotRestored: true, handoffHistoryNotReplayed: true, summaryDraftCreatedViaApi: true, summaryDraftRestored: true,
     summaryDraftReplayKeptRequest: true, summaryDraftUsageRestored: true, summaryFixtureRequests: summaryCalls,
     relaunchRequests: 2, processRelaunchExecuted: false,
+    rendererReadiness, transitionReadiness: 'fixture paused new renderer and service worker requests before backup; not naturally idle startup',
     rendererTransitionGuard: false, rendererTransitionGuardReason: 'api-fixture' };
 }
 
@@ -610,6 +626,7 @@ function showWindow() {
     window.webContents.once('render-process-gone', () => { if (!smokeTransitioning) { smokeController.capture({ code: 'SMOKE_RENDERER_EXITED' }, { action: 'page-check', reason: 'renderer-exited' }); void finishSmoke(1, { error: 'renderer-exited' }); } });
     window.webContents.once('did-finish-load', async () => {
       try {
+        smokeCheckStage = 'page';
         const page = await window.webContents.executeJavaScript(`(async () => {
           const started = Date.now();
           while (!document.querySelector('#connection-indicator.connected') && Date.now() - started < 10000) {
@@ -624,6 +641,7 @@ function showWindow() {
         })()`);
         const preferences = window.webContents.getLastWebPreferences();
         const sandboxed = preferences.sandbox === true && preferences.contextIsolation === true && preferences.nodeIntegration === false;
+        smokeCheckStage = 'workspace-menu';
         const workspaceMenu = Menu.getApplicationMenu()?.items.find(item => item.label === '工作区')?.submenu;
         const registered = (await profiles.list()).filter(item => item.kind !== 'default');
         const allMenu = workspaceMenu?.items.find(item => item.id === 'workspace-all');
@@ -639,11 +657,14 @@ function showWindow() {
         };
         const workspaceMenuInstalled = Boolean(workspaceMenu?.items.some(item => item.label === '打开文件夹…' && item.accelerator === 'CmdOrCtrl+O')
           && workspaceMenu.items.some(item => item.label === '默认工作区' && item.checked === (activeProfile.id === 'default')) && workspaceNavigation.allEntriesMatch);
+        smokeCheckStage = 'keychain';
         const secretStorage = await verifySmokeSecretStorage();
+        smokeCheckStage = 'draft';
         const deviceDraftStorage = !relaunchSmokeMode ? await verifySmokeDraftStorage(secretStorage) : undefined;
         const ok = /OpenAster/.test(page.title) && page.requireUnavailable && page.processUnavailable && page.connected && sandboxed && workspaceMenuInstalled;
         if (relaunchSmokeMode) {
           if (!ok) throw new Error('Smoke startup boundary failed');
+          smokeCheckStage = 'relaunch';
           const processRelaunch = await relaunchScenario.run({ ...page, sandboxed, workspaceMenuInstalled, workspaceNavigation, secretStorage });
           if (!processRelaunch.transitioning) await finishSmoke(0, { processRelaunch, sandboxed, secretStorage });
           return;
@@ -652,7 +673,10 @@ function showWindow() {
         if (!ok) smokeController.capturePageError(undefined);
         await finishSmoke(ok ? 0 : 1, { ...page, sandboxed, workspaceMenuInstalled, workspaceNavigation, secretStorage,
           ...(deviceDraftStorage ? { deviceDraftStorage } : {}), ...(backupLifecycle ? { backupLifecycle } : {}) });
-      } catch (error) { smokeController.capturePageError(error); await finishSmoke(1, { error: 'page-check-failed' }); }
+      } catch (error) {
+        console.error('OPENASTER_SMOKE_STAGE_DIAGNOSTIC ' + JSON.stringify(createSmokeStageDiagnostic(smokeCheckStage)));
+        smokeController.capturePageError(error); await finishSmoke(1, { error: 'page-check-failed' });
+      }
     });
   }
   window.on('closed', () => { window = undefined; });
@@ -678,7 +702,7 @@ if (!app.requestSingleInstanceLock()) {
     isolated.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     isolated.setPermissionCheckHandler(() => false);
     const allowedOrigin = new URL(service.url).origin;
-    if (relaunchSmokeMode) {
+    if (backupSmokeMode) {
       smokeReadiness = createSmokeReadiness({ server: service.server, origin: allowedOrigin,
         onFailure: error => smokeController.capture(error, { action: 'page-check', reason: 'page-check-failed' }) });
       isolated.webRequest.onResponseStarted(details => smokeReadiness.responseStarted(details));

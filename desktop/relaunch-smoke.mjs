@@ -62,7 +62,7 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
   }
   async function verifyRecords(client) {
     const expected = fixture(), records = await client.request('/api/export');
-    assert.equal(records.sessions.length, 2); assert.equal(records.runHistory.length, 3); assert.equal(records.toolArtifacts.length, 2);
+    assert.equal(records.sessions.length, 2); assert.equal(records.runHistory.length, 3); assert.equal(records.toolArtifacts.length, expected.toolArtifactCount);
     assert.equal(recordDigest(records), expected.recordsSha256, 'Tasks, histories, tool artifacts or execution audit changed across restart');
     const source = records.sessions.find(item => item.id === expected.sessionId), branch = records.sessions.find(item => item.id === expected.branchId);
     assert.ok(source && branch); assert.equal(source.run.id, expected.sourceRunId); assert.equal(branch.run.id, expected.branchRunId);
@@ -72,7 +72,8 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
     assert.equal(records.runHistory.filter(item => item.sessionId === branch.id).length, 1);
     assert.equal(records.toolArtifacts.filter(item => item.sessionId === branch.id).length, 0);
     assert.deepEqual(branch.approvals, []);
-    return { sourceAndBranchPreserved: true, branchMetadataPreserved: true, historicalAttachmentPreserved: true, executionNotReplayed: true };
+    return { sourceAndBranchPreserved: true, branchMetadataPreserved: true, historicalAttachmentPreserved: true, executionNotReplayed: true,
+      toolArtifacts: records.toolArtifacts.length };
   }
   async function pageTaskCheck() {
     const expected = fixture();
@@ -102,10 +103,11 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
     confirmRestore: async () => true,
     confirmSwitch: async () => true,
     backupDone: async result => {
-      assert.equal(state.phase, 0); assert.equal(result.sessions, 2); assert.equal(result.runHistory, 3); assert.equal(result.toolArtifacts, 2);
+      assert.equal(state.phase, 0); assert.equal(result.sessions, 2); assert.equal(result.runHistory, 3); assert.equal(result.toolArtifacts, fixture().toolArtifactCount);
       const bytes = await readFile(backup), envelope = JSON.parse(bytes.toString('utf8'));
       assert.equal(result.path, backup); assert.equal(hash(bytes), result.sha256);
-      assert.equal(envelope.format, 'openaster-backup'); assert.equal(envelope.version, 7);
+      assert.equal(envelope.format, 'openaster-backup'); assert.equal(envelope.version, 9);
+      assert.deepEqual(envelope.payload.steeringInputs, []); assert.deepEqual(envelope.payload.summaryJobs, []);
       assert.equal(hash(JSON.stringify(envelope.payload)), envelope.sha256);
       assert.equal(recordDigest(envelope.payload), fixture().recordsSha256);
       assert.equal(Object.hasOwn(envelope.payload, 'deviceDrafts'), false);
@@ -115,7 +117,7 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
     },
     restoreDone: async ({ profile, result }) => {
       assert.equal(state.phase, 1); assert.equal(profile.kind, 'restored'); assert.equal(result.sessions, 2);
-      assert.equal(result.runHistory, 3); assert.equal(result.toolArtifacts, 2);
+      assert.equal(result.runHistory, 3); assert.equal(result.toolArtifacts, fixture().toolArtifactCount);
       state.setFixture({ ...fixture(), restoredProfileId: profile.id, restoredWorkspace: profile.workspace }); transitionReady = true;
     },
   };
@@ -146,9 +148,23 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
         const started = await client.request(route + '/messages', { content: '查看当前文件，不要写入' });
         const completed = await completedSession(client, task.id, started.runId);
         const refs = completed.run.steps.filter(step => step.toolResultRef).map(step => step.toolResultRef);
-        assert.equal(refs.length, 2);
-        const artifactId = refs.at(-1).artifactId, artifactRoute = route + '/runs/' + completed.run.id + '/artifacts/' + artifactId;
-        const artifact = await client.request(artifactRoute);
+        assert.equal(refs[0]?.name, 'list_workspace');
+        const artifacts = [];
+        for (const ref of refs) {
+          assert.equal(ref.isError, false);
+          const artifact = await client.request(route + '/runs/' + completed.run.id + '/artifacts/' + ref.artifactId);
+          assert.equal(hash(artifact.page.content), ref.sha256); assert.equal(Buffer.byteLength(artifact.page.content), ref.bytes);
+          artifacts.push(artifact);
+        }
+        const inventory = JSON.parse(artifacts[0].page.content).result;
+        const demoReadPaths = inventory.files.filter(file => file.type === 'file' && file.size <= 256 * 1024).slice(0, 3).map(file => file.path);
+        assert.deepEqual(refs.map(ref => ({ name: ref.name, path: ref.path })), [
+          { name: 'list_workspace', path: null }, ...demoReadPaths.map(path => ({ name: 'read_file', path })),
+        ]);
+        for (let index = 1; index < artifacts.length; index++) assert.equal(JSON.parse(artifacts[index].page.content).result.path, demoReadPaths[index - 1]);
+        const noteIndex = refs.findIndex(ref => ref.name === 'read_file' && ref.path === 'relaunch-note.txt');
+        assert.ok(noteIndex > 0, 'The seeded note must be read by the local demo');
+        const artifactId = refs[noteIndex].artifactId, artifact = artifacts[noteIndex];
         assert.equal(JSON.parse(artifact.page.content).result.content, note);
         const attached = await client.request(route + '/messages', { content: '查看我选择的文件快照，不要写入',
           files: [{ path: 'relaunch-note.txt', sha256: hash(note) }] });
@@ -173,9 +189,10 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
           sourcePrefixHash: preview.source.prefixHash, mode: 'prefix', retainedMessages: 2, createdAt: branch.createdAt });
         assert.deepEqual((await client.request(route)).session, source, 'Creating a branch must preserve the source task');
         const records = await client.request('/api/export');
+        assert.deepEqual(records.toolArtifacts.map(item => item.id).sort(), refs.map(ref => ref.artifactId).sort());
         state.setFixture({ sessionId: task.id, runId: completed.run.id, artifactId, artifactSha256: hash(JSON.stringify(artifact)),
           sourceRunId: source.run.id, branchId: branch.id, branchRunId: branch.run.id, branchTitle: branch.title,
-          branchMetadata: branch.branch, recordsSha256: recordDigest(records),
+          branchMetadata: branch.branch, recordsSha256: recordDigest(records), toolArtifactCount: records.toolArtifacts.length, demoReadPaths,
           providerId: provider.id, originalWorkspace: profile.workspace, noteSha256: hash(note), backupSha256: null, restoredProfileId: null, restoredWorkspace: null });
         const draftClient = await connect(); // Include the synthetic provider created after the initial bootstrap.
         const draftState = await verifyDraftWorkspace({ window: getWindow(), request: draftClient.request, bootstrap: draftClient.bootstrap, sessionId: task.id, expected: null,
@@ -223,7 +240,8 @@ export function createRelaunchSmokeScenario({ state, userData, getService, getPr
       else { state.record(proof); return { realProcessRelaunches: 4, processCount: 5, restoredProfileId: expected.restoredProfileId,
         restoredTaskVisible: true, actualRecentWorkspaceSwitch: true, independentCredentials: true,
         originalWorkspacePreserved: true, artifactBytesPreserved: true, backupVersion: expected.backupVersion,
-        sourceSessionId: expected.sessionId, branchSessionId: expected.branchId, sessions: 2, runHistories: 3, toolArtifacts: 2,
+        sourceSessionId: expected.sessionId, branchSessionId: expected.branchId, sessions: 2, runHistories: 3,
+        toolArtifacts: expected.toolArtifactCount, demoReadPaths: expected.demoReadPaths,
         branchCreatedViaApi: true, sourceAndBranchPreserved: true, branchMetadataPreserved: true,
         historicalAttachmentPreserved: true, executionNotReplayed: true,
         chooserResponses: 'injected; system picker visual interaction is not exercised',

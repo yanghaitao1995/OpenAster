@@ -3,6 +3,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import http from 'node:http';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { startServer } from '../server/index.mjs';
 import { createSmokeReadiness } from './smoke-readiness.mjs';
 import { createSmokeController } from './smoke-diagnostics.mjs';
 
@@ -151,4 +155,70 @@ test('real loopback response completion cannot bypass a handler that still has a
   const response = await fetch(url + '/api/workspace'); assert.equal(await response.text(), 'ok'); await entered.promise;
   readiness.completed({ id: 1, statusCode: 200 }); const sealing = readiness.seal(); assert.equal(await isPending(sealing), true);
   release.resolve(); const proof = await sealing; assert.equal(proof.handlersStarted, 1); assert.equal(proof.handlersSettled, 1);
+});
+
+test('controlled-idle seal drains an admitted real service request without bypassing the idle close guard', { timeout: 10000 }, async t => {
+  const temporaryRoot = await fs.realpath(tmpdir());
+  const directory = await fs.mkdtemp(path.join(temporaryRoot, 'openaster-readiness-service-'));
+  const entered = gate(), release = gate(); let hold = false, readiness;
+  const service = await startServer({ dataDir: directory, port: 0, host: '127.0.0.1', secretStore: {
+    async get() { if (hold) { entered.resolve(); await release.promise; } }, set() {}, delete() {},
+  } });
+  t.after(async () => {
+    release.resolve(); await service.close(); readiness?.dispose();
+    assert.equal(await fs.realpath(directory), directory); assert.equal(path.dirname(directory), temporaryRoot);
+    assert.match(path.basename(directory), /^openaster-readiness-service-[A-Za-z0-9]+$/u);
+    await fs.rm(directory, { recursive: true, force: true });
+  });
+  const bootstrap = await fetch(service.url + '/api/bootstrap'); await bootstrap.json();
+  const cookie = bootstrap.headers.get('set-cookie').split(';')[0];
+  readiness = createSmokeReadiness({ server: service.server, origin: service.url });
+  readiness.beforeRequest({ id: 1, url: service.url + '/api/state', method: 'GET' }, value => assert.equal(value.cancel, false));
+  hold = true;
+  const pending = fetch(service.url + '/api/state', { headers: { cookie } });
+  await entered.promise;
+  await assert.rejects(service.close({ ifIdle: true }), { code: 'WORKSPACE_BUSY' });
+  const sealing = readiness.seal(); assert.equal(await isPending(sealing), true);
+  const paused = [];
+  readiness.beforeRequest({ id: 2, url: service.url + '/api/state', method: 'GET' }, value => paused.push(value));
+  assert.deepEqual(paused, []);
+  release.resolve(); const response = await pending; await response.json();
+  assert.equal(response.status, 200); readiness.completed({ id: 1, statusCode: 200 });
+  const proof = await sealing;
+  assert.equal(proof.admittedRequests, 1); assert.equal(proof.completedRequests, 1); assert.equal(proof.pausedRequests, 1);
+  assert.equal(proof.handlersStarted, 1); assert.equal(proof.handlersSettled, 1);
+  assert.equal(proof.allAdmittedRequestsSettled, true); assert.equal(proof.allStartedHandlersSettled, true);
+  readiness.beginClosing(); assert.deepEqual(paused, [{ cancel: true }]);
+  await service.close({ ifIdle: true });
+});
+
+test('controlled-idle HTTP proof cannot approve closing a still-active model runner', { timeout: 10000 }, async t => {
+  const temporaryRoot = await fs.realpath(tmpdir());
+  const directory = await fs.mkdtemp(path.join(temporaryRoot, 'openaster-readiness-runner-'));
+  const entered = gate(), release = gate(); let readiness;
+  const service = await startServer({ dataDir: directory, port: 0, host: '127.0.0.1',
+    runtimeOptions: { providerCall: async () => { entered.resolve(); await release.promise; return { content: '本机模拟完成', toolCalls: [] }; } },
+  });
+  t.after(async () => {
+    release.resolve(); await service.close(); readiness?.dispose();
+    assert.equal(await fs.realpath(directory), directory); assert.equal(path.dirname(directory), temporaryRoot);
+    assert.match(path.basename(directory), /^openaster-readiness-runner-[A-Za-z0-9]+$/u);
+    await fs.rm(directory, { recursive: true, force: true });
+  });
+  const first = await fetch(service.url + '/api/bootstrap'), bootstrap = await first.json();
+  const cookie = first.headers.get('set-cookie').split(';')[0];
+  const request = async (route, body) => {
+    const response = await fetch(service.url + route, { method: 'POST',
+      headers: { cookie, 'X-CSRF-Token': bootstrap.csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    assert.equal(response.ok, true); return response.json();
+  };
+  const { provider } = await request('/api/providers', { name: 'Controlled local fixture', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1' });
+  const { session } = await request('/api/sessions', { providerId: provider.id });
+  readiness = createSmokeReadiness({ server: service.server, origin: service.url });
+  await request('/api/sessions/' + session.id + '/messages', { content: '等待本机测试门闩' });
+  await entered.promise;
+  const proof = await readiness.seal();
+  assert.equal(proof.handlersStarted, proof.handlersSettled); assert.equal(proof.allStartedHandlersSettled, true);
+  readiness.beginClosing();
+  await assert.rejects(service.close({ ifIdle: true }), { code: 'WORKSPACE_BUSY' });
 });
