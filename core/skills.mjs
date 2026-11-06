@@ -4,11 +4,24 @@ import { constants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { CoreError, checkAbort } from './errors.mjs';
 import { validateRelativePath } from './workspace.mjs';
 import { isSensitiveSegment } from './sensitive-paths.mjs';
 
-export const DEFAULT_SKILLS_ROOT = fileURLToPath(new URL('../skills/', import.meta.url));
+function bundledSkillsRoot() {
+  const sourceRoot = fileURLToPath(new URL('../skills/', import.meta.url));
+  const applicationRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  if (!process.versions.electron || path.basename(applicationRoot) !== 'app.asar') return sourceRoot;
+  // ASAR stats have synthetic identities. Only our own real app.asar file uses
+  // unpacked skill resources; a source directory named app.asar stays ordinary.
+  const originalFs = createRequire(import.meta.url)('original-fs');
+  const archive = originalFs.lstatSync(applicationRoot);
+  if (!archive.isFile() || archive.isSymbolicLink()) return sourceRoot;
+  return path.join(`${applicationRoot}.unpacked`, 'skills');
+}
+
+export const DEFAULT_SKILLS_ROOT = bundledSkillsRoot();
 export const SKILL_LIMITS = Object.freeze({ count: 128, metadataBytes: 8192, fileBytes: 256 * 1024 });
 const ID = /^[a-z0-9][a-z0-9_-]{0,63}$/u;
 const ICONS = new Set(['sparkles', 'search', 'pen', 'code', 'layers', 'globe', 'file', 'folder', 'terminal']);
