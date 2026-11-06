@@ -9,6 +9,7 @@ import { constants } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sharedBuildInfo } from './lib/build-info.mjs';
 
 export const APK = Object.freeze({ file: 'OpenAster-0.2.2-android-vc12-debug.apk', bytes: 4124497,
   sha256: '595b42481262d856c799a3c0186dcb2f4c113c291e7df94c9f21aa4b76b18e44',
@@ -28,13 +29,132 @@ export function assertHostedAndroid(env, platform, arch) {
     && env.RUNNER_ENVIRONMENT === 'github-hosted' && env.GITHUB_REPOSITORY === 'yanghaitao1995/OpenAster',
   'Android acceptance requires this repository on an ephemeral Linux x64 GitHub-hosted runner');
 }
-export function assertPackagedConfiguration(config, build) {
+export function acceptanceMode(args) {
+  requireFact(Array.isArray(args) && (args.length === 0 || args.length === 1 && args[0] === '--candidate'),
+    'Usage: verify-published-android.mjs [--candidate]');
+  return args.length ? 'candidate' : 'published';
+}
+export function assertCandidateCheckout(env, actualCommit) {
+  assertHostedAndroid(env, 'linux', 'x64');
+  requireFact(/^[a-f0-9]{40}$/u.test(env.GITHUB_SHA ?? '') && actualCommit === env.GITHUB_SHA,
+    'Candidate checkout must exactly match this workflow commit');
+}
+export async function verifyCandidateBytes(file, expected) {
+  const before = await fs.lstat(file);
+  requireFact(before.isFile() && !before.isSymbolicLink() && before.nlink === 1
+    && before.size >= 1024 && before.size <= 64 * 1024 * 1024, 'Candidate APK must be an ordinary bounded file');
+  const sha256 = await digest(file), after = await fs.lstat(file);
+  requireFact(before.dev === after.dev && before.ino === after.ino && before.size === after.size
+    && before.mtimeMs === after.mtimeMs && !after.isSymbolicLink() && after.nlink === 1, 'Candidate APK changed while hashing');
+  requireFact(!expected || expected.bytes === after.size && expected.sha256 === sha256,
+    'Candidate APK bytes changed; refusing installation');
+  return { bytes: after.size, sha256 };
+}
+async function ordinaryCandidatePath(root, relative, { directory = false } = {}) {
+  let current = root;
+  for (const part of relative.split('/')) {
+    current = path.join(current, part); const stat = await fs.lstat(current);
+    requireFact(!stat.isSymbolicLink() && (current === path.join(root, relative) && !directory ? stat.isFile() : stat.isDirectory()),
+      'Candidate input path must not contain links or unexpected file types');
+  }
+  return current;
+}
+export async function readCandidateArtifact(workspace) {
+  const root = await fs.realpath(workspace);
+  const json = async relative => {
+    const file = await ordinaryCandidatePath(root, relative), stat = await fs.lstat(file);
+    requireFact(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size < 1024 * 1024,
+      'Candidate version input must be an ordinary bounded file');
+    return JSON.parse(await fs.readFile(file, 'utf8'));
+  };
+  const pkg = await json('package.json'), mobile = await json('mobile/package.json'), version = await json('mobile/android-version.json');
+  requireFact(pkg.version === '0.2.3' && mobile.version === pkg.version && version.versionCode === 13
+    && Object.keys(version).length === 1, 'Candidate must use the reviewed 0.2.3 version and Android code 13');
+  const relative = 'mobile/android/app/build/outputs/apk/debug/app-debug.apk';
+  const current = await ordinaryCandidatePath(root, relative);
+  const identity = await verifyCandidateBytes(current), build = await sharedBuildInfo(root);
+  requireFact(build.version === pkg.version, 'Candidate shared UI version differs from the checkout');
+  return { sourceFile: current, artifact: { file: `OpenAster-${pkg.version}-android-vc${version.versionCode}-debug.apk`,
+    ...identity, version: pkg.version, versionCode: version.versionCode, package: APK.package,
+    sharedAssetsSha256: build.sharedAssetsSha256, sharedAssets: build.sharedAssets } };
+}
+export async function collectCandidateWebFiles(workspace) {
+  const root = await fs.realpath(workspace), generated = await ordinaryCandidatePath(root, 'mobile/www', { directory: true });
+  const files = []; let totalBytes = 0, visitedEntries = 0;
+  const add = async (relative, source) => {
+    const file = await ordinaryCandidatePath(root, source), before = await fs.lstat(file);
+    requireFact(before.nlink === 1 && before.size <= 8 * 1024 * 1024, 'Candidate web asset exceeds the ordinary-file limit');
+    totalBytes += before.size; requireFact(totalBytes <= 32 * 1024 * 1024 && files.length < 256, 'Candidate web asset tree exceeds its limit');
+    const sha256 = await digest(file), after = await fs.lstat(file);
+    requireFact(before.dev === after.dev && before.ino === after.ino && before.size === after.size
+      && before.mtimeMs === after.mtimeMs && !after.isSymbolicLink() && after.nlink === 1, 'Candidate web asset changed while hashing');
+    files.push({ file: relative, source, bytes: before.size, sha256 });
+  };
+  const visit = async (relative = '') => {
+    requireFact(relative.split('/').length <= 12, 'Candidate web asset directories are too deep');
+    for (const entry of (await fs.readdir(path.join(generated, relative), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+      requireFact(++visitedEntries <= 512, 'Candidate web directory inventory exceeds its limit');
+      requireFact(/^[A-Za-z0-9_.-]+$/u.test(entry.name) && !['.', '..'].includes(entry.name) && !entry.isSymbolicLink(), 'Unsafe candidate web asset name or link');
+      const name = relative ? `${relative}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) { await ordinaryCandidatePath(root, `mobile/www/${name}`, { directory: true }); await visit(name); }
+      else { requireFact(entry.isFile(), 'Candidate web asset is not a file'); await add(name, `mobile/www/${name}`); }
+    }
+  };
+  await visit(); requireFact(files.length > 0, 'Candidate generated web tree is empty');
+  // Capacitor adds these two bridge shims while syncing native assets. Every
+  // other APK public asset must originate in mobile/www without extra files.
+  for (const shim of ['cordova.js', 'cordova_plugins.js']) {
+    requireFact(!files.some(file => file.file === shim), 'Unexpected Cordova shim in the generated web tree');
+    await add(shim, `mobile/android/app/src/main/assets/public/${shim}`);
+  }
+  return files.sort((a, b) => a.file.localeCompare(b.file));
+}
+export function assertCandidateWebEntries(text, files) {
+  const entries = text.split(/\r?\n/u).filter(Boolean);
+  requireFact(entries.length > 0 && entries.length <= 8192 && Buffer.byteLength(text) <= 2 * 1024 * 1024,
+    'APK entry inventory exceeds its limit');
+  const seen = new Set(), archiveFiles = new Set(), expected = new Set(files.map(file => `assets/public/${file.file}`));
+  for (const entry of entries) {
+    const canonical = entry.replace(/\/$/u, '');
+    requireFact(entry.length <= 512 && !/[\\\u0000-\u001f\u007f:]/u.test(entry)
+      && !canonical.startsWith('/') && canonical.split('/').every(part => part && part !== '.' && part !== '..')
+      && !seen.has(canonical), 'APK contains duplicate or unsafe entry names');
+    seen.add(canonical);
+    if (!entry.endsWith('/')) archiveFiles.add(entry);
+    if (entry.startsWith('assets/public/') && !entry.endsWith('/')) requireFact(expected.has(entry), 'APK contains an unexpected public web asset');
+    if (entry.startsWith('assets/public/') && entry.endsWith('/')) requireFact([...expected].some(name => name.startsWith(entry)), 'APK contains an unexpected public web directory');
+  }
+  requireFact([...expected].every(entry => archiveFiles.has(entry)), 'APK is missing a generated web asset');
+  return { archiveEntries: entries.length, webFiles: expected.size };
+}
+export function assertCandidateWebBytes(bytes, file) {
+  requireFact(bytes.length === file.bytes && createHash('sha256').update(bytes).digest('hex') === file.sha256,
+    `Packaged candidate web bytes differ: ${file.file}`);
+}
+export function assertNativeApkVersion(text, artifact) {
+  const lines = text.split(/\r?\n/u).filter(line => line.startsWith('package: '));
+  requireFact(lines.length === 1, 'APK must declare one package identity');
+  const attribute = name => {
+    const matches = [...lines[0].matchAll(new RegExp(`\\b${name}='([^']*)'`, 'gu'))];
+    requireFact(matches.length === 1, 'APK package metadata contains a missing or repeated field'); return matches[0][1];
+  };
+  requireFact(attribute('name') === artifact.package && attribute('versionName') === artifact.version
+    && attribute('versionCode') === String(artifact.versionCode), 'APK native version or package differs from this candidate');
+  return { package: artifact.package, version: artifact.version, versionCode: artifact.versionCode };
+}
+export function signatureEvidence(text) {
+  const certificates = [...text.matchAll(/^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})\s*$/gimu)].map(match => match[1].toLowerCase());
+  requireFact(certificates.length > 0 && certificates.length <= 4 && /Verified using v2 scheme[^\n]*: true/iu.test(text),
+    'APK signature verification did not provide bounded signer fingerprints and a valid v2 signature');
+  return { certificateSha256: certificates, v2Verified: true, distribution: 'debug; no upgrade or production signing trust claimed' };
+}
+export function assertPackagedConfiguration(config, build, artifact = APK) {
   requireFact(config?.appId === APK.package && config.server?.hostname === 'localhost'
     && config.server?.androidScheme === 'https' && config.server?.cleartext === false
     && config.android?.allowMixedContent === false && config.android?.webContentsDebuggingEnabled === false,
   'Published APK does not retain the expected HTTPS and WebView isolation configuration');
-  requireFact(build?.version === APK.version && build.mode === 'companion' && build.sharedAssets === 27
-    && build.sharedAssetsSha256 === APK.sharedAssetsSha256, 'Published APK shared UI does not match the release baseline');
+  requireFact(build?.version === artifact.version && build.mode === 'companion' && build.sharedAssets === (artifact.sharedAssets ?? 27)
+    && build.sharedAssetsSha256 === artifact.sharedAssetsSha256, 'APK shared UI does not match the expected source baseline');
 }
 function decodeXml(value) {
   return value.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/giu, (_match, entity) => {
@@ -92,15 +212,19 @@ async function download(file) {
   throw new Error('APK download did not complete');
 }
 
-export async function main() {
+export async function main(args = process.argv.slice(2)) {
+  const mode = acceptanceMode(args), candidate = mode === 'candidate';
   assertHostedAndroid(process.env, process.platform, process.arch);
   const workspace = await fs.realpath(process.env.GITHUB_WORKSPACE);
   const evidence = path.join(workspace, 'android-installer-evidence'); await fs.mkdir(evidence, { recursive: true });
   requireFact(await fs.realpath(evidence) === evidence, 'Evidence path must not resolve through a link');
-  const receipt = { format: 'openaster-published-android-acceptance-v1', startedAt: new Date().toISOString(),
-    status: 'running', artifact: APK, verificationCommit: process.env.GITHUB_SHA, sourceCommit: '3a4ee6915312dcafd9e56ea5c40440c9b39c5985',
+  let artifact = candidate ? null : APK;
+  const receipt = { format: candidate ? 'openaster-candidate-android-acceptance-v1' : 'openaster-published-android-acceptance-v1', mode, startedAt: new Date().toISOString(),
+    status: 'running', artifact, verificationCommit: process.env.GITHUB_SHA, sourceCommit: candidate ? process.env.GITHUB_SHA : '3a4ee6915312dcafd9e56ea5c40440c9b39c5985',
     image: IMAGE, realModelCalls: 0, gatewayTested: false, appModified: false, securitySettingsChanged: false,
-    scope: 'Published APK install, launch, offline UI, settings, packaged notices, cleartext gateway refusal and cold relaunch on one API36 x86_64 emulator. Not physical-device, upgrade, signing trust or HTTPS gateway/model acceptance.',
+    observations: { artifactVerified: false, packagedWebBytesVerified: false, apkSignatureVerified: false,
+      emulatorBooted: false, apkInstalled: false, offlineUiRendered: false },
+    scope: `${candidate ? 'Same-checkout candidate' : 'Published'} APK install, launch, offline UI, settings, packaged notices, cleartext gateway refusal and cold relaunch on one API36 x86_64 emulator. Not physical-device, upgrade, signing trust or HTTPS gateway/model acceptance.`,
     steps: [], commands: [], services: [], screenshots: [] };
   const save = () => fs.writeFile(path.join(evidence, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   let sequence = 0, temporary, env, adbPath, emulatorPath, serial = 'emulator-5554', avdName, adbService, emulatorService;
@@ -213,7 +337,26 @@ export async function main() {
       avdName = `openaster-acceptance-${randomBytes(8).toString('hex')}`;
       receipt.temporaryDirectory = temporary; return { sdk, java, isolatedHome: true };
     });
-    await step('kvm-access-precondition', async () => {
+    let apkFile;
+    if (candidate) {
+      await step('candidate-source-and-artifact-identity', async () => {
+        const revision = await command('candidate-checkout-commit', 'git', ['-C', workspace, 'rev-parse', 'HEAD']);
+        assertCandidateCheckout(process.env, revision.text.trim());
+        // Capacitor's three generated trees may differ. Version manifests and
+        // every other tracked source must still match the dispatched commit.
+        const changes = await command('candidate-tracked-source-changes', 'git', ['-C', workspace, 'diff', '--name-only', 'HEAD', '--', '.',
+          ':(exclude)mobile/android', ':(exclude)mobile/ios', ':(exclude)mobile/www']);
+        requireFact(changes.text.trim() === '', `Candidate tracked sources differ from the checkout: ${clean(changes.text)}`);
+        const input = await readCandidateArtifact(workspace); artifact = input.artifact; receipt.artifact = artifact;
+        apkFile = path.join(temporary, artifact.file);
+        await fs.copyFile(input.sourceFile, apkFile, constants.COPYFILE_EXCL);
+        await verifyCandidateBytes(apkFile, artifact);
+        receipt.observations.artifactVerified = true;
+        return { sourceCommit: process.env.GITHUB_SHA, sourceFile: 'mobile/android/app/build/outputs/apk/debug/app-debug.apk',
+          sourceUnchanged: true, generatedExclusions: ['mobile/android', 'mobile/ios', 'mobile/www'], ...artifact };
+      });
+    }
+    const checkKvm = () => step('kvm-access-precondition', async () => {
       try {
         await fs.access('/dev/kvm', constants.R_OK | constants.W_OK);
         const result = await command('hardware-acceleration', emulatorPath, ['-accel-check']);
@@ -223,13 +366,49 @@ export async function main() {
         throw new Error(`KVM precondition failed. No permissions or security settings were changed. ${error.code ?? clean(error.message)}`);
       }
     });
-    const apkFile = path.join(temporary, APK.file);
-    await step('download-published-apk', () => download(apkFile));
+    if (!candidate) {
+      await checkKvm();
+      apkFile = path.join(temporary, APK.file);
+      await step('download-published-apk', () => download(apkFile));
+      receipt.observations.artifactVerified = true;
+    }
     await step('packaged-web-identity-and-policy', async () => {
       const config = await command('packaged-capacitor-config', 'unzip', ['-p', apkFile, 'assets/capacitor.config.json']);
       const build = await command('packaged-shared-ui', 'unzip', ['-p', apkFile, 'assets/public/build-info.json']);
-      assertPackagedConfiguration(JSON.parse(config.text), JSON.parse(build.text)); return { version: APK.version, sharedAssetsSha256: APK.sharedAssetsSha256, httpsRequired: true, webViewDebugging: false };
+      assertPackagedConfiguration(JSON.parse(config.text), JSON.parse(build.text), artifact);
+      return { version: artifact.version, sharedAssetsSha256: artifact.sharedAssetsSha256, httpsRequired: true, webViewDebugging: false };
     });
+    if (candidate) await step('candidate-native-version-and-signature', async () => {
+      let tools;
+      for (const version of ['36.0.0', '35.0.0']) {
+        const directory = path.join(env.ANDROID_HOME, 'build-tools', version);
+        try { await fs.access(path.join(directory, 'aapt2'), constants.X_OK); await fs.access(path.join(directory, 'apksigner'), constants.X_OK); tools = directory; break; }
+        catch { /* Only these official SDK tool versions are accepted. */ }
+      }
+      requireFact(tools, 'Official Android build-tools 36.0.0 or 35.0.0 are required to inspect the built APK');
+      const native = await command('candidate-apk-version', path.join(tools, 'aapt2'), ['dump', 'badging', apkFile]);
+      const identity = assertNativeApkVersion(native.text, artifact);
+      const signature = await command('candidate-apk-signature', path.join(tools, 'apksigner'), ['verify', '--verbose', '--print-certs', apkFile]);
+      const signing = signatureEvidence(signature.text); receipt.observations.apkSignatureVerified = true;
+      return { ...identity, ...signing };
+    });
+    if (candidate) await step('candidate-packaged-web-bytes', async () => {
+      const files = await collectCandidateWebFiles(workspace);
+      const inventory = await command('candidate-apk-entry-list', 'unzip', ['-Z1', apkFile]);
+      const counts = assertCandidateWebEntries(inventory.text, files);
+      for (const [index, file] of files.entries()) {
+        const content = await command(`candidate-web-${String(index + 1).padStart(3, '0')}`, 'unzip', ['-p', apkFile, `assets/public/${file.file}`]);
+        assertCandidateWebBytes(content.output, file);
+      }
+      requireFact(JSON.stringify(await collectCandidateWebFiles(workspace)) === JSON.stringify(files), 'Generated web assets changed during APK verification');
+      await verifyCandidateBytes(apkFile, artifact);
+      receipt.observations.packagedWebBytesVerified = true;
+      return { ...counts, bytes: files.reduce((sum, file) => sum + file.bytes, 0), files,
+        nativeBridgeShims: ['cordova.js', 'cordova_plugins.js'], generatedWebBytesMatch: true };
+    });
+    // Preserve static version/signature/UI identity evidence even when this
+    // runner cannot grant access to KVM. Never count that evidence as a boot.
+    if (candidate) await checkKvm();
     await step('official-sdk-and-fresh-avd', async () => {
       const bin = path.join(env.ANDROID_HOME, 'cmdline-tools', 'latest', 'bin');
       await command('sdk-licenses', path.join(bin, 'sdkmanager'), ['--licenses'], { timeout: 120000, stdin: 'y\n'.repeat(64) });
@@ -253,7 +432,7 @@ export async function main() {
       while (Date.now() < deadline) {
         requireFact(!emulatorService.record.closed && !emulatorService.record.error, 'Emulator exited before boot');
         const check = await adb('boot-progress', ['shell', 'getprop', 'sys.boot_completed'], { allowedFailure: true, timeout: 10000 });
-        if (check.code === 0 && check.text.trim() === '1') { booted = true; break; } await wait(2000);
+        if (check.code === 0 && check.text.trim() === '1') { booted = true; receipt.observations.emulatorBooted = true; break; } await wait(2000);
       }
       requireFact(booted, 'Android did not boot within four minutes'); await ownedDevice();
       const selinux = await adb('guest-security', ['shell', 'getenforce']); requireFact(selinux.text.trim() === 'Enforcing', 'Guest SELinux is not enforcing');
@@ -262,14 +441,19 @@ export async function main() {
       await adb('guest-webview', ['shell', 'dumpsys', 'webviewupdate']); return { bootCompleted: true, api: 36, selinux: 'Enforcing' };
     });
     await step('install-and-launch-fixed-apk', async () => {
-      await ownedDevice(); requireFact(await digest(apkFile) === APK.sha256, 'APK changed before install');
-      const install = await adb('install-published-apk', ['install', '--no-streaming', apkFile], { timeout: 90000 }); requireFact(/\bSuccess\b/u.test(install.text), 'APK installation was not confirmed'); installed = true;
+      await ownedDevice();
+      if (candidate) await verifyCandidateBytes(apkFile, artifact);
+      else requireFact(await digest(apkFile) === APK.sha256, 'APK changed before install');
+      const install = await adb(candidate ? 'install-candidate-apk' : 'install-published-apk', ['install', '--no-streaming', apkFile], { timeout: 90000 }); requireFact(/\bSuccess\b/u.test(install.text), 'APK installation was not confirmed'); installed = true;
+      receipt.observations.apkInstalled = true;
       const info = await adb('installed-version', ['shell', 'dumpsys', 'package', APK.package]);
-      requireFact(/versionCode=12\b/u.test(info.text) && /versionName=0\.2\.2\b/u.test(info.text), 'Installed package version differs');
-      const result = await adb('launch-published-apk', ['shell', 'am', 'start', '-W', '-n', `${APK.package}/.MainActivity`], { timeout: 45000 });
+      requireFact(info.text.match(/\bversionCode=(\d+)(?:\s|$)/u)?.[1] === String(artifact.versionCode)
+        && info.text.match(/\bversionName=(\S+)/u)?.[1] === artifact.version, 'Installed package version differs');
+      const result = await adb(candidate ? 'launch-candidate-apk' : 'launch-published-apk', ['shell', 'am', 'start', '-W', '-n', `${APK.package}/.MainActivity`], { timeout: 45000 });
       requireFact(/Status: ok/u.test(result.text), 'Activity launch was not confirmed'); await waitForText('first-launch', /请先配置 HTTPS 网关/u);
       await foreground('first-launch-foreground');
-      return { version: APK.version, versionCode: APK.versionCode, offlinePageRendered: true };
+      receipt.observations.offlineUiRendered = true;
+      return { version: artifact.version, versionCode: artifact.versionCode, offlinePageRendered: true };
     });
     await step('cleartext-gateway-refusal', async () => {
       await click('open-gateway', /^配置网关$/u); await capture('gateway-dialog'); requireFact(hasText(/连接你的工作台/u), 'Gateway dialog did not open');
@@ -319,7 +503,8 @@ export async function main() {
       catch (error) { receipt.status = 'failed'; receipt.cleanupError = clean(error.message); process.exitCode = 1; }
     }
     receipt.finishedAt = new Date().toISOString(); await save();
-    console.log(JSON.stringify({ status: receipt.status, error: receipt.error, steps: receipt.steps.map(({ name, status, error }) => ({ name, status, error })), evidence }));
+    console.log(JSON.stringify({ status: receipt.status, error: receipt.error, observations: receipt.observations,
+      steps: receipt.steps.map(({ name, status, error }) => ({ name, status, error })), evidence }));
     if (receipt.status !== 'passed') {
       for (const file of ['emulator.stderr.log', 'adb-server.stderr.log']) {
         try { const bytes = await fs.readFile(path.join(evidence, file)); console.log(JSON.stringify({ log: file, tail: clean(bytes.subarray(-8000).toString('utf8')) })); } catch { /* A precondition may fail before service creation. */ }
