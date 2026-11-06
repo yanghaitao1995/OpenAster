@@ -4,11 +4,11 @@
   "serialNumber": "urn:uuid:d26eece9-63fb-47f7-8511-8afd19c9e044",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-05T10:36:42.663Z",
+    "timestamp": "2026-11-06T06:18:29.868Z",
     "component": {
       "type": "application",
       "name": "openaster",
-      "version": "0.2.1"
+      "version": "0.2.2"
     },
     "properties": [
       {
