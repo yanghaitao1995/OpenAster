@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Test-process diagnostics only. Never serialize an Error or inspect its text.
-const ACTIONS = new Set(['startup', 'page-check', 'shutdown', 'relaunch', 'open-workspace', 'switch-default', 'switch-recent', 'backup', 'restore']);
+const ACTIONS = new Set(['startup', 'page-check', 'shutdown', 'relaunch', 'open-workspace', 'create-project',
+  'reveal-workspace', 'copy-workspace-path', 'switch-default', 'switch-recent', 'backup', 'restore']);
 const REASONS = new Set(['timeout', 'renderer-exited', 'page-check-failed', 'page-load-failed', 'startup-failed', 'native-menu-failed', 'menu-transition-not-started', 'relaunch-failed', 'shutdown-failed', 'record-failed']);
 const CODES = new Set([
   'SMOKE_OPERATION_FAILED', 'SMOKE_TRANSITION_NOT_STARTED', 'SMOKE_TIMEOUT', 'SMOKE_RENDERER_EXITED', 'SMOKE_PAGE_LOAD_FAILED', 'SMOKE_RECORD_FAILED',

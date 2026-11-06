@@ -47,6 +47,27 @@ test('persistent failure schema rejects unknown keys, enums, phases and accessor
   const copied = validateSmokeFailure(valid, { phase: 2 }); copied.diagnostic.code = 'EIO'; assert.equal(valid.diagnostic.code, 'EPERM');
 });
 
+for (const action of ['create-project', 'reveal-workspace', 'copy-workspace-path']) {
+  test(`${action} reaches its native callback and preserves bounded failure attribution`, async () => {
+    const successful = fixture(); let calls = 0;
+    assert.equal(await successful.controller.runMenu(action, async () => { calls++; return true; }), true);
+    assert.equal(calls, 1); assert.equal(successful.controller.action, action); assert.deepEqual(successful.events, []);
+    const failed = fixture();
+    assert.equal(await failed.controller.runMenu(action, async () => { throw native('EPERM'); }), false);
+    assert.equal(failed.records.length, 1); assert.equal(failed.outputs[0].diagnostic.action, action);
+    assert.equal(failed.outputs[0].diagnostic.code, 'EPERM');
+    assert.deepEqual(validateSmokeFailure(failed.outputs[0], { phase: 2 }), failed.outputs[0]);
+    assert.deepEqual(failed.events, ['record', 'close', 'output', 'exit:1']);
+    assert.equal(JSON.stringify(failed.outputs).includes('secret'), false);
+  });
+}
+
+test('adding project menu actions does not admit arbitrary diagnostic actions', () => {
+  const f = fixture();
+  assert.throws(() => f.controller.runMenu('arbitrary-command', () => assert.fail('must not execute')), { code: 'RELAUNCH_SMOKE_INVALID' });
+  assert.deepEqual(f.events, []);
+});
+
 for (const synchronous of [true, false]) test(`${synchronous ? 'synchronous throw' : 'async rejection'} records once before close and drains before exit`, async () => {
   const close = gate(), entered = gate();
   const f = fixture({ close: async () => { f.events.push('close'); entered.resolve(); await close.promise; } });

@@ -3,6 +3,7 @@
   "appId": "org.openaster.preview",
   "productName": "OpenAster",
   "asar": true,
+  "asarUnpack": ["skills/**/*"],
   "beforePack": "desktop/windows-compat.mjs",
   "afterPack": "desktop/third-party-notices.mjs",
   "electronFuses": {

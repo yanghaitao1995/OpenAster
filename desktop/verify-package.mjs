@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Read-only release verification. This script never executes an installer.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { lstat, readFile, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -88,7 +88,17 @@ export async function verifyWindowsPackage(executable) {
       assert.ok(!name.includes('/') && !name.includes('\\') && name !== '..' && name !== '.', 'Unsafe ASAR entry');
       const relative = prefix ? `${prefix}/${name}` : name;
       if (entry.files) { await inspect(entry.files, relative); continue; }
-      assert.ok(!entry.link && !entry.unpacked, `Unexpected external ASAR entry ${relative}`);
+      assert.ok(!entry.link, `Unexpected linked ASAR entry ${relative}`);
+      if (entry.unpacked) {
+        assert.ok(BUNDLED_SKILL_FILES.includes(relative), `Unexpected unpacked ASAR entry ${relative}`);
+        const physical = path.join(`${archivePath}.unpacked`, relative);
+        const resolved = await realpath(physical);
+        const samePath = process.platform === 'win32' ? resolved.toLowerCase() === physical.toLowerCase() : resolved === physical;
+        const stat = await lstat(physical);
+        assert.ok(samePath && stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, `Unsafe unpacked skill resource ${relative}`);
+      } else {
+        assert.ok(!BUNDLED_SKILL_FILES.includes(relative), `Skill resource must be a physical unpacked file ${relative}`);
+      }
       assert.equal(entry.integrity?.algorithm, 'SHA256', `Missing file integrity ${relative}`);
       const bytes = asar.extractFile(archivePath, path.normalize(relative));
       assert.equal(bytes.length, entry.size, `ASAR size mismatch ${relative}`);
