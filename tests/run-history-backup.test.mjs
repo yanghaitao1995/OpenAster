@@ -67,7 +67,7 @@ test('long task provider settings and execution metadata roundtrip while user in
   const settings = { contextWindowTokens: 262144, autoCompact: true, autoContinue: false, maxModelCalls: 180, maxTools: 600, maxRunMinutes: 120, maxTokens: 65536 };
   store.putProvider({ id: 'long-provider', name: '长任务连接', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1', enabled: true, ...settings });
   value.run.budget = { maxModelCalls: 180, maxTools: 600, maxRunMs: 7200000, modelCalls: 90, toolCalls: 100 };
-  value.run.steps[0].purpose = 'compaction'; value.run.steps[0].contextUsage = { estimatedInputTokens: 190000, contextWindowTokens: 262144, reservedOutputTokens: 65536, thresholdTokens: 157286 };
+  value.run.steps[0].purpose = 'compaction'; value.run.steps[0].contextUsage = { estimatedInputTokens: 190000, contextWindowTokens: 262144, reservedOutputTokens: 65536, configuredOutputTokens: 131072, thresholdTokens: 157286 };
   value.run.steps[0].publicSummary = '已保留目标、约束和未完成工作。';
   f.session.messages.push({ id: 'large-assistant', role: 'assistant', content: 'x'.repeat(1024 * 1024), createdAt: now });
   f.session.run = structuredClone(value.run); store.putSession(f.session); store.putRunHistory(value); store.close();

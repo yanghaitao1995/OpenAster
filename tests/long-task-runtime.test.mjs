@@ -9,6 +9,7 @@ import { createWorkspace } from '../core/workspace.mjs';
 import { CoreError } from '../core/errors.mjs';
 import { Store } from '../server/store.mjs';
 import { callProvider } from '../core/providers.mjs';
+import { createBackup, restoreBackup } from '../server/backup.mjs';
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const response = (content = 'done', toolCalls = []) => ({ content, toolCalls });
@@ -23,7 +24,7 @@ async function fixture(t, operation, provider = {}, limits = {}) {
     getSession: async id => store.getSession(id), saveSession: async (value, metadata) => store.putSession(value, metadata),
     providerCall: operation, limits: { providerRetryBaseMs: 1, providerRetryMaxMs: 1, streamCheckpointMs: 1, ...limits } });
   t.after(async () => { await runtime.shutdown(); store.close(); assert.equal(path.dirname(root), await fs.realpath(os.tmpdir())); await fs.rm(root, { recursive: true, force: true }); });
-  return { store, session, runtime, workspace, get: () => store.getSession(session.id),
+  return { store, session, runtime, workspace, root, get: () => store.getSession(session.id),
     start: content => runtime.start(session.id, { content }), done: () => until(() => !runtime.isActive(session.id)) };
 }
 
@@ -144,6 +145,42 @@ test('compaction after executed tools persists explicit summary references and f
   assert.equal(saved.run.budget.modelCalls, responses + summaries);
   assert.equal(saved.messages.at(-1).content, 'Completed synthetic check.');
   assert.equal(f.store.getRunHistory(saved.id, saved.run.id).run.status, 'completed');
+});
+
+test('a fully summarized latest tool group preserves its strict proof and original result through store and backup', async t => {
+  let responses = 0, summaries = 0, projected;
+  const originalInstruction = 'Inspect once and finish; preserve this exact instruction.';
+  const originalOutput = 'The readonly inspection completed. ' + 'detail '.repeat(6000);
+  const f = await fixture(t, async (_provider, options) => {
+    if (options.system.includes('compact historical memory')) { summaries++; return response('The workspace was inspected once. Keep the original instruction and finish without repeating the action.'); }
+    if (++responses === 1) return response(originalOutput, [{ id: 'large-completed-group', name: 'list_workspace', args: {} }]);
+    projected = structuredClone(options.messages); return response('Finished without repeating the inspection.');
+  }, { contextWindowTokens: 16384, maxTokens: 1024, maxModelCalls: 12, enabled: true });
+  await fs.writeFile(path.join(f.workspace, 'fixture.txt'), 'Preserved fixture content.');
+  await f.start(originalInstruction); await f.done();
+  const saved = f.get(); assert.equal(saved.run.status, 'completed', JSON.stringify(saved.run.error));
+  assert.equal(responses, 2); assert.ok(summaries > 0); assert.equal(saved.run.budget.toolCalls, 1);
+  assert.equal(projected.length, 2); assert.equal(projected[1].content, originalInstruction);
+  assert.equal(JSON.parse(projected[0].content).historical_memory.coveredMessages, 3);
+  const tool = saved.run.steps.find(step => step.type === 'tool'), last = saved.run.steps.at(-1);
+  assert.deepEqual(last.contextPlan.toolResults, []);
+  assert.deepEqual(last.contextPlan.compaction.artifactIds, [tool.toolResultRef.artifactId]);
+  const summary = saved.run.steps.find(step => step.id === last.contextPlan.compaction.summaryStepId);
+  assert.equal(summary.status, 'completed'); assert.equal(summary.purpose, 'compaction');
+  assert.equal(saved.run.steps[0].publicSummary, originalOutput);
+  const artifact = f.store.getToolArtifact(saved.id, saved.run.id, tool.toolResultRef.artifactId);
+  const record = f.store.getRunHistory(saved.id, saved.run.id);
+  const output = path.join(f.root, 'compacted-backup.json'), dataDir = path.join(f.root, 'restored');
+  await createBackup({ dataDir: path.join(f.root, 'data'), workspace: f.workspace, output });
+  await restoreBackup({ input: output, dataDir });
+  const restored = new Store(dataDir);
+  try {
+    assert.deepEqual(restored.getRunHistory(saved.id, saved.run.id), record);
+    assert.deepEqual(restored.getToolArtifact(saved.id, saved.run.id, artifact.id), artifact);
+    assert.deepEqual(restored.getSession(saved.id).run.steps.at(-1).contextPlan, last.contextPlan);
+    assert.equal(restored.getSession(saved.id).messages[0].content, originalInstruction);
+  } finally { restored.close(); }
+  assert.equal(await fs.readFile(path.join(dataDir, 'workspace', 'fixture.txt'), 'utf8'), 'Preserved fixture content.');
 });
 
 test('large cumulative public output stops with a durable terminal record below the store bound', async t => {

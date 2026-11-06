@@ -29,6 +29,19 @@ test('long task metadata preserves estimates, compaction and continuations witho
   ]) { const candidate = structuredClone(value); mutate(candidate); assert.throws(() => validateRunHistoryRecord(candidate), { code: 'INVALID_RUN_HISTORY' }); }
 });
 
+test('per-request output budgets preserve the configured ceiling and reject inconsistent metadata', () => {
+  const contextUsage = { estimatedInputTokens: 5000, contextWindowTokens: 8192, reservedOutputTokens: 2900,
+    configuredOutputTokens: 131072, thresholdTokens: 6963 };
+  const value = record('output-budget-session', 'output-budget-run', { steps: [{ id: 'model', type: 'model', status: 'completed', contextUsage }] });
+  assert.deepEqual(validateRunHistoryRecord(value), value);
+  for (const configuredOutputTokens of [127, 131073, 1.5, '131072', null, 2899]) {
+    const invalid = structuredClone(value); invalid.run.steps[0].contextUsage.configuredOutputTokens = configuredOutputTokens;
+    assert.throws(() => validateRunHistoryRecord(invalid), { code: 'INVALID_RUN_HISTORY' });
+  }
+  const legacy = structuredClone(value); delete legacy.run.steps[0].contextUsage.configuredOutputTokens;
+  assert.deepEqual(validateRunHistoryRecord(legacy), legacy);
+});
+
 async function directory(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'openaster-history-'));
   t.after(async () => {

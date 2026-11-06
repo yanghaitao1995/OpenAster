@@ -47,6 +47,34 @@ function protocolReply(type, calls) {
   return { done: true, done_reason: 'stop', message: { role: 'assistant', content: '', thinking: 'opaque', tool_calls: calls.map(c => ({ function: { name: c.name, arguments: c.args } })) } };
 }
 
+for (const type of ['openai', 'responses', 'anthropic', 'ollama']) for (const window of [8192, 131072]) test(`${type}: short input with a high output ceiling sends the fitted budget and records its exact request`, async t => {
+  const bodies = [];
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = []; for await (const chunk of req) chunks.push(chunk);
+    bodies.push(Buffer.concat(chunks).toString('utf8'));
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(protocolReply(type, [])));
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => upstream.close(resolve)));
+  const configuredOutput = window === 8192 ? 16384 : 131072;
+  const config = { type, baseUrl: `http://127.0.0.1:${upstream.address().port}${type === 'ollama' ? '' : '/v1'}`,
+    contextWindowTokens: window, maxTokens: configuredOutput, autoCompact: true, toolMode: 'none' };
+  const f = fixture(t, { actualProvider: true, provider: config });
+  await f.start({ content: '你好。' }); await f.done();
+  const session = f.get(); assert.equal(session.run.status, 'completed', JSON.stringify(session.run.error));
+  assert.equal(bodies.length, 1); assert.equal(session.run.budget.modelCalls, 1);
+  const body = JSON.parse(bodies[0]), actualOutput = body.max_completion_tokens ?? body.max_output_tokens ?? body.max_tokens ?? body.options?.num_predict;
+  const step = session.run.steps.find(step => step.type === 'model');
+  assert.ok(actualOutput >= 128 && actualOutput < configuredOutput);
+  assert.equal(step.contextUsage.reservedOutputTokens, actualOutput);
+  assert.equal(step.contextUsage.configuredOutputTokens, configuredOutput);
+  assert.ok(step.contextUsage.estimatedInputTokens + actualOutput < window);
+  assert.equal(step.contextPlan.requestBytes, Buffer.byteLength(bodies[0]));
+  assert.equal(step.contextPlan.requestSha256, sha(bodies[0]));
+  assert.equal(config.maxTokens, configuredOutput, 'fitting a request must not rewrite the saved connection ceiling');
+  assert.equal(session.run.steps.some(step => step.purpose === 'compaction'), false);
+});
+
 for (const type of ['openai', 'responses', 'anthropic', 'ollama']) test(`${type} actual HTTP completes eight 256 KiB reads without dropping wire or user text`, async t => {
   const calls = Array.from({ length: 8 }, (_, i) => call('read_file', { path: `file${i}.txt` }, `call${i}`)), bodies = [];
   const first = protocolReply(type, calls);

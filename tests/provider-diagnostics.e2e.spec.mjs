@@ -65,10 +65,11 @@ test('long task settings preserve explicit legacy output limits and expose a del
 test('long task execution flow distinguishes pending summaries, applied compaction and continuation budgets',async({page,local},info)=>{
   await ready(page,local);await page.evaluate(async()=>{
     const {createExecutionFlow}=await import('/execution-flow.mjs');const flow=createExecutionFlow();const root=document.createElement('section');root.id='long-task-fixture';document.body.replaceChildren(root);
-    const run={id:'fixture-run',status:'running',startedAt:new Date().toISOString(),budget:{modelCalls:2,maxModelCalls:64,toolCalls:1,maxTools:256,maxRunMs:3600000},steps:[{id:'summary',type:'model',purpose:'compaction',title:'已生成历史摘要',status:'completed',publicSummary:'目标：继续检查文件。',contextUsage:{estimatedInputTokens:95000,contextWindowTokens:131072,reservedOutputTokens:16384,thresholdTokens:91750}}]};
+    const run={id:'fixture-run',status:'running',startedAt:new Date().toISOString(),budget:{modelCalls:2,maxModelCalls:64,toolCalls:1,maxTools:256,maxRunMs:3600000},steps:[{id:'summary',type:'model',purpose:'compaction',title:'已生成历史摘要',status:'completed',publicSummary:'目标：继续检查文件。',contextUsage:{estimatedInputTokens:95000,contextWindowTokens:131072,reservedOutputTokens:16384,configuredOutputTokens:65536,thresholdTokens:91750}}]};
     root.append(flow.render(run,{key:'fixture',providerName:'本机测试'}));window.longTaskFixture={flow,run,root};
   });
   await expect(page.locator('.execution-step-copy strong')).toHaveText('已生成历史摘要');await expect(page.locator('.execution-flow-context')).toContainText('上下文约 73%');await expect(page.locator('.execution-flow-meta')).toContainText('主对话模型请求 2 / 64');
+  await expect(page.locator('.execution-flow-context')).toContainText('仅输入');await expect(page.locator('.execution-flow-context')).toContainText('本次输出预算 16,384（配置上限 65,536）');
   await page.getByText('压缩摘要',{exact:true}).click();await expect(page.locator('.model-note-caption')).toContainText('只有压缩成功后');
   await page.evaluate(()=>{const f=window.longTaskFixture;f.run.steps[0].title='上下文已压缩';f.run.steps.push({id:'continue',type:'model',purpose:'continuation',status:'running',phase:'streaming',title:'模型处理',detail:'继续未完成正文。'});f.flow.render(f.run,{key:'fixture',providerName:'本机测试'});});
   await expect(page.locator('.execution-flow-title')).toHaveText('继续生成');await expect(page.locator('.execution-step-copy strong').first()).toHaveText('上下文已压缩');await expect(page.locator('.execution-step-copy strong').last()).toHaveText('继续生成');
@@ -83,6 +84,26 @@ test('long task continuation prepares a reviewable instruction and preserves an 
   await page.getByRole('button',{name:'继续任务',exact:true}).click();await expect(page.locator('#prompt-input')).toHaveValue('请根据已保存的执行记录继续未完成的任务；先核对已执行操作，不要重复执行。');await expect(page.locator('#prompt-input')).toBeFocused();expect(local.provider.requests).toHaveLength(0);
   await page.locator('#prompt-input').fill('请先复核最后修改的文件。');await page.getByRole('button',{name:'继续任务',exact:true}).click();await expect(page.locator('#prompt-input')).toHaveValue('请先复核最后修改的文件。');expect(local.provider.requests).toHaveLength(0);
   await capture(page,info,'long-task-continue.png');
+});
+
+test('context overflow exposes its budget and opens the affected connection without sending another request',async({page,local},info)=>{
+  const store=new Store(resolve(local.workspace,'..')),stamp=new Date().toISOString();let session;
+  try{
+    store.putProvider({...store.getProvider(local.id),maxTokens:131072,contextWindowTokens:8192});
+    session=store.createSession({title:'上下文预算说明',providerId:local.id});
+    session.messages=[{id:'context-request',role:'user',content:'本机合成的预算错误场景。',createdAt:stamp}];
+    session.run={id:'context-budget-run',status:'failed',startedAt:stamp,finishedAt:stamp,steps:[],error:{code:'CONTEXT_COMPACTION_REQUIRED',message:'本轮输入估计 9000 token，输出预留 128 token，设置的模型窗口为 8192 token。原始记录已保留。'}};
+    store.putSession(session);
+  }finally{store.close();}
+  await page.goto(local.app.url);await expect(page.locator('#top-status')).toHaveText('本地已连接');await page.locator('.session-link[data-id="'+session.id+'"]').click();
+  await expect(page.locator('#run-error')).toContainText('输入估计 9000 token');await expect(page.locator('#run-error')).not.toContainText('"code"');
+  await page.locator('#prompt-input').fill('保留这条未发送的补充。');
+  await page.getByRole('button',{name:'调整模型上下文设置',exact:true}).click();
+  await expect(page.locator('#app-dialog')).toBeVisible();await expect(page.locator('#field-name')).toHaveValue('本机诊断连接');
+  await expect(page.locator('#field-contextWindowTokens')).toBeFocused();await expect(page.locator('#field-contextWindowTokens')).toHaveValue('8192');await expect(page.locator('#field-maxTokens')).toHaveValue('131072');
+  await expect(page.locator('#dialog-body')).toContainText('此配置值不会被改写');expect(local.provider.requests).toHaveLength(0);
+  await page.keyboard.press('Escape');await expect(page.locator('#prompt-input')).toHaveValue('保留这条未发送的补充。');
+  expect(local.provider.requests).toHaveLength(0);await capture(page,info,'context-budget-settings-entry.png');
 });
 const check=(page,name)=>page.locator(`#provider-diagnostic-checks [data-check="${name}"]`);
 async function ready(page,local){await page.goto(local.app.url);await expect(page.locator('#top-status')).toHaveText('本地已连接');await page.locator('.nav-item[data-action=settings]').click();await expect(row(page)).toBeVisible();}
