@@ -10,6 +10,7 @@ import { readSmokeRecord, isSmokeProcessAlive } from '../desktop/relaunch-smoke-
 import { stageDesktopExecutable } from './desktop-smoke-staging.mjs';
 import { validateSmokeFailure, parseSmokeStageDiagnostic } from '../desktop/smoke-diagnostics.mjs';
 import { validateDraftRelaunchProofs, parseDraftUiDiagnostic } from '../desktop/draft-relaunch-proof.mjs';
+import { readAppImageFile, sameAppImageFile, sameAppImageProgram } from '../desktop/appimage-relaunch.mjs';
 
 const root = path.resolve(import.meta.dirname, '..'), args = process.argv.slice(2);
 const defaults = { win32: 'release/win-unpacked/OpenAster.exe', darwin: 'release/mac/OpenAster.app/Contents/MacOS/OpenAster', linux: 'release/linux-unpacked/openaster' };
@@ -21,13 +22,22 @@ const temporaryRoot = await realpath(tmpdir()), directory = await mkdtemp(path.j
 const identity = await lstat(directory, { bigint: true }), owner = randomBytes(32).toString('hex');
 await writeFile(path.join(directory, '.smoke-owner'), owner, { flag: 'wx', mode: 0o600 });
 let executable = originalExecutable, binaryDirectory, binaryIdentity, first, firstExit, firstClosed = false, output = '', completed = false, result, finalReport;
+let expectedAppImage = null;
 const entries = new Map();
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const record = name => readSmokeRecord({ directory, owner, name });
 async function observe() {
   for (let phase = 0; phase <= 4; phase++) {
     if (entries.has(phase)) continue;
-    try { const value = record('.relaunch-entry-' + phase + '.json'); entries.set(phase, value); }
+    try {
+      const value = record('.relaunch-entry-' + phase + '.json');
+      if (expectedAppImage !== null) {
+        assert.equal(value.version, 2); assert.equal(value.executable, expectedAppImage.canonical);
+        assert.equal(sameAppImageFile(value.appImage.image, expectedAppImage), true);
+        if (phase > 0) assert.equal(sameAppImageProgram(entries.get(0).appImage, value.appImage), true);
+      } else assert.equal(value.version, 1);
+      entries.set(phase, value);
+    }
     catch (error) { if (!['ENOENT', 'RELAUNCH_SMOKE_INCOMPLETE'].includes(error.code)) throw error; }
   }
 }
@@ -43,6 +53,10 @@ try {
     ({ executable } = await stageDesktopExecutable({ executable: originalExecutable, directory: binaryDirectory, owner }));
   }
   const env = { ...process.env, OPENASTER_SMOKE_DATA_DIR: directory, OPENASTER_SMOKE_OWNER: owner };
+  if (process.platform === 'linux' && /\.appimage$/iu.test(executable)) {
+    assert.equal(args.includes('--source') || args.includes('--stage'), false);
+    expectedAppImage = readAppImageFile(executable);
+  }
   delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS;
   const launch = [...(args.includes('--source') ? [path.join(root, 'desktop/main.mjs')] : []), '--smoke-test', '--relaunch-smoke-test', '--smoke-phase=0', ...(args.includes('--software-rendering') ? ['--disable-gpu'] : [])];
   first = spawn(executable, launch, { cwd: path.dirname(executable), env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -56,8 +70,17 @@ try {
     if (spawnError) throw spawnError;
     await observe();
     try { result = record('.relaunch-result.json'); break; } catch (error) { if (!['ENOENT', 'RELAUNCH_SMOKE_INCOMPLETE'].includes(error.code)) throw error; }
-    if (firstExit !== undefined && firstExit !== 0) throw new Error('Initial Electron process failed: ' + firstExit + '\n' + output.slice(-3000));
+    if (firstExit !== undefined && firstExit !== 0) throw new Error(expectedAppImage === null
+      ? 'Initial Electron process failed: ' + firstExit + '\n' + output.slice(-3000) : 'Initial AppImage process failed');
     await pause(100);
+  }
+  if (!result && expectedAppImage !== null) {
+    console.error('OPENASTER_APPIMAGE_RELAUNCH_DIAGNOSTIC ' + JSON.stringify({ version: 1, code: 'APPIMAGE_RELAUNCH_RESULT_TIMEOUT',
+      observedPhases: [...entries.keys()], initialExitObserved: firstExit !== undefined, initialExitSucceeded: firstExit === 0, initialPipesClosed: firstClosed }));
+    for (const line of output.split(/\r?\n/u)) {
+      const stage = parseSmokeStageDiagnostic(line);
+      if (stage) console.error('OPENASTER_SMOKE_STAGE_DIAGNOSTIC ' + JSON.stringify(stage));
+    }
   }
   assert.ok(result, 'Relaunch smoke timed out; owned directories are retained until termination is confirmed');
   if (!result.result.ok) {
@@ -84,6 +107,10 @@ try {
   }
   assert.equal(result.result.ok, true, JSON.stringify(result.result));
   assert.equal(firstExit, 0); assert.equal(entries.size, 5);
+  if (expectedAppImage !== null) {
+    assert.equal(result.version, 2); assert.equal(sameAppImageProgram(entries.get(0).appImage, result.appImage), true);
+    assert.equal(sameAppImageFile(readAppImageFile(executable), expectedAppImage), true);
+  }
   const pids = [...entries.values()].map(entry => entry.pid);
   assert.equal(new Set(pids).size, 5); assert.equal(pids[0], first.pid); assert.deepEqual(result.pids, pids);
   const scenario = result.result.processRelaunch;
@@ -112,6 +139,8 @@ try {
   const draftRecovery = validateDraftRelaunchProofs(result.proofs, scenario);
   completed = true;
   finalReport = { executable, ok: true, actualProcessRelaunches: 4, processCount: 5, processIds: pids, firstExitCode: firstExit,
+    ...(expectedAppImage === null ? {} : { appImage: { originalEntryVerified: true, imageSha256: expectedAppImage.sha256,
+      sameImageAndPayloadAcrossFiveProcesses: true, launcherPidIsFirstProcess: pids[0] === first.pid } }),
     allRecordedProcessesExited: true, draftRecovery, phaseProofs: result.proofs, result: result.result };
 } finally {
   // A pending OS relaunch can start after an earlier PID exits. Clean only after
