@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { startServer } from '../server/index.mjs';
 import { createWorkspace } from '../core/workspace.mjs';
-import { createWorkspaceProfiles } from '../desktop/workspace-profiles.mjs';
+import { createWorkspaceProfiles, initializeProfileWorkspace } from '../desktop/workspace-profiles.mjs';
 import { createDesktopLifecycle } from '../desktop/lifecycle.mjs';
 import { createWorkspaceActions } from '../desktop/workspace-actions.mjs';
 import { runBackupJob } from '../desktop/backup-worker-client.mjs';
@@ -39,8 +39,9 @@ async function fixture(t, external = false) {
     : profile.kind === 'restored' ? { createRoot: false, expectedIdentity: profile.identity } : undefined;
   async function open(runtimeOptions) {
     const profile = await profiles.getActive();
+    const skillsDirectory = await initializeProfileWorkspace(profile, options(profile));
     const service = await startServer({ dataDir: profile.dataDir, workspace: profile.workspace, workspaceId: profile.id, workspaceName: profile.label,
-      workspaceOptions: options(profile), runtimeOptions, secretStore: { get: id => vault.get(profile.id + id), set: (id, value) => vault.set(profile.id + id, value), delete: id => vault.delete(profile.id + id) } });
+      workspaceOptions: options(profile), skillsDirectory, runtimeOptions, secretStore: { get: id => vault.get(profile.id + id), set: (id, value) => vault.set(profile.id + id, value), delete: id => vault.delete(profile.id + id) } });
     services.push(service); const events = [], errors = [];
     const lifecycle = createDesktopLifecycle({ closeService: value => service.close(value), relaunch: () => events.push('relaunch'), quit: () => events.push('quit'), reportError: async error => errors.push(error) });
     const dialogs = { chooseDirectory: async () => null, chooseBackupOutput: async () => path.join(root, 'backup.json'), chooseRestoreInput: async () => path.join(root, 'backup.json'),
@@ -83,9 +84,13 @@ for (const external of [false, true]) test(`desktop ${external ? 'external' : 'd
   assert.equal((await current.request(route)).session.run.status, 'awaiting_approval');
   await current.request(route + '/cancel', {});
   await until(() => current.request(route), value => value.session?.run?.status === 'cancelled');
+  const toolArtifacts = (await current.request('/api/export')).toolArtifacts;
   const backup = await current.actions.backup(); assert.equal(backup.sessions, 1); assert.equal(backup.toolArtifacts, 2);
   assert.deepEqual(current.events, [['saved', path.join(f.root, 'backup.json')], 'relaunch', 'quit']);
   assert.ok(!(await fs.readFile(backup.path, 'utf8')).includes('never-export-fixture-key'));
+  const envelope = JSON.parse(await fs.readFile(backup.path, 'utf8'));
+  assert.equal(envelope.version, 9); assert.deepEqual(envelope.payload.steeringInputs, []);
+  assert.deepEqual(envelope.payload.toolArtifacts, toolArtifacts);
   current = await f.open(); assert.equal(current.profile.id, originalProfile.id);
   const restored = await current.actions.restore(); assert.equal(restored.profile.kind, 'restored'); assert.notEqual(restored.profile.id, originalProfile.id);
   current = await f.open(); assert.equal(current.profile.id, restored.profile.id);
@@ -97,6 +102,7 @@ for (const external of [false, true]) test(`desktop ${external ? 'external' : 'd
   assert.equal(loaded.messages[0].contextFiles[0].content, text);
   assert.equal((await current.request(route + '/runs')).runs.length, 2);
   assert.deepEqual(await current.request(artifactRoute), archived);
+  assert.deepEqual((await current.request('/api/export')).toolArtifacts, toolArtifacts);
   assert.equal((await current.request(`/api/approvals/${approvalId}`, { decision: 'approve' })).status, 409);
   assert.equal((await current.request(route + '/messages', { content: 'disabled connection' })).status, 409);
   assert.equal(await fs.readFile(path.join(originalProfile.workspace, 'notes.txt'), 'utf8'), text);
