@@ -7,8 +7,10 @@ import { tmpdir } from 'node:os';
 import { createCommandRunner, commandEnvironment, boundCommandOutput } from '../core/command-runner.mjs';
 import { validateCommand, COMMAND_LIMITS } from '../core/command-schema.mjs';
 import { createWorkspace } from '../core/workspace.mjs';
+import { WINDOWS_HOST_PREPARATION_MS, WINDOWS_HOST_CLEANUP_MS } from '../core/windows-command-budget.mjs';
 
 const windows = process.platform === 'win32';
+const shellTestTimeout = (windows ? WINDOWS_HOST_PREPARATION_MS : 0) + 30000 + WINDOWS_HOST_CLEANUP_MS + 5000;
 async function fixture(t) {
   const parent = await fs.realpath(tmpdir()), root = await fs.mkdtemp(path.join(parent, 'openaster-command-'));
   const identity = await fs.lstat(root, { bigint: true });
@@ -60,7 +62,7 @@ test('private one-use proposal cannot be forged, reused, or executed after its d
   await assert.rejects(runner.execute(discarded), { code: 'INVALID_COMMAND_PROPOSAL' });
 });
 
-test('real shell starts only after its checkpoint, returns Unicode, cwd, stderr and nonzero exit', { timeout: 60000 }, async t => {
+test('real shell starts only after its checkpoint, returns Unicode, cwd, stderr and nonzero exit', { timeout: shellTestTimeout }, async t => {
   const { runner, root } = await fixture(t); await fs.mkdir(path.join(root, 'sub'));
   const command = windows ? '[Console]::Out.WriteLine("中文"); [Console]::Out.WriteLine((Get-Location).Path); [Console]::Error.WriteLine("stderr"); exit 7'
     : 'printf "中文\\n"; pwd; printf stderr >&2; exit 7';
@@ -83,19 +85,21 @@ test('real shell starts only after its checkpoint, returns Unicode, cwd, stderr 
   await assert.rejects(runner.execute(proposal), { code: 'INVALID_COMMAND_PROPOSAL' });
 });
 
-test('failed start checkpoint prevents approved shell body from executing', { timeout: 60000 }, async t => {
+test('failed start checkpoint prevents approved shell body from executing', { timeout: shellTestTimeout }, async t => {
   const { runner, root } = await fixture(t);
   const proposal = await runner.prepare({ command: windows ? 'Set-Content marker.txt forbidden' : 'printf forbidden > marker.txt' });
   await assert.rejects(runner.execute(proposal, { onStarted: () => { throw Object.assign(new Error('checkpoint'), { code: 'FIXTURE_CHECKPOINT' }); } }), { code: 'FIXTURE_CHECKPOINT' });
   await assert.rejects(fs.stat(path.join(root, 'marker.txt')), { code: 'ENOENT' });
 });
 
-test('real shell cancellation drains its owned process and preserves bounded result facts', { timeout: 60000 }, async t => {
+test('real shell cancellation drains its owned process and preserves bounded result facts', { timeout: shellTestTimeout }, async t => {
   const { runner } = await fixture(t), controller = new AbortController();
   const proposal = await runner.prepare({ command: windows ? '[Console]::Out.WriteLine("started"); Start-Sleep -Seconds 30' : 'printf started; sleep 30', timeoutMs: 30000 });
-  let timer;
+  let timer, readyAt;
   try {
-    const result = await runner.execute(proposal, { signal: controller.signal, onStarted: () => { timer = setTimeout(() => controller.abort(), 300); } });
-    assert.equal(result.cancelled, true); assert.equal(result.timedOut, false); assert.ok(result.durationMs < 30000);
+    const result = await runner.execute(proposal, { signal: controller.signal, onStarted: () => { readyAt=performance.now(); timer = setTimeout(() => controller.abort(), 300); } });
+    assert.equal(result.cancelled, true); assert.equal(result.timedOut, false);
+    assert.ok(Number.isFinite(readyAt) && performance.now()-readyAt < 30000,'cancellation completes within the original post-checkpoint bound');
+    assert.ok(result.durationMs < shellTestTimeout,'preparation and execution remain within their combined test envelope');
   } finally { clearTimeout(timer); }
 });

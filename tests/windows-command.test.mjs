@@ -5,9 +5,10 @@ import { mkdtemp, readFile, rm, access, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runWindowsCommand } from '../core/windows-command.mjs';
+import { WINDOWS_HOST_PREPARATION_MS, WINDOWS_HOST_CLEANUP_MS } from '../core/windows-command-budget.mjs';
 
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ['systemroot','windir','path','temp','tmp','pathext'].includes(key.toLowerCase())));
-const options = { skip: process.platform !== 'win32', timeout: 30000 };
+const options = { skip: process.platform !== 'win32', timeout: WINDOWS_HOST_PREPARATION_MS + 15000 + WINDOWS_HOST_CLEANUP_MS + 5000 };
 const quoted = value => "'" + value.replaceAll("'", "''") + "'";
 const diagnosticCodes = new Set(['COMMAND_HOST_FAILED', 'ABORTED', 'ENOENT', 'EACCES', 'EPERM', 'EPIPE']);
 function observeCommand(t, input) {
@@ -50,7 +51,7 @@ test('Windows output stays bounded while both streams are drained', options, asy
   const result=await observeCommand(t,{command:"[Console]::Out.Write('x'*300000); [Console]::Error.Write('y'*300000)",cwd,env,timeoutMs:15000}).promise;
   assert.equal(result.exitCode,0); assert.equal(result.truncated,true); assert.equal(result.stdout.length,262144); assert.equal(result.stderr.length,262144);
 }));
-test('Windows cancellation terminates owned descendants; normal exit also cleans background descendants', {...options,timeout:45000}, async t=>fixture(async cwd=>{
+test('Windows cancellation terminates owned descendants; normal exit also cleans background descendants', {...options,timeout:2*(WINDOWS_HOST_PREPARATION_MS+20000+WINDOWS_HOST_CLEANUP_MS+5000)}, async t=>fixture(async cwd=>{
   for(const cancel of [true,false]) {
     const marker=path.join(cwd,cancel?'cancel-child.pid':'exit-child.pid');
     const shell=path.join(env.SystemRoot||env.SYSTEMROOT||env.windir||env.WINDIR,'System32','WindowsPowerShell','v1.0','powershell.exe');
@@ -61,6 +62,9 @@ test('Windows cancellation terminates owned descendants; normal exit also cleans
     // The host can reject while the marker is still being polled.
     promise.catch(()=>{});
     try {
+      const readyDeadline=performance.now()+WINDOWS_HOST_PREPARATION_MS+WINDOWS_HOST_CLEANUP_MS;
+      while(!observed.snapshot().readyCount && observed.snapshot().state==='pending' && performance.now()<readyDeadline) await new Promise(resolve=>setTimeout(resolve,50));
+      assert.equal(observed.snapshot().readyCount,1,'host reached its durable-start gate');
       let pid;
       for(let i=0;i<100;i++){try{pid=Number(await readFile(marker,'utf8'));break;}catch(error){if(error.code!=='ENOENT')throw error;}await new Promise(resolve=>setTimeout(resolve,100));}
       assert.ok(Number.isSafeInteger(pid)&&pid>0,'child actually started');
@@ -76,4 +80,23 @@ test('Windows cancellation terminates owned descendants; normal exit also cleans
       await Promise.allSettled([promise]);
     }
   }
+}));
+
+test('Windows cancellation keeps a pending checkpoint drained and never releases late command code', options, async t=>fixture(async cwd=>{
+  const marker=path.join(cwd,'late-checkpoint-must-not-run'), controller=new AbortController();
+  let enter, release, completed=false, drained=false;
+  const entered=new Promise(resolve=>{enter=resolve;}), checkpoint=new Promise(resolve=>{release=resolve;});
+  const observed=observeCommand(t,{command:`[IO.File]::WriteAllText(${quoted(marker)},'forbidden')`,cwd,env,timeoutMs:15000,signal:controller.signal,
+    onStarted:async()=>{enter();await checkpoint;drained=true;}});
+  const promise=observed.promise.then(result=>{completed=true;return result;});
+  promise.catch(()=>{});
+  try {
+    await Promise.race([entered,promise.then(()=>{throw new Error('Host completed before reaching its checkpoint');})]); controller.abort();
+    await new Promise(resolve=>setTimeout(resolve,250));
+    assert.equal(completed,false,'task completion still waits for the already-started durable callback');
+    await assert.rejects(access(marker),{code:'ENOENT'});
+    release(); const result=await promise;
+    assert.equal(drained,true); assert.equal(result.cancelled,true); assert.equal(result.timedOut,false);
+    await assert.rejects(access(marker),{code:'ENOENT'});
+  } finally { controller.abort();release();await Promise.allSettled([promise]); }
 }));

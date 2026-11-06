@@ -3,16 +3,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, realpath, lstat, rm } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { runWindowsCommand } from '../core/windows-command.mjs';
+import { WINDOWS_HOST_PREPARATION_MS, WINDOWS_HOST_CLEANUP_MS } from '../core/windows-command-budget.mjs';
 
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ['systemroot','windir','path','temp','tmp','pathext'].includes(key.toLowerCase())));
 const systemRoot = Object.entries(env).find(([key]) => key.toLowerCase() === 'systemroot')?.[1];
 const shell = systemRoot ? path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : '';
 const quoted = value => "'" + value.replaceAll("'", "''") + "'";
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-const options = { skip: process.platform !== 'win32', timeout: 70000 };
+const HELPER_BUILD_MS=45000, MARKER_MS=15000, OBSERVER_EXIT_MS=35000;
+// Account separately for fixed helper compilation, host preparation, marker /
+// observer setup and the unchanged real process-exit observation bound.
+const options = { skip: process.platform !== 'win32', timeout: 2*WINDOWS_HOST_PREPARATION_MS+HELPER_BUILD_MS+2*MARKER_MS+OBSERVER_EXIT_MS+2*WINDOWS_HOST_CLEANUP_MS+5000 };
 const diagnosticCodes = new Set(['COMMAND_HOST_FAILED', 'ABORTED', 'ENOENT', 'EACCES', 'EPERM', 'EPIPE']);
 const diagnosticCode = error => diagnosticCodes.has(error?.code) ? error.code : 'OTHER';
 const outcomeFacts = result => ({ exitCode: result.exitCode, signal: result.signal === 'SIGTERM' ? 'SIGTERM' : null,
@@ -43,16 +48,12 @@ async function markerReady(file) {
   try { const data = JSON.parse(await readFile(file, 'utf8')); return Array.isArray(data) && data.length === 3; }
   catch (error) { if (error.code === 'ENOENT' || error instanceof SyntaxError) return false; throw error; }
 }
-function ownedCommand(marker) {
-  const inner = Buffer.from('Start-Sleep -Seconds 120', 'utf16le').toString('base64');
-  // Query only this fixture shell's own process handle. WMI access can be denied
-  // independently of the command runner; no machine-wide process enumeration is
-  // needed to discover its direct supervisor. Layout follows Microsoft's
-  // NtQueryInformationProcess / PROCESS_BASIC_INFORMATION documentation:
-  // https://learn.microsoft.com/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess
-  return `$ErrorActionPreference='Stop'
-Add-Type -TypeDefinition @'
-using System;
+// Query only this fixture shell's own process handle. WMI access can be denied
+// independently of the command runner; no machine-wide process enumeration is
+// needed to discover its direct supervisor. Layout follows Microsoft's
+// NtQueryInformationProcess / PROCESS_BASIC_INFORMATION documentation:
+// https://learn.microsoft.com/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess
+const parentProbeSource = `using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 public static class OpenAsterFixtureParent {
@@ -72,8 +73,26 @@ public static class OpenAsterFixtureParent {
       return checked((int)information.InheritedFromUniqueProcessId.ToUInt64());
     }
   }
+}`;
+async function prepareParentProbe(t,cwd) {
+  const file=path.join(cwd,'fixed-parent-probe.dll'), source=Buffer.from(parentProbeSource,'utf8').toString('base64');
+  const command=`$ErrorActionPreference='Stop'; Add-Type -TypeDefinition ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}'))) -OutputAssembly ${quoted(file)} -OutputType Library; [Console]::Out.WriteLine('FIXTURE_HELPER_READY')`;
+  // Compilation is fixed fixture preparation, outside the marker window. The
+  // ordinary production Job supervisor still owns this compiler's lifetime.
+  const result=await runWindowsCommand({command,cwd,env,timeoutMs:HELPER_BUILD_MS});
+  t.diagnostic(JSON.stringify({phase:'fixed-helper-compilation',...outcomeFacts(result)}));
+  assert.equal(result.exitCode,0);assert.equal(result.timedOut,false);assert.match(result.stdout,/^FIXTURE_HELPER_READY\r?\n$/u);
+  const stat=await lstat(file);assert.ok(stat.isFile()&&!stat.isSymbolicLink()&&stat.nlink===1&&stat.size>0&&stat.size<=1024*1024);
+  const sha256=createHash('sha256').update(await readFile(file)).digest('hex');
+  return {file,sha256};
 }
-'@
+function ownedCommand(marker,probe) {
+  const inner = Buffer.from('Start-Sleep -Seconds 120', 'utf16le').toString('base64');
+  return `$ErrorActionPreference='Stop'
+$probeBytes=[IO.File]::ReadAllBytes(${quoted(probe.file)})
+$probeHash=[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($probeBytes)).Replace('-','').ToLowerInvariant()
+if($probeHash -cne '${probe.sha256}') { throw 'fixed fixture helper changed' }
+$null=[Reflection.Assembly]::Load($probeBytes)
 $supervisorId=[OpenAsterFixtureParent]::OwnParentId()
 $descendant=Start-Process -FilePath ${quoted(shell)} -ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','${inner}' -WindowStyle Hidden -PassThru
 $items=@(
@@ -118,7 +137,6 @@ async function scenario(t, killParent) {
   const cwd = await mkdtemp(path.join(tempRoot, 'openaster-job-lifetime-'));
   const original = await lstat(cwd);
   const marker = path.join(cwd, 'owned-processes.json');
-  const command = ownedCommand(marker);
   const controller = new AbortController();
   let operation, parent, observer, commandOutcome, passed = false;
   const startedAt = performance.now(), commandFacts = { state: 'not-started', readyCount: 0, readyElapsedMs: null };
@@ -126,6 +144,7 @@ async function scenario(t, killParent) {
   const diagnostic = phase => t.diagnostic(JSON.stringify({ phase, stage, elapsedMs: Math.round(performance.now() - startedAt),
     command: commandFacts, parent: parent?.facts() ?? null, observer: observer?.facts() ?? null }));
   try {
+    const probe=await prepareParentProbe(t,cwd), command=ownedCommand(marker,probe);
     if (killParent) {
       const script = path.join(cwd, 'owner.mjs');
       await writeFile(script, `import { runWindowsCommand } from ${JSON.stringify(new URL('../core/windows-command.mjs', import.meta.url).href)};
@@ -142,12 +161,20 @@ console.log(JSON.stringify(result));
       // Attach rejection handling immediately, even if setup fails before the await.
       operation.catch(() => {});
     }
+    stage = 'waiting-host-ready';
+    await waitUntil(()=>{
+      if(commandFacts.readyCount===1 || parent?.facts().commandReadyCount===1)return true;
+      if(commandFacts.state==='resolved'||commandFacts.state==='rejected'||parent?.outcome())throw new Error('owned command exited before its durable-start gate');
+      return false;
+    },'owned supervisor must reach READY within its preparation budget',WINDOWS_HOST_PREPARATION_MS+WINDOWS_HOST_CLEANUP_MS);
+    // The original 15-second marker allowance begins after READY, not while
+    // the outer host or this fixture's fixed helper is being compiled.
     stage = 'waiting-marker';
     await waitUntil(async () => {
       if (await markerReady(marker)) return true;
       if (commandFacts.state === 'resolved' || commandFacts.state === 'rejected' || parent?.outcome()) throw new Error('owned command exited before publishing process identities');
       return false;
-    }, 'all owned command processes must actually start');
+    }, 'all owned command processes must actually start',MARKER_MS);
     stage = 'waiting-observer';
     observer = observe(marker, cwd);
     await waitUntil(() => observer.output().startsWith('READY\r\n') || observer.output().startsWith('READY\n'), 'observer must bind exact live process handles');
