@@ -52,6 +52,59 @@ export function executionEnvironment(source) {
   return Object.fromEntries(Object.entries(source).filter(([key, value]) => names.has(key.toLowerCase()) && typeof value === 'string' && !value.includes('\0')));
 }
 
+function diagnosticText(value, limit = 1600) {
+  // Logs come only from this runner's fixed installation fixture. Still remove
+  // URLs, authorization values and terminal controls before publishing a tail.
+  return String(value ?? '')
+    .replace(/-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*(?:-----END [^-]*PRIVATE KEY-----|$)/gu, '[redacted private key]')
+    .replace(/\b(?:https?|ftp):\/\/[^\s<>"'`]+/giu, '[redacted URL]')
+    .replace(/\b(?:authorization|proxy-authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|client[_-]?secret)["']?\s*[:=]\s*["']?(?:bearer\s+)?[^\s,;"'}]+/giu, '[redacted credential]')
+    .replace(/\bBearer\s+[^\s,;"'}]+/giu, 'Bearer [redacted]')
+    .replace(/\b(?:sk-[\w-]{12,}|gh[pousr]_[\w]{20,}|github_pat_[\w]{20,}|eyJ[\w-]{10,}\.[\w-]+\.[\w-]+)\b/gu, '[redacted token]')
+    .replace(/\x1b\[[0-?]*[ -/]*[@-~]/gu, '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/gu, '')
+    .slice(-limit);
+}
+
+export async function acceptanceDiagnostics(receipt, output) {
+  // Pick fields explicitly: command arguments and inherited environment are
+  // never console diagnostics. JSON serialization keeps log text inert.
+  const entries = receipt.steps.slice(0, 40);
+  const events = [{ event: 'installer-acceptance', status: receipt.status, kind: receipt.kind,
+    version: receipt.version, sourceCommit: receipt.sourceCommit,
+    ...(receipt.error ? { error: diagnosticText(receipt.error) } : {}),
+    ...(receipt.cleanupFailed ? { cleanupFailed: true } : {}),
+    steps: entries.map(entry => ({ name: diagnosticText(entry.name, 100), status: entry.status,
+      ...(entry.error ? { error: diagnosticText(entry.error) } : {}),
+      ...(entry.command ? { command: { executable: diagnosticText(entry.command.executable, 100),
+        code: entry.command.code, signal: entry.command.signal, timedOut: entry.command.timedOut,
+        durationMs: entry.command.durationMs, ...(entry.command.spawnError ? { spawnError: diagnosticText(entry.command.spawnError, 100) } : {}),
+        ...(entry.command.termination ? { termination: { requested: entry.command.termination.requested,
+          exitCode: entry.command.termination.exitCode, cleanupUnconfirmed: entry.command.termination.cleanupUnconfirmed,
+          errorCode: diagnosticText(entry.command.termination.errorCode, 100) } } : {}) } } : {}) })) }];
+  if (receipt.status !== 'failed') return events;
+  // Include failed commands first, then recent prerequisites: a later file or
+  // result check can fail after a command returned zero. Only known log names
+  // in the fixed evidence directory may be read; never follow a log symlink.
+  const candidates = [...entries.filter(entry => entry.status === 'failed').reverse(), ...entries.slice().reverse()];
+  const logs = [...new Set(candidates.map(entry => entry.command?.log).filter(name => typeof name === 'string' && /^\d{2}-[a-z0-9-]+\.log$/u.test(name)))].slice(0, 4);
+  for (const log of logs) {
+    let handle;
+    try {
+      const file = path.join(output, log), stat = await fs.lstat(file);
+      if (!stat.isFile() || stat.isSymbolicLink()) fail('Diagnostic log must be an ordinary file');
+      handle = await fs.open(file, 'r');
+      const buffer = Buffer.alloc(Math.min(stat.size, 16384));
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, Math.max(0, stat.size - buffer.length));
+      events.push({ event: 'installer-log-tail', log, fileBytes: stat.size,
+        tail: diagnosticText(buffer.subarray(0, bytesRead).toString('utf8').split(/\r?\n/u).slice(-80).join('\n'), 8000) });
+    } catch (error) {
+      events.push({ event: 'installer-log-tail', log, readError: diagnosticText(error?.code ?? error?.message) });
+    } finally { await handle?.close(); }
+  }
+  return events;
+}
+
 async function download(file, artifact) {
   let url = assertDownloadURL(`https://github.com/yanghaitao1995/OpenAster/releases/download/v0.2.2/${artifact.file}`);
   const signal = AbortSignal.timeout(300000);
@@ -229,6 +282,12 @@ export async function main() {
     }
     receipt.finishedAt = new Date().toISOString(); await save();
     // The ephemeral runner is discarded; never recursively remove guessed paths.
+    try {
+      for (const event of await acceptanceDiagnostics(receipt, output)) console.log(JSON.stringify(event));
+    } catch (error) {
+      // Diagnostic rendering must not replace the original acceptance outcome.
+      console.log(JSON.stringify({ event: 'installer-diagnostic-error', status: receipt.status, error: diagnosticText(error?.message) }));
+    }
     console.log(JSON.stringify({ status: receipt.status, kind, receipt: path.join(output, 'receipt.json') }));
   }
 }
