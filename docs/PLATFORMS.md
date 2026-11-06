@@ -1,6 +1,6 @@
 # 平台与安装包
 
-应用版本为 **0.2.2 预览版**。安装包是否可下载，以及每个包的操作系统、架构、签名和验证状态，以 [GitHub Releases](https://github.com/yanghaitao1995/OpenAster/releases) 中**对应版本的实际附件和逐项说明**为准。未列出的包表示该版本尚未提供；源码、构建入口或工作流存在，并不表示该平台已经完成安装验收或公开发布。
+应用版本为 **0.2.3 预览版**。安装包是否可下载，以及每个包的操作系统、架构、签名和验证状态，以 [0.2.3 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 中**对应版本的实际附件和逐项说明**为准。未列出的包表示该版本尚未提供；源码、构建入口或工作流存在，并不表示该平台已经完成安装验收或公开发布。
 
 ## 使用前说明
 
@@ -26,9 +26,19 @@ OpenAster 是采用 Vibe Coding 开发的学习与探索项目。软件依据 [A
 
 下载后先核对**版本、系统要求、架构和 SHA-256**，再检查 Release 中该包的签名与安装说明。哈希一致用于核对文件完整性，不能替代来源与签名核验；出现安全或证书警告时，先停止并确认原因。
 
-0.2.2 的安装文件包括 Windows x64 EXE、macOS arm64 DMG、Linux x86_64 AppImage、Linux amd64 DEB 和 Android 调试 APK。下载请以[当前 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.2) 的下载表和实际附件为准，SHA-256 与验证说明见该页面正文。GitHub 自动提供的 Source code（ZIP / tar.gz）是源码，不是安装程序；运行方法见 [README](../README.md#在电脑上运行网页版)。
+0.2.3 使用以下安装文件命名，是否提供以 [Release 的实际附件](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 为准。该页面正文集中记录 SHA-256、签名和逐项验证结果。
 
-当前 Android 调试包与之前发布的调试包签名不同，不能直接覆盖升级。先备份会话与主机项目；若系统提示签名不一致，保留旧应用和数据，核对迁移方式，不直接卸载来消除提示。
+| 文件 | 系统与架构 |
+| --- | --- |
+| `OpenAster-0.2.3-win-x64.exe` | Windows，x64 |
+| `OpenAster-0.2.3-mac-arm64.dmg` | macOS，Apple Silicon arm64 |
+| `OpenAster-0.2.3-linux-x86_64.AppImage` | Linux，x86_64 |
+| `OpenAster-0.2.3-linux-amd64.deb` | Debian / Ubuntu 类发行版，amd64 |
+| `OpenAster-0.2.3-android-vc13-debug.apk` | Android，Java / WebView 客户端 |
+
+GitHub 自动提供的 Source code（ZIP / tar.gz）是源码，不是安装程序；运行方法见 [README](../README.md#在电脑上运行网页版)。
+
+Android 调试包更新前，先核对 Release 记录的签名证书摘要与已安装应用是否相同。不同签名不能直接覆盖安装。先备份会话与主机项目；若系统提示签名不一致，保留原应用和数据，确认迁移方法，不直接卸载来消除提示。调试包不是应用商店正式版。
 
 后续若提供 iOS 真机分发，需要准备 Apple Developer 分发资格、有效签名和相应配置，再通过适用渠道交付。Apple 的 [TestFlight 说明](https://developer.apple.com/testflight/)与 [App Store Connect 描述文件说明](https://developer.apple.com/help/account/provisioning-profiles/create-an-app-store-provisioning-profile)列出了相关流程；这些资料不表示本项目已经完成该流程或获得上架许可。
 
@@ -60,6 +70,8 @@ pnpm mobile:android
 
 ## 当前验证范围
 
-当前维护环境是 Windows。Windows 与 Android 可在本机进行构建和运行检查；macOS、Linux 的构建工作流结果以对应运行记录为准。每个平台的构建、安装、启动和真实任务验证分别记录，不因某一项通过而推断其余项全部通过。当前不提供 iPhone 可直接安装的 IPA。
+桌面候选验收在本仓库的 GitHub 托管运行器上进行，核对同一提交的版本、安装文件哈希和完整包内清单，再分别记录安装、基础启动、原生备份恢复和五进程重启结果。后两项覆盖模拟任务、分支、历史附件、工作区及受保护的凭据和草稿状态；系统凭据存储不可用时，不能以基础启动结果代替扩展验收。
+
+Android 分别核对包内容、签名及模拟器安装启动；网关连接、真实模型任务和真机设备是否实测，以 [0.2.3 Release 的记录](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 为准。上述流程说明验收范围，不代表每项检查都已通过，也不代表所有操作系统版本和设备。当前不提供 iPhone 可直接安装的 IPA。
 
 Android 调试包用于学习测试，不是应用商店正式发行包。桌面包的签名状态在 Release 中明确标记；不要通过关闭系统安全检查或忽略 HTTPS 证书错误来解决安装与连接问题。

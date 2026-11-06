@@ -2,7 +2,7 @@
 
 在对话框里输入“帮我整理这个项目”，模型可以给出一份建议。但要让它真的查看目录、读取文件、修改代码，再把结果展示出来，还需要一套负责执行的程序。本文用 OpenAster 走一遍这条路径。
 
-OpenAster 是一个采用 **Vibe Coding** 方式开发的开源学习项目。这里的 Vibe Coding，指通过自然语言描述需求，由 AI 辅助编写和修改代码，再通过阅读源码、运行程序和测试来确认结果。它适合用于学习与探索，当前版本为 0.2.2 预览版。
+OpenAster 是一个采用 **Vibe Coding** 方式开发的开源学习项目。这里的 Vibe Coding，指通过自然语言描述需求，由 AI 辅助编写和修改代码，再通过阅读源码、运行程序和测试来确认结果。它适合用于学习与探索，当前版本为 0.2.3 预览版。
 
 源码：[github.com/yanghaitao1995/OpenAster](https://github.com/yanghaitao1995/OpenAster)。本文的示例代码与讲解按这个项目重新编写，示例不会读取个人文件，也不需要模型账号。
 
@@ -337,6 +337,8 @@ OpenAster 的处理顺序是：
 
 还要区分两件事：文件工具遵守工作区规则，不代表通过 Shell 启动的任意脚本都被关进这个目录。脚本具有主机账号的权限，可能访问网络或其他路径。应用层审批与操作系统沙箱是不同的机制。
 
+Windows 上还要把准备时间与执行时间分开。监督器启动、编译和保存执行检查点合用最多 45 秒的准备额度；这些步骤完成、命令获准放行后，才开始计算原有执行时限。准备超时会停止，命令不会放行，也不会自动重试。这个调整保留了命令本身的执行额度与取消规则。
+
 学习时可以先使用只有样例文件的项目，观察“拒绝”“取消”“授权过期”是否真的改变执行结果。检查这些分支，比只看到一次成功更有价值。
 
 ### 9.2 搜索网页与理解网页是两步
@@ -395,6 +397,8 @@ OpenAster 的网页资源放在 `public/`。桌面端通过 Electron 打开工�
 
 这个摘要不覆盖全部后端代码，也不能证明各平台的权限、安装和运行效果一致。桌面产物还需要核对随包交付的服务代码；手机只更新伴侣应用，主机服务没有更新，也不会自动获得本次加入的上下文压缩等能力。版本核对与安装运行检查需要分别记录。
 
+0.2.3 修复了一个实际的打包问题：Electron ASAR 中的目录状态是虚拟的，原有技能目录检查因此误判目录被替换。内置技能现在作为包旁的物理文件交付，真实工作区仍检查链接和目录替换。候选验收还按受控构建输入核对完整文件集合，缺少运行模块、许可证或第三方说明都会失败；已有条目需要匹配源码字节，生成的包元数据和界面摘要则按生成规则核对。
+
 构建命令如下：
 
 | 目标 | 命令 | 还需要什么 |
@@ -404,7 +408,7 @@ OpenAster 的网页资源放在 `public/`。桌面端通过 Electron 打开工�
 | Android 工程 | `pnpm mobile:android` | JDK、Android SDK 和后续 Gradle 构建 |
 | iOS 工程 | `pnpm mobile:ios` | macOS、Xcode 和后续原生构建 |
 
-下载请以 [0.2.2 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.2) 的下载表和实际附件为准，核对版本、操作系统、处理器架构与正文中的 SHA-256、签名及验证说明。安装文件包括 Windows EXE、macOS DMG、Linux AppImage / DEB 和 Android 调试 APK；GitHub 自动附带的 Source code（ZIP / tar.gz）是源码，按第 2 节运行。各平台的条件和 Android 调试包的签名升级限制见 [PLATFORMS.md](https://github.com/yanghaitao1995/OpenAster/blob/main/docs/PLATFORMS.md)。当前不提供 iPhone 可直接安装的 IPA；源码生成步骤和模拟器应用不能替代真机签名与分发。
+下载请以 [0.2.3 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 的实际附件和验证记录为准，核对版本、系统、架构、SHA-256 与签名。文件包括 Windows x64 EXE、macOS arm64 DMG、Linux x86_64 AppImage / amd64 DEB 和 Android 调试 APK。构建、内容核对、安装启动、备份恢复与重启检查各有独立结果，不能把一种平台或一项检查的通过结论扩展到全部环境。GitHub 自动附带的 Source code（ZIP / tar.gz）是源码，按第 2 节运行。各平台的条件和 Android 调试签名升级限制见 [PLATFORMS.md](https://github.com/yanghaitao1995/OpenAster/blob/main/docs/PLATFORMS.md)。当前不提供 iPhone 真机 IPA 或 TestFlight 邀请，模拟器应用不能替代真机签名与分发。
 
 ## 12. 如何证明刚才的改动有效
 
