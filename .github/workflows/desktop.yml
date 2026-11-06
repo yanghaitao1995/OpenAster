@@ -28,10 +28,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo -n apt-get update
-          sudo -n apt-get install -y --no-install-recommends xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libfuse2
+          sudo -n apt-get install -y --no-install-recommends xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 libfuse2 dbus gnome-keyring
       - run: pnpm test
       - name: Check installer verification policy
-        run: node --test scripts/verify-release-installers.test.mjs scripts/verify-candidate-installers.test.mjs
+        run: node --test scripts/verify-release-installers.test.mjs scripts/verify-candidate-installers.test.mjs scripts/linux-keyring-session.test.mjs
       - name: Build desktop candidate
         id: build
         run: pnpm desktop:dist
