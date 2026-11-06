@@ -116,9 +116,17 @@ test('candidate extended scenarios reject basic-only and unavailable keyring suc
   assert.throws(() => validateCandidateScenario(result(basic), 'relaunch'), /five-process/u);
   const backup = { ...basic, secretStorage: { available: true }, deviceDraftStorage: { available: true }, backupLifecycle: { tasks: 2, toolArtifacts: 2,
     realMenuCallbacks: true, workerBackup: true, workerRestore: true, restoredProfileReopened: true, artifactBytesPreserved: true,
-    originalWorkspacePreserved: true, handoffSnapshotRestored: true, handoffHistoryNotReplayed: true, summaryDraftRestored: true } };
+    originalWorkspacePreserved: true, handoffSnapshotRestored: true, handoffHistoryNotReplayed: true, summaryDraftRestored: true,
+    rendererReadiness: { version: 1, policy: 'pause-new-background-requests-before-transition', admittedRequests: 2, completedRequests: 1, eventStreamsReady: 1,
+      pausedRequests: 1, handlersStarted: 8, handlersSettled: 8, allAdmittedRequestsSettled: true, allStartedHandlersSettled: true },
+    transitionReadiness: 'fixture paused new renderer and service worker requests before backup; not naturally idle startup' } };
   assert.deepEqual(validateCandidateScenario(result(backup), 'backup'), backup);
   assert.throws(() => validateCandidateScenario(result({ ...backup, backupLifecycle: { ...backup.backupLifecycle, workerRestore: false } }), 'backup'), /preserved mock task/u);
+  for (const patch of [{ rendererReadiness: undefined }, { transitionReadiness: 'naturally idle' },
+    ...[{ handlersSettled: 7 }, { handlersStarted: 0, handlersSettled: 0 }, { allStartedHandlersSettled: false }, { allAdmittedRequestsSettled: false },
+      { completedRequests: 3 }, { admittedRequests: -1 }, { policy: 'force-close' }].map(patch => ({ rendererReadiness: { ...backup.backupLifecycle.rendererReadiness, ...patch } }))]) {
+    assert.throws(() => validateCandidateScenario(result({ ...backup, backupLifecycle: { ...backup.backupLifecycle, ...patch } }), 'backup'), /controlled-idle/u);
+  }
   const relaunch = { executable: '/fixture', ok: true, actualProcessRelaunches: 4, processCount: 5, allRecordedProcessesExited: true,
     temporaryResourcesCleaned: true, draftRecovery: { profiles: 2, draftsPerProfile: 2 }, phaseProofs: Array(5).fill({}) };
   assert.deepEqual(validateCandidateScenario(result(relaunch), 'relaunch'), relaunch);

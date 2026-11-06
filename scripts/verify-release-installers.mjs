@@ -102,6 +102,13 @@ export function validateCandidateScenario(output, scenario) {
       const proof = facts.backupLifecycle;
       if (!proof || proof.tasks !== 2 || proof.toolArtifacts < 2 || ['realMenuCallbacks', 'workerBackup', 'workerRestore', 'restoredProfileReopened',
         'artifactBytesPreserved', 'originalWorkspacePreserved', 'handoffSnapshotRestored', 'handoffHistoryNotReplayed', 'summaryDraftRestored'].some(key => proof[key] !== true)) fail('Native backup smoke did not confirm backup, restore and preserved mock task history');
+      const readiness = proof.rendererReadiness;
+      if (!readiness || readiness.version !== 1 || readiness.policy !== 'pause-new-background-requests-before-transition'
+        || readiness.allAdmittedRequestsSettled !== true || readiness.allStartedHandlersSettled !== true
+        || ['admittedRequests', 'completedRequests', 'eventStreamsReady', 'pausedRequests', 'handlersStarted', 'handlersSettled'].some(key => !Number.isSafeInteger(readiness[key]) || readiness[key] < 0)
+        || readiness.handlersStarted === 0 || readiness.handlersStarted !== readiness.handlersSettled
+        || readiness.completedRequests > readiness.admittedRequests || readiness.eventStreamsReady > readiness.admittedRequests
+        || proof.transitionReadiness !== 'fixture paused new renderer and service worker requests before backup; not naturally idle startup') fail('Native backup smoke did not confirm its controlled-idle request and handler drain');
     }
   }
   return facts;

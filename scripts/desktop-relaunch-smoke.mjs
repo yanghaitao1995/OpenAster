@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readSmokeRecord, isSmokeProcessAlive } from '../desktop/relaunch-smoke-state.mjs';
 import { stageDesktopExecutable } from './desktop-smoke-staging.mjs';
-import { validateSmokeFailure } from '../desktop/smoke-diagnostics.mjs';
+import { validateSmokeFailure, parseSmokeStageDiagnostic } from '../desktop/smoke-diagnostics.mjs';
 import { validateDraftRelaunchProofs, parseDraftUiDiagnostic } from '../desktop/draft-relaunch-proof.mjs';
 
 const root = path.resolve(import.meta.dirname, '..'), args = process.argv.slice(2);
@@ -78,6 +78,8 @@ try {
     for (const line of output.split(/\r?\n/u)) {
       const diagnostic = parseDraftUiDiagnostic(line);
       if (diagnostic) console.error('OPENASTER_DRAFT_UI_DIAGNOSTIC ' + JSON.stringify(diagnostic));
+      const stage = parseSmokeStageDiagnostic(line);
+      if (stage) console.error('OPENASTER_SMOKE_STAGE_DIAGNOSTIC ' + JSON.stringify(stage));
     }
   }
   assert.equal(result.result.ok, true, JSON.stringify(result.result));
@@ -85,8 +87,12 @@ try {
   const pids = [...entries.values()].map(entry => entry.pid);
   assert.equal(new Set(pids).size, 5); assert.equal(pids[0], first.pid); assert.deepEqual(result.pids, pids);
   const scenario = result.result.processRelaunch;
-  assert.equal(scenario.realProcessRelaunches, 4); assert.equal(scenario.backupVersion, 7);
-  assert.equal(scenario.sessions, 2); assert.equal(scenario.runHistories, 3); assert.equal(scenario.toolArtifacts, 2);
+  assert.equal(scenario.realProcessRelaunches, 4); assert.equal(scenario.backupVersion, 9);
+  assert.equal(scenario.sessions, 2); assert.equal(scenario.runHistories, 3);
+  assert.ok(Array.isArray(scenario.demoReadPaths) && scenario.demoReadPaths.includes('relaunch-note.txt') && scenario.demoReadPaths.length <= 3);
+  assert.equal(new Set(scenario.demoReadPaths).size, scenario.demoReadPaths.length);
+  assert.equal(scenario.toolArtifacts, 1 + scenario.demoReadPaths.length);
+  assert.deepEqual(result.proofs.map(entry => entry.proof.toolArtifacts), Array(5).fill(scenario.toolArtifacts));
   assert.notEqual(scenario.sourceSessionId, scenario.branchSessionId); assert.equal(scenario.branchCreatedViaApi, true);
   assert.equal(result.proofs.length, 5);
   for (const key of ['sourceAndBranchPreserved', 'branchMetadataPreserved', 'historicalAttachmentPreserved', 'executionNotReplayed']) {
