@@ -1,0 +1,54 @@
+name: Published 0.2.2 installer acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installed-application:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: windows
+          - os: macos-latest
+            artifact: macos
+          - os: ubuntu-22.04
+            artifact: deb
+          - os: ubuntu-22.04
+            artifact: appimage
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      # The dispatched commit supplies only this new verification harness.
+      - name: Checkout verification tools
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: verification-tools
+          persist-credentials: false
+      # The existing smoke runner must come from the published application commit.
+      - name: Checkout the exact published source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: 3a4ee6915312dcafd9e56ea5c40440c9b39c5985
+          path: release-source
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Check verification logic without installing anything
+        run: node --test verification-tools/scripts/verify-release-installers.test.mjs
+      - name: Verify, install and launch the published artifact
+        env:
+          OPENASTER_ACCEPTANCE_KIND: ${{ matrix.artifact }}
+          OPENASTER_ACCEPTANCE_SOURCE: ${{ github.workspace }}/release-source
+          OPENASTER_ACCEPTANCE_OUTPUT: ${{ github.workspace }}/installer-evidence
+        run: node verification-tools/scripts/verify-release-installers.mjs
+      - name: Retain acceptance evidence, including failed steps
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: installer-acceptance-0.2.2-${{ matrix.artifact }}-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 14
+          path: installer-evidence/
