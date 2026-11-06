@@ -21,6 +21,18 @@ async function fixture(t, options={}) {
 }
 async function until(fn,predicate,timeout=5000) {const deadline=Date.now()+timeout;while(Date.now()<deadline){const value=await fn();if(predicate(value))return value;await new Promise(r=>setTimeout(r,20));}throw new Error('Timed out waiting for state');}
 
+test('long task settings survive create, edit and export, and invalid budgets do not mutate the connection',async t=> {
+  const f=await fixture(t),settings={maxTokens:65536,contextWindowTokens:262144,autoCompact:false,autoContinue:false,maxModelCalls:120,maxTools:512,maxRunMinutes:180};
+  const created=await f.request('/api/providers',{method:'POST',data:{name:'长任务测试',type:'openai',model:'fixture',baseUrl:'https://fixture.invalid/v1',...settings}});
+  assert.equal(created.status,201);const id=created.data.provider.id;
+  for(const [key,value]of Object.entries(settings))assert.equal(created.data.provider[key],value,key);
+  const updated=await f.request(`/api/providers/${id}`,{method:'PATCH',data:{autoCompact:true,maxModelCalls:512}});assert.equal(updated.status,200);
+  assert.equal(updated.data.provider.autoCompact,true);assert.equal(updated.data.provider.maxModelCalls,512);assert.equal(updated.data.provider.maxTokens,65536);
+  for(const data of [{maxModelCalls:513},{maxTools:2049},{maxRunMinutes:241},{contextWindowTokens:8191},{autoContinue:'true'}])assert.equal((await f.request(`/api/providers/${id}`,{method:'PATCH',data})).status,400);
+  const stored=(await f.request('/api/state')).data.providers.find(item=>item.id===id);assert.equal(stored.maxModelCalls,512);assert.equal(stored.autoContinue,false);
+  const exported=(await f.request('/api/export')).data;assert.ok(JSON.stringify(exported).includes('"contextWindowTokens":262144'));
+});
+
 test('bootstrap authenticates with strict HttpOnly cookie and APIs do not expose secrets',async t=> {
   const f=await fixture(t);assert.equal(f.bootstrap.status,200);assert.match(f.bootstrap.headers.get('set-cookie'),/HttpOnly; SameSite=Strict/);assert.equal(f.bootstrap.data.security.keyStorage,'memory-only');assert.equal(f.bootstrap.data.providers[0].type,'demo');
   assert.equal((await f.request('/api/state',{auth:false})).status,401);

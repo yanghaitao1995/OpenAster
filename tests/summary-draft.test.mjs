@@ -74,6 +74,54 @@ test('single-part generation makes exactly one final request, with bounded token
   checkpoints[0].preview.source.title = 'caller mutation'; assert.equal(result.preview.source.title, '长任务');
 });
 
+test('legacy summary provider snapshots keep their exact version-1 shape and plan hash', async () => {
+  const f = setup(source(), provider({ maxTokens: 4096 }));
+  assert.deepEqual(Object.keys(f.plan.preview.provider), ['id', 'name', 'type', 'baseUrl', 'model', 'streaming', 'toolMode', 'tokenParameter', 'maxTokens', 'enabled']);
+  assert.equal(f.plan.preview.planHash, 'fda1eb01ac2f59b14bf6d0ca13e6fa572fee76698023640c38eed9cc1018b73d');
+  const serialized = JSON.stringify(f.draft);
+  assert.equal(JSON.stringify(validateSummaryDraft(JSON.parse(serialized))), serialized);
+  const result = await generateSummaryDraft(f.plan, f.config, { draft: f.draft, checkpoint: async () => {}, providerCall: async () => reply('legacy summary') });
+  assert.equal(result.status, 'completed');
+  assert.equal(result.preview.planHash, f.plan.preview.planHash);
+});
+
+test('optional long-task settings bind new summary plans without expanding summary requests or output budgets', async () => {
+  const settings = { contextWindowTokens: 131072, autoCompact: true, autoContinue: true, maxModelCalls: 64, maxTools: 256, maxRunMinutes: 60 };
+  const legacy = setup(source(), provider({ maxTokens: 131072 })), f = setup(source(), provider({ maxTokens: 131072, ...settings }));
+  assert.deepEqual(Object.keys(f.plan.preview.provider), ['id', 'name', 'type', 'baseUrl', 'model', 'streaming', 'toolMode', 'tokenParameter', 'maxTokens', ...Object.keys(settings), 'enabled']);
+  assert.notEqual(f.plan.preview.planHash, legacy.plan.preview.planHash);
+  assert.deepEqual(f.plan.preview.parts, legacy.plan.preview.parts);
+  assert.deepEqual(f.plan.preview.partOutputLimit, legacy.plan.preview.partOutputLimit);
+  assert.deepEqual(f.plan.preview.finalOutputLimit, legacy.plan.preview.finalOutputLimit);
+  assert.equal(f.plan.preview.maxOutputTokens, 4096);
+  const result = await generateSummaryDraft(f.plan, f.config, { draft: f.draft, checkpoint: async () => {}, providerCall: async (p) => {
+    assert.equal(p.maxTokens, 4096); assert.equal(p.streaming, false); assert.equal(p.toolMode, 'none');
+    return reply('bounded summary');
+  } });
+  assert.equal(result.status, 'completed');
+  for (const [key, value] of Object.entries(settings)) {
+    const changed = { ...f.config, [key]: typeof value === 'boolean' ? !value : value + 1 };
+    assert.notEqual(planSummaryDraft(source(), changed).preview.planHash, f.plan.preview.planHash);
+    await assert.rejects(generateSummaryDraft(f.plan, changed, { draft: f.draft, checkpoint: async () => {}, providerCall: async () => assert.fail('No stale call') }), { code: 'SUMMARY_PLAN_CHANGED' });
+    const partial = setup(source(), provider({ [key]: value }));
+    assert.deepEqual(Object.keys(partial.plan.preview.provider).slice(-2), [key, 'enabled']);
+    assert.deepEqual(validateSummaryDraft(partial.draft), partial.draft);
+  }
+});
+
+test('summary validation rejects malformed optional settings and never invokes their getters', () => {
+  const f = setup(source(), provider({ contextWindowTokens: 131072, autoCompact: true, autoContinue: true, maxModelCalls: 64, maxTools: 256, maxRunMinutes: 60 }));
+  for (const [key, value] of Object.entries({ contextWindowTokens: 8191, autoCompact: 'true', autoContinue: null, maxModelCalls: 513, maxTools: 2049, maxRunMinutes: 241 })) {
+    const bad = structuredClone(f.draft); bad.preview.provider[key] = value;
+    assert.throws(() => validateSummaryDraft(bad), { code: 'INVALID_SUMMARY_DRAFT' });
+  }
+  let reads = 0;
+  const bad = structuredClone(f.draft);
+  Object.defineProperty(bad.preview.provider, 'autoCompact', { enumerable: true, get() { reads++; throw Error('Must not run'); } });
+  assert.throws(() => validateSummaryDraft(bad), { code: 'INVALID_SUMMARY_DRAFT' });
+  assert.equal(reads, 0);
+});
+
 test('multiple parts are all summarized in order and all notes reach final synthesis with measured bodies', async () => {
   const session = source(); session.messages = Array.from({ length: 4 }, (_, index) => message(`m${index}`, index % 2 ? 'assistant' : 'user', 'x'.repeat(200000)));
   const f = setup(session), checkpoints = [], seen = []; let calls = 0;
@@ -145,6 +193,8 @@ test('safe errors and unavailable counts do not disclose arbitrary provider erro
   assert.equal(result.status, 'completed'); assert.equal(result.steps[0].usage, null); assert.equal(accessed, 0);
   const failed = await generateSummaryDraft(f.plan, f.config, { draft: f.draft, checkpoint: async () => {}, providerCall: async () => { throw new Error('secret upstream payload'); } });
   assert.equal(failed.error.code, 'SUMMARY_FAILED'); assert.ok(!JSON.stringify(failed).includes('secret'));
+  const exhausted = await generateSummaryDraft(f.plan, f.config, { draft: f.draft, checkpoint: async () => {}, providerCall: async () => { throw Object.assign(new Error('private context payload'), { code: 'MODEL_CONTEXT_LIMIT' }); } });
+  assert.equal(exhausted.error.code, 'MODEL_CONTEXT_LIMIT'); assert.match(exhausted.error.message, /上下文窗口/); assert.doesNotMatch(JSON.stringify(exhausted), /private context payload/);
 });
 
 test('full source generation reaches every fragment and final note without changing original messages', async () => {

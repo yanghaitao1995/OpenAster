@@ -62,6 +62,21 @@ async function populated(t) {
   store.close(); return { ...f, records };
 }
 
+test('long task provider settings and execution metadata roundtrip while user input keeps its original bound', async t => {
+  const f = await fixture(t), store = new Store(f.dataDir), value = record(f.session);
+  const settings = { contextWindowTokens: 262144, autoCompact: true, autoContinue: false, maxModelCalls: 180, maxTools: 600, maxRunMinutes: 120, maxTokens: 65536 };
+  store.putProvider({ id: 'long-provider', name: '长任务连接', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1', enabled: true, ...settings });
+  value.run.budget = { maxModelCalls: 180, maxTools: 600, maxRunMs: 7200000, modelCalls: 90, toolCalls: 100 };
+  value.run.steps[0].purpose = 'compaction'; value.run.steps[0].contextUsage = { estimatedInputTokens: 190000, contextWindowTokens: 262144, reservedOutputTokens: 65536, thresholdTokens: 157286 };
+  value.run.steps[0].publicSummary = '已保留目标、约束和未完成工作。';
+  f.session.messages.push({ id: 'large-assistant', role: 'assistant', content: 'x'.repeat(1024 * 1024), createdAt: now });
+  f.session.run = structuredClone(value.run); store.putSession(f.session); store.putRunHistory(value); store.close();
+  await createBackup(f); await restoreBackup({ input: f.output, dataDir: f.restored });
+  const restored = new Store(f.restored);try { const provider=restored.getProvider('long-provider');for(const [key,item]of Object.entries(settings))assert.equal(provider[key],item);assert.deepEqual(restored.getRunHistory(f.session.id,value.run.id),value);assert.equal(restored.getSession(f.session.id).messages.at(-1).content.length,1024*1024); } finally { restored.close(); }
+  const envelope=await archive(f.output);envelope.payload.sessions[0].messages.at(-1).role='user';const input=path.join(f.root,'oversize-user.json');await rewrite(input,envelope);
+  await assert.rejects(restoreBackup({input,dataDir:path.join(f.root,'invalid-user')}),{code:'INVALID_BACKUP'});
+});
+
 test('v2 roundtrip preserves terminal runs, usage, errors, partial output and non-executable approval metadata exactly once', async t => {
   const f = await populated(t), summary = await createBackup(f), envelope = await archive(f.output);
   assert.equal(envelope.version, 9); assert.equal(summary.runHistory, 3);
@@ -164,7 +179,7 @@ test('legacy history text uses the record byte budget while the step and approva
   const base = await archive(f.output);
   for (const field of ['steps', 'approvals']) {
     const envelope = structuredClone(base), target = field === 'steps' ? envelope.payload.runHistory[0].run : envelope.payload.runHistory[0];
-    target[field] = Array.from({ length: 65 }, (_, index) => field === 'steps' ? {} : { ...value.approvals[0], id: `approval-${index}` });
+    target[field] = Array.from({ length: field === 'steps' ? 2561 : 2069 }, (_, index) => field === 'steps' ? {} : { ...value.approvals[0], id: `approval-${index}` });
     const input = path.join(f.root, `array-${field}.json`), dataDir = path.join(f.root, `array-${field}`); await rewrite(input, envelope);
     await assert.rejects(restoreBackup({ input, dataDir }), { code: 'INVALID_BACKUP' }); await missing(dataDir);
   }

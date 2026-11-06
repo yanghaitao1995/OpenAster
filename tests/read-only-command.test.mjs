@@ -78,15 +78,24 @@ test('a real fixed Git status cannot execute a configured fsmonitor hook', { tim
   const match = plan.command.match(windows ? /^& '((?:[^']|'')+)'/u : /^'((?:[^']|'\\'')+)'/u);
   assert.ok(match); const executable = windows ? match[1].replaceAll("''", "'") : match[1].replaceAll("'\\''", "'");
   await fs.writeFile(path.join(f.root, 'tracked.txt'), 'before\n');
+  const setupStarted = performance.now();
   const added = spawnSync(executable, ['add', 'tracked.txt'], { cwd: f.root, env: { ...commandEnvironment(), ...plan.environment }, encoding: 'utf8', timeout: 10000, windowsHide: true });
-  t.diagnostic(`owned git setup pid=${added.pid} exit=${added.status}`);
+  t.diagnostic(JSON.stringify({ phase: 'owned-git-setup', exitCode: added.status, durationMs: Math.round(performance.now() - setupStarted),
+    timedOut: added.error?.code === 'ETIMEDOUT', stdoutBytes: Buffer.byteLength(added.stdout ?? ''), stderrBytes: Buffer.byteLength(added.stderr ?? '') }));
   assert.equal(added.status, 0, added.stderr);
   await fs.writeFile(path.join(f.root, 'hook.cjs'), "require('node:fs').writeFileSync('hook-ran.txt','unexpected'); process.stdout.write('token\\n');\n");
   await fs.appendFile(f.config, '\n[core]\nfsmonitor = node hook.cjs\n');
   await fs.writeFile(path.join(f.root, 'tracked.txt'), 'after\n');
   const runner = createCommandRunner({ workspace: f.workspace }), proposal = await runner.prepare({ command: 'git status --short', timeoutMs: 10000 });
   assert.equal(runner.describe(proposal).readOnly, true);
-  const result = await runner.execute(proposal, { readOnly: true });
+  const executionStarted = performance.now();
+  let readyCount = 0, readyElapsedMs = null;
+  const result = await runner.execute(proposal, { readOnly: true, onStarted: () => { readyCount++; readyElapsedMs = Math.round(performance.now() - executionStarted); } });
+  // Record bounded process facts only: no environment, paths, command text or
+  // arbitrary stderr. An empty exit code alone cannot distinguish startup delay.
+  t.diagnostic(JSON.stringify({ phase: 'fixed-git-status', readyCount, readyElapsedMs, durationMs: result.durationMs,
+    elapsedMs: Math.round(performance.now() - executionStarted), exitCode: result.exitCode, timedOut: result.timedOut,
+    cancelled: result.cancelled, stdoutBytes: Buffer.byteLength(result.stdout), stderrBytes: Buffer.byteLength(result.stderr), truncated: result.truncated }));
   assert.equal(result.exitCode, 0, result.stderr);
   assert.match(result.stdout, /tracked\.txt/u);
   await assert.rejects(fs.stat(path.join(f.root, 'hook-ran.txt')), { code: 'ENOENT' });

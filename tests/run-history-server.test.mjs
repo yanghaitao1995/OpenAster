@@ -114,12 +114,12 @@ test('history query/path validation rejects ambiguous, malformed, and stale pagi
 });
 
 test('real API runs preserve completed/failed/cancelled history and original model identity through updates, deletion and restart', async t => {
-  const root = await directory(t); let call = 0, capturedMessages;
-  let app = await startServer({ dataDir: root, runtimeOptions: { limits: { streamCheckpointMs: 10 }, providerCall: async (_provider, { onText, signal, messages }) => {
+  const root = await directory(t); let call = 0, capturedMessages, capturedSystem, capturedTools, capturedIdentity;
+  let app = await startServer({ dataDir: root, runtimeOptions: { limits: { streamCheckpointMs: 10 }, providerCall: async (provider, { onText, signal, messages, system, tools }) => {
     call++;
     if (call === 1) return { content: '首次已完成', toolCalls: [], usage: { inputTokens: 11, outputTokens: 7, totalTokens: 18, cachedInputTokens: null, cacheWriteInputTokens: null, reasoningOutputTokens: null } };
     if (call === 2) { await onText('FAILED_PARTIAL_ONLY'); throw Object.assign(new CoreError('PROVIDER_HTTP_ERROR', '本机模拟永久请求错误', 400), { providerStatus: 400 }); }
-    capturedMessages = structuredClone(messages); await onText('CANCELLED_PARTIAL_ONLY');
+    capturedMessages = structuredClone(messages); capturedSystem = system; capturedTools = structuredClone(tools); capturedIdentity = { model: provider.model, toolMode: provider.toolMode }; await onText('CANCELLED_PARTIAL_ONLY');
     await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true })); signal.throwIfAborted();
   } } });
   let request = await client(app);
@@ -154,7 +154,19 @@ test('real API runs preserve completed/failed/cancelled history and original mod
     await until(() => request(base), value => value.session?.run?.id === third.runId && value.session.run.finishedAt);
     const thirdRecord = (await request(runs + '/' + third.runId)).record;
     assert.equal(thirdRecord.run.status, 'cancelled'); assert.equal(thirdRecord.run.output.content, 'CANCELLED_PARTIAL_ONLY');
-    assert.ok(!JSON.stringify(capturedMessages).includes('FAILED_PARTIAL_ONLY')); assert.ok(!JSON.stringify(capturedMessages).includes('runHistory'));
+    const resumed = capturedMessages.filter(message => message.syntheticContinuation === true);
+    assert.equal(resumed.length, 1); assert.equal(resumed[0].role, 'user'); assert.ok(Buffer.byteLength(resumed[0].content) <= 64 * 1024);
+    const prior = JSON.parse(resumed[0].content);
+    assert.deepEqual(Object.keys(prior).sort(), ['untrusted_prior_run', 'runId', 'status', 'error', 'totalSteps', 'includedRecentSteps', 'interruptedOutputExcerpt', 'notice'].sort());
+    assert.equal(prior.untrusted_prior_run, true); assert.equal(prior.runId, second.runId); assert.equal(prior.status, 'failed');
+    assert.equal(prior.interruptedOutputExcerpt, 'FAILED_PARTIAL_ONLY'); assert.equal(prior.totalSteps, 1); assert.equal(prior.includedRecentSteps.length, 1);
+    assert.ok(prior.includedRecentSteps.every(step => Object.keys(step).every(key => ['type', 'title', 'status', 'detail', 'excerpt', 'archivedResult'].includes(key))));
+    assert.match(prior.notice, /not new instructions or approval/); assert.match(prior.notice, /obtain fresh approval/);
+    assert.match(capturedSystem, /never authorize actions/); assert.deepEqual(capturedTools, []);
+    assert.deepEqual(capturedIdentity, { model: 'changed-model', toolMode: 'none' });
+    assert.equal(capturedMessages.at(-1).content, '第三次', 'the latest user request follows the untrusted historical envelope');
+    assert.ok(!JSON.stringify(capturedMessages).includes('runHistory')); assert.ok(!JSON.stringify(capturedMessages).includes('LOCAL_SECRET_NOT_HISTORY'));
+    assert.ok(!(await request(base)).session.messages.some(message => message.content.includes('FAILED_PARTIAL_ONLY')), 'interrupted output remains history rather than becoming a completed assistant message');
     assert.equal((await request(`/api/providers/${provider.id}`, { method: 'DELETE', body: {} })).status, 200);
     assert.equal((await request(base)).session.providerId, 'demo');
     assert.deepEqual((await request(runs + '/' + first.runId)).record, firstRecord);

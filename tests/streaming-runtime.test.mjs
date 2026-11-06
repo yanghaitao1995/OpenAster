@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { MAX_MODEL_OUTPUT_BYTES } from '../core/model-limits.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -104,7 +105,7 @@ test('failed partial output never enters subsequent model history or claims tool
 });
 
 test('stream content is bounded and compatibility mode retains a callback for complete or explicitly interrupted JSON', async t => {
-  const f=await fixture(t,{providerCall:async(_p,{onText})=>{await onText('x'.repeat(256*1024+1));return reply('unreachable');}});
+  const f=await fixture(t,{providerCall:async(_p,{onText})=>{await onText('x'.repeat(MAX_MODEL_OUTPUT_BYTES+1));return reply('unreachable');}});
   await f.runtime.start('s1',{content:'开始'});await f.done();
   assert.equal(f.sessions.get('s1').run.status,'failed');assert.equal(f.sessions.get('s1').messages.length,1);
   const disabled=await fixture(t,{streaming:false,providerCall:async(provider,{onText})=>{assert.equal(provider.streaming,false);assert.equal(typeof onText,'function');await onText('完整响应');return reply('完整响应');}});

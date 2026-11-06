@@ -81,7 +81,7 @@ for (const type of types) {
       ollama: ['load', 'unload', 'tool_calls', 'unknown', '', false, 'length'],
     }[type];
     for (const reason of failures) for (const withTools of [false, true]) {
-      const code = ['length', 'max_tokens', 'model_context_window_exceeded'].includes(reason) ? 'MODEL_OUTPUT_LIMIT' : 'MODEL_RESPONSE_INCOMPLETE';
+      const code = reason === 'model_context_window_exceeded' ? 'MODEL_CONTEXT_LIMIT' : ['length', 'max_tokens'].includes(reason) ? 'MODEL_OUTPUT_LIMIT' : 'MODEL_RESPONSE_INCOMPLETE';
       const data = terminal(type, fixture(type, withTools), reason);
       assert.throws(() => parseResponse(type, data), { code });
       await assert.rejects(request(type, data, { streaming: true }), { code });
@@ -132,8 +132,8 @@ test('Responses completed status cannot conceal partial items, errors or incompl
       await assert.rejects(request('responses', data, { streaming: true }), { code: 'MODEL_RESPONSE_INCOMPLETE' });
     }
     const incomplete = { ...fixture('responses', withTools), incomplete_details: { reason: 'max_output_tokens' } };
-    assert.throws(() => parseResponse('responses', incomplete), { code: 'MODEL_RESPONSE_INCOMPLETE' });
-    await assert.rejects(request('responses', incomplete, { streaming: true }), { code: 'MODEL_RESPONSE_INCOMPLETE' });
+    assert.throws(() => parseResponse('responses', incomplete), { code: 'MODEL_OUTPUT_LIMIT' });
+    await assert.rejects(request('responses', incomplete, { streaming: true }), { code: 'MODEL_OUTPUT_LIMIT' });
     const errored = { ...fixture('responses', withTools), error: { message: 'private token never reveal' } };
     assert.throws(() => parseResponse('responses', errored), error => error.code === 'PROVIDER_RESPONSE_ERROR' && !error.message.includes('private token'));
     await assert.rejects(request('responses', errored, { streaming: true }), { code: 'MODEL_RESPONSE_INCOMPLETE' });

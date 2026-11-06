@@ -8,7 +8,7 @@ import { validateTerminal } from '../core/provider-terminal.mjs';
 
 const transient = () => new CoreError('PROVIDER_UNAVAILABLE', 'must not leak arbitrary upstream text', 502);
 test('retry classification excludes auth, invalid protocols, output limits and internal failures', () => {
-  for (const code of ['PROVIDER_AUTH_FAILED', 'INVALID_PROVIDER_RESPONSE', 'MODEL_OUTPUT_LIMIT', 'PROVIDER_STREAM_ERROR', 'INTERNAL_ERROR', 'COMMAND_TIMEOUT', 'CANCELLED']) assert.equal(retryableProviderError(new CoreError(code, 'opaque')), null);
+  for (const code of ['PROVIDER_AUTH_FAILED', 'INVALID_PROVIDER_RESPONSE', 'MODEL_OUTPUT_LIMIT', 'MODEL_CONTEXT_LIMIT', 'PROVIDER_STREAM_ERROR', 'INTERNAL_ERROR', 'COMMAND_TIMEOUT', 'CANCELLED']) assert.equal(retryableProviderError(new CoreError(code, 'opaque')), null);
   assert.equal(retryableProviderError(new Error('network?')), null);
   assert.deepEqual(retryableProviderError(transient()), { code: 'PROVIDER_UNAVAILABLE', message: '暂时无法连接模型服务。' });
   for (const providerStatus of [400, 401, 403, 404, 422]) assert.equal(retryableProviderError(Object.assign(new CoreError('PROVIDER_HTTP_ERROR', 'opaque'), { providerStatus })), null);
@@ -66,10 +66,20 @@ test('provider HTTP contract returns only bounded retry metadata and discards th
   }
 });
 
-test('an explicit refusal or incomplete terminal does not become an unlimited paid retry', () => {
-  for (const [type, data] of [['openai', { choices: [{ finish_reason: 'content_filter' }] }], ['responses', { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } }]]) {
+test('explicit refusal, output exhaustion and context exhaustion retain distinct codes without retrying', async () => {
+  for (const [type, data, code] of [
+    ['openai', { choices: [{ finish_reason: 'content_filter' }] }, 'MODEL_RESPONSE_INCOMPLETE'],
+    ['responses', { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } }, 'MODEL_OUTPUT_LIMIT'],
+    ['anthropic', { stop_reason: 'model_context_window_exceeded' }, 'MODEL_CONTEXT_LIMIT'],
+  ]) {
     let failure;
     try { validateTerminal(type, data); } catch (value) { failure = value; }
-    assert.equal(failure.code, 'MODEL_RESPONSE_INCOMPLETE'); assert.equal(retryableProviderError(failure), null);
+    assert.equal(failure.code, code); assert.equal(failure.retryable, false); assert.equal(retryableProviderError(failure), null);
+    let calls = 0;
+    await assert.rejects(retryProviderRequest(async () => { calls++; validateTerminal(type, data); }, {
+      wait: async () => assert.fail('Explicit terminal must not enter backoff'),
+      onRetry: () => assert.fail('Explicit terminal must not schedule another request'),
+    }), { code });
+    assert.equal(calls, 1);
   }
 });

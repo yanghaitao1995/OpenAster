@@ -15,6 +15,20 @@ const usage = { inputTokens: 10, outputTokens: 7, totalTokens: 17, cachedInputTo
 const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 const record = (sessionId, id = 'run-one', extra = {}) => ({ sessionId, run: { id, status: 'completed', startedAt: time, ...extra }, approvals: [] });
 
+test('long task metadata preserves estimates, compaction and continuations without relaxing shape or byte limits', () => {
+  const contextUsage = { estimatedInputTokens: 150000, contextWindowTokens: 131072, reservedOutputTokens: 16384, thresholdTokens: 91750 };
+  const budget = { maxModelCalls: 512, maxTools: 2048, maxRunMs: 14400000, modelCalls: 512, toolCalls: 2048 };
+  const value = record('long-session', 'long-run', { budget, steps: Array.from({ length: 2560 }, (_, index) => ({ id: `step-${index}`, type: index < 512 ? 'model' : 'tool', status: 'completed', ...(index < 512 ? { purpose: index === 0 ? 'compaction' : 'continuation', contextUsage } : {}) })), output: { stepId: 'step-0', status: 'interrupted', content: 'x'.repeat(1024 * 1024) } });
+  assert.deepEqual(validateRunHistoryRecord(value), value);
+  for (const mutate of [
+    item => item.run.budget.modelCalls++, item => item.run.budget.maxRunMs++, item => item.run.budget.toolCalls = -1,
+    item => item.run.budget.apiKey = 'must-not-be-kept', item => item.run.steps[0].purpose = 'execute',
+    item => item.run.steps[512].purpose = 'compaction', item => item.run.steps[0].contextUsage.contextWindowTokens = 8191,
+    item => item.run.steps[0].contextUsage.estimatedInputTokens = 1.5, item => item.run.steps[0].contextUsage.fullRequest = 'private',
+    item => item.run.output.content += 'x',
+  ]) { const candidate = structuredClone(value); mutate(candidate); assert.throws(() => validateRunHistoryRecord(candidate), { code: 'INVALID_RUN_HISTORY' }); }
+});
+
 async function directory(t) {
   const root = await mkdtemp(path.join(tmpdir(), 'openaster-history-'));
   t.after(async () => {
@@ -99,12 +113,12 @@ test('history import strictly validates metadata, consent shape, usage and bound
     value => value.run.connection = { ...connection, type: 'demo', toolMode: 'none' },
     value => value.run.requestPreview = 'x'.repeat(241), value => value.run.requestPreview = null,
     value => value.run.requestMessageId = null, value => value.run.startedAt = 'not-a-date',
-    value => value.run.steps = Array.from({ length: 65 }, () => ({})),
+    value => value.run.steps = Array.from({ length: 2561 }, () => ({})),
     value => value.run.steps = [{ id: 'duplicate' }, { id: 'duplicate' }],
     value => value.run.steps = [{ type: 'tool', usage }], value => value.run.steps = [{ type: 'model', usage: { ...usage, totalTokens: 0 } }],
     value => value.run.steps = [{ type: 'model', usage: { ...usage, secret: 'extra' } }],
     value => value.run.steps = [{ type: 'invented' }], value => value.run.steps = [{ detail: '\ud800' }],
-    value => value.approvals = Array.from({ length: 65 }, (_, i) => ({ id: `approval-${i}` })),
+    value => value.approvals = Array.from({ length: 2069 }, (_, i) => ({ id: `approval-${i}` })),
     value => value.approvals = [{ id: 'approval-one', status: 'pending' }],
   ];
   for (const mutate of invalid) {

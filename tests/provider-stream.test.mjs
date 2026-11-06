@@ -6,6 +6,7 @@ import { CoreError } from '../core/errors.mjs';
 import { withAbort } from '../core/provider-stream.mjs';
 import { getEventListeners } from 'node:events';
 import { normalizeProviderUsage } from '../core/usage.mjs';
+import { MAX_MODEL_OUTPUT_BYTES, MAX_STREAM_RESPONSE_BYTES } from '../core/model-limits.mjs';
 
 const provider = (type = 'openai', extra = {}) => ({ type, model: 'fixture-model', baseUrl: 'https://fixture.invalid/v1', apiKey: 'never-sent-to-network', ...extra });
 const messages = [{ role: 'user', content: 'fixture' }];
@@ -276,9 +277,9 @@ test('cancellation inside text callback cannot return completed tool calls', asy
 });
 
 test('raw byte and visible content budgets apply across stream chunks', async () => {
-  await assert.rejects(run('openai', [':' + 'x'.repeat(1024 * 1024) + '\n', chatText('OK')]), { code: 'PROVIDER_RESPONSE_TOO_LARGE' });
-  await assert.rejects(run('openai', parts(chatText('x'.repeat(256 * 1024 + 1)), 64000)), { code: 'MODEL_OUTPUT_LIMIT' });
-  const oversizedHeader = new Response(chatText('OK'), { headers: { 'content-type': 'text/event-stream', 'content-length': String(1024 * 1024 + 1) } });
+  assert.equal((await run('openai', [':' + 'x'.repeat(1024 * 1024) + '\n', chatText('OK')])).result.content, 'OK');
+  await assert.rejects(run('openai', parts(chatText('x'.repeat(MAX_MODEL_OUTPUT_BYTES + 1)), 64000)), { code: 'MODEL_OUTPUT_LIMIT' });
+  const oversizedHeader = new Response(chatText('OK'), { headers: { 'content-type': 'text/event-stream', 'content-length': String(MAX_STREAM_RESPONSE_BYTES + 1) } });
   await assert.rejects(callProvider(provider(), { messages, onText() {}, fetchImpl: async () => oversizedHeader }), { code: 'PROVIDER_RESPONSE_TOO_LARGE' });
 });
 

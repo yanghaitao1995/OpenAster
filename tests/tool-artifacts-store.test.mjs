@@ -120,12 +120,16 @@ test('context plans require earlier same-run references and exact UTF8 boundarie
 });
 
 test('artifact count limit and mismatched associations fail atomically', async t => {
-  const f = await fixture(t), artifacts = Array.from({ length: 32 }, (_, i) => artifact(f.session, `tool-${i}`, 'small'));
+  assert.equal(TOOL_ARTIFACT_LIMITS.maxPerRun, 2048);
+  const f = await fixture(t), artifacts = Array.from({ length: TOOL_ARTIFACT_LIMITS.maxPerRun }, (_, i) => artifact(f.session, `tool-${i}`, 'small'));
   artifacts.forEach(value => addStep(f.session, value)); f.store.putSession(f.session, { artifacts });
-  const value = artifact(f.session, 'tool-32'); addStep(f.session, value);
+  const before = f.store.getSession(f.session.id);
+  const value = artifact(f.session, `tool-${TOOL_ARTIFACT_LIMITS.maxPerRun}`); addStep(f.session, value);
   assert.throws(() => f.store.putSession(f.session, { artifacts: [value] }), { code: 'TOOL_ARTIFACT_LIMIT' });
-  assert.equal(f.store.db.prepare('SELECT count(*) AS n FROM tool_artifacts').get().n, 32);
-  const before = f.store.getSession(f.session.id); const other = { ...value, sessionId: 'another-session' };
+  assert.equal(f.store.db.prepare('SELECT count(*) AS n FROM tool_artifacts').get().n, TOOL_ARTIFACT_LIMITS.maxPerRun);
+  assert.equal(f.store.getToolArtifact(f.session.id, value.runId, value.id), null);
+  assert.deepEqual(f.store.getSession(f.session.id), before);
+  const other = { ...value, sessionId: 'another-session' };
   assert.throws(() => f.store.putSession(f.session, { artifacts: [other] }), { code: 'INVALID_TOOL_ARTIFACT' });
   assert.deepEqual(f.store.getSession(f.session.id), before);
 });
@@ -159,6 +163,28 @@ test('plans cover all earlier tool refs in order and cannot fabricate completene
   assert.throws(() => f.store.putSession(legacyGap), { code: 'INVALID_RUN_HISTORY' });
   const pureLegacy = f.store.createSession(); pureLegacy.run = { id: 'legacy-run', status: 'completed', steps: [{ detail: 'sparse legacy' }] };
   assert.doesNotThrow(() => f.store.putSession(pureLegacy));
+});
+
+test('explicit summary evidence persists compacted tool plans through checkpoints, archive, export and reopen', async t => {
+  const f = await fixture(t), a = artifact(f.session, 'tool-old'), b = artifact(f.session, 'tool-retained');
+  addStep(f.session, a); addStep(f.session, b); f.store.putSession(f.session, { artifacts: [a, b] });
+  f.session.run.steps.push({ id: 'summary', type: 'model', purpose: 'compaction', status: 'completed', createdAt: time });
+  const compacted = { ...plan(b), compaction: { summaryStepId: 'summary', artifactIds: [a.id] } };
+  f.session.run.steps.push({ id: 'response', type: 'model', purpose: 'response', status: 'completed', contextPlan: compacted });
+  const original = f.store.getToolArtifact; f.store.getToolArtifact = () => { throw Error('Full body loaded during checkpoint'); };
+  try { f.store.putSession(f.session); } finally { f.store.getToolArtifact = original; }
+  assert.deepEqual(f.store.getSession(f.session.id).run.steps.at(-1).contextPlan, compacted);
+  f.session.run.status = 'completed'; f.session.run.finishedAt = time; f.store.putSession(f.session);
+  assert.deepEqual(f.store.getRunHistory(f.session.id, f.session.run.id).run.steps.at(-1).contextPlan, compacted);
+  const exported = f.store.exportSessionsWithHistory();
+  assert.deepEqual(exported.runHistory[0].run.steps.at(-1).contextPlan, compacted);
+  assert.deepEqual(exported.toolArtifacts.map(item => item.sha256).sort(), [a.sha256, b.sha256].sort());
+  f.close(); const reopened = new Store(f.root);
+  try {
+    assert.deepEqual(reopened.getRunHistory(f.session.id, f.session.run.id).run.steps.at(-1).contextPlan, compacted);
+    assert.deepEqual(reopened.getToolArtifact(f.session.id, f.session.run.id, a.id), a);
+    assert.deepEqual(reopened.getToolArtifact(f.session.id, f.session.run.id, b.id), b);
+  } finally { reopened.close(); }
 });
 
 test('export budgets include serialized artifact content and reject before loading records', async t => {

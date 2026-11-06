@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { validateToolArtifact, validateToolResultRef, validateContextPlan, paginateToolArtifact, TOOL_ARTIFACT_LIMITS, MODEL_REQUEST_BYTE_LIMIT } from '../core/tool-artifacts.mjs';
+import { planContext } from '../core/context-planner.mjs';
 
 const digest = text => createHash('sha256').update(text).digest('hex');
 function artifact(text = '\uFEFF第一行\r\n😀末尾\n') {
@@ -76,6 +77,20 @@ test('context plans distinguish exact, partial and reference-only views with bou
   assert.deepEqual(validateContextPlan(ref), ref);
   const clean = validateContextPlan(full); clean.toolResults[0].ranges[0].end = 1;
   assert.notEqual(full.toolResults[0].ranges[0].end, 1);
+});
+
+test('long context plans preserve 1025 through 2048 messages while rejecting 2049', () => {
+  const provider = { type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1' };
+  const messages = Array.from({ length: 2049 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: `record-${index}` }));
+  for (const count of [1025, 2048]) {
+    const prepared = planContext(provider, { messages: messages.slice(0, count), tools: [], system: 'Fixture policy' });
+    assert.equal(prepared.messages.length, count); assert.equal(prepared.contextPlan.preservedMessages, count);
+    assert.deepEqual(validateContextPlan(prepared.contextPlan), prepared.contextPlan);
+    assert.ok(prepared.contextPlan.requestBytes <= MODEL_REQUEST_BYTE_LIMIT);
+  }
+  const tooMany = planContext(provider, { messages, tools: [], system: 'Fixture policy' });
+  assert.equal(tooMany.contextPlan.preservedMessages, 2049);
+  assert.throws(() => validateContextPlan(tooMany.contextPlan), invalid('INVALID_CONTEXT_PLAN'));
 });
 
 test('context plans reject ambiguous scope, duplicate sources and claimed completeness mismatches', () => {

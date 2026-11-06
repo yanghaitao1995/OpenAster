@@ -21,7 +21,7 @@ const outcomeFacts = result => ({ exitCode: result.exitCode, signal: result.sign
 
 function launch(executable, args, cwd) {
   const child = spawn(executable, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  let stdout = '', stderr = '', spawnError;
+  let stdout = '', stderr = '', spawnError, outcome;
   const startedAt = performance.now(), facts = { state: 'pending' };
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
   child.stdout.on('data', chunk => { stdout += chunk; });
@@ -29,9 +29,9 @@ function launch(executable, args, cwd) {
   child.on('error', error => { spawnError = error.message; facts.errorCode = diagnosticCode(error); });
   const done = new Promise(resolve => child.once('close', (code, signal) => {
     Object.assign(facts, { state: 'closed', exitCode: code, signal: ['SIGTERM', 'SIGKILL', 'SIGINT'].includes(signal) ? signal : null });
-    resolve({ code, signal, stdout, stderr, spawnError });
+    outcome = { code, signal, stdout, stderr, spawnError }; resolve(outcome);
   }));
-  return { child, done, output: () => stdout, facts: () => ({ ...facts, elapsedMs: Math.round(performance.now() - startedAt),
+  return { child, done, outcome: () => outcome, output: () => stdout, facts: () => ({ ...facts, elapsedMs: Math.round(performance.now() - startedAt),
     stdoutBytes: Buffer.byteLength(stdout), stderrBytes: Buffer.byteLength(stderr), commandReadyCount: stdout.split(/\r?\n/u).filter(line => line === 'COMMAND_READY').length }) };
 }
 async function waitUntil(predicate, label, milliseconds = 15000) {
@@ -45,11 +45,39 @@ async function markerReady(file) {
 }
 function ownedCommand(marker) {
   const inner = Buffer.from('Start-Sleep -Seconds 120', 'utf16le').toString('base64');
+  // Query only this fixture shell's own process handle. WMI access can be denied
+  // independently of the command runner; no machine-wide process enumeration is
+  // needed to discover its direct supervisor. Layout follows Microsoft's
+  // NtQueryInformationProcess / PROCESS_BASIC_INFORMATION documentation:
+  // https://learn.microsoft.com/windows/win32/api/winternl/nf-winternl-ntqueryinformationprocess
   return `$ErrorActionPreference='Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+public static class OpenAsterFixtureParent {
+  [StructLayout(LayoutKind.Sequential)] struct BasicInformation {
+    public int ExitStatus;
+    public IntPtr PebBaseAddress;
+    public UIntPtr AffinityMask;
+    public int BasePriority;
+    public UIntPtr UniqueProcessId, InheritedFromUniqueProcessId;
+  }
+  [DllImport("ntdll.dll")] static extern int NtQueryInformationProcess(IntPtr process, int informationClass, out BasicInformation information, int size, out int returned);
+  public static int OwnParentId() {
+    using (var self = Process.GetCurrentProcess()) {
+      BasicInformation information; int returned, size = Marshal.SizeOf(typeof(BasicInformation));
+      if (NtQueryInformationProcess(self.Handle, 0, out information, size, out returned) != 0 || returned != size || information.UniqueProcessId.ToUInt64() != (ulong)self.Id)
+        throw new InvalidOperationException("Own process identity could not be verified");
+      return checked((int)information.InheritedFromUniqueProcessId.ToUInt64());
+    }
+  }
+}
+'@
+$supervisorId=[OpenAsterFixtureParent]::OwnParentId()
 $descendant=Start-Process -FilePath ${quoted(shell)} -ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','${inner}' -WindowStyle Hidden -PassThru
-$self=Get-CimInstance Win32_Process -Filter ("ProcessId="+$PID)
 $items=@(
-  @{role='supervisor';process=[Diagnostics.Process]::GetProcessById([int]$self.ParentProcessId)},
+  @{role='supervisor';process=[Diagnostics.Process]::GetProcessById($supervisorId)},
   @{role='shell';process=[Diagnostics.Process]::GetCurrentProcess()},
   @{role='descendant';process=$descendant}
 )
@@ -92,7 +120,7 @@ async function scenario(t, killParent) {
   const marker = path.join(cwd, 'owned-processes.json');
   const command = ownedCommand(marker);
   const controller = new AbortController();
-  let operation, parent, observer, passed = false;
+  let operation, parent, observer, commandOutcome, passed = false;
   const startedAt = performance.now(), commandFacts = { state: 'not-started', readyCount: 0, readyElapsedMs: null };
   let stage = 'preparing';
   const diagnostic = phase => t.diagnostic(JSON.stringify({ phase, stage, elapsedMs: Math.round(performance.now() - startedAt),
@@ -109,13 +137,17 @@ console.log(JSON.stringify(result));
       commandFacts.state = 'pending';
       operation = runWindowsCommand({ command, cwd, env, timeoutMs: 20000, signal: controller.signal,
         onStarted: () => { commandFacts.readyCount++; commandFacts.readyElapsedMs = Math.round(performance.now() - startedAt); },
-      }).then(result => { Object.assign(commandFacts, { state: 'resolved', ...outcomeFacts(result) }); return result; },
+      }).then(result => { commandOutcome = result; Object.assign(commandFacts, { state: 'resolved', ...outcomeFacts(result) }); return result; },
         error => { Object.assign(commandFacts, { state: 'rejected', errorCode: diagnosticCode(error) }); throw error; });
       // Attach rejection handling immediately, even if setup fails before the await.
       operation.catch(() => {});
     }
     stage = 'waiting-marker';
-    await waitUntil(() => markerReady(marker), 'all owned command processes must actually start');
+    await waitUntil(async () => {
+      if (await markerReady(marker)) return true;
+      if (commandFacts.state === 'resolved' || commandFacts.state === 'rejected' || parent?.outcome()) throw new Error('owned command exited before publishing process identities');
+      return false;
+    }, 'all owned command processes must actually start');
     stage = 'waiting-observer';
     observer = observe(marker, cwd);
     await waitUntil(() => observer.output().startsWith('READY\r\n') || observer.output().startsWith('READY\n'), 'observer must bind exact live process handles');
@@ -143,6 +175,15 @@ console.log(JSON.stringify(result));
     passed = true;
     stage = 'completed';
   } finally {
+    // Only this fixed fixture's own shell output is inspected. Redact its paths
+    // before printing bounded diagnostics; no user commands or file bodies run.
+    if (!passed) {
+      let output = commandOutcome;
+      const parentResult = parent?.outcome();
+      if (!output && parentResult?.stdout) { try { output = JSON.parse(parentResult.stdout.trim().split(/\r?\n/u).at(-1)); } catch { /* The owner might not have reached a result. */ } }
+      const detail = output?.stderr || parentResult?.stderr || '';
+      if (detail) t.diagnostic('Owned fixture failure: ' + detail.replaceAll(cwd, '<owned-fixture>').replaceAll(process.execPath, '<node>').replaceAll(shell, '<powershell>').slice(0, 2400));
+    }
     diagnostic('before-cleanup');
     // Never select a process by name or terminate a PID read from a marker.
     controller.abort();

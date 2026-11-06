@@ -53,6 +53,44 @@ test('empty workspace has no invented zero token total and a stable snapshot', a
   assert.equal(first.scope, 'retained-workspace-runs'); assert.deepEqual(f.store.getUsageOverview(), first);
 });
 
+test('long runs retain 512 model steps and 2048 tool steps with exact fifteen-digit counters', () => {
+  const steps = [...Array.from({ length: 512 }, () => model({ inputTokens: 1e12 })), ...Array.from({ length: 2048 }, () => ({ type: 'tool' }))];
+  const stats = createUsageProjection('session', run('long', { steps })).stats;
+  assert.equal(stats.modelSteps, 512); assert.equal(stats.stepsWithAnyUsage, 512);
+  assert.equal(stats.tokens.inputTokens.knownSum, '512000000000000');
+  assert.deepEqual(parseUsageStats(JSON.stringify(stats)), stats);
+  assert.throws(() => createUsageProjection('session', run('overflow', { steps: [...steps, { type: 'tool' }] })), { code: 'INVALID_USAGE_PROJECTION' });
+  assert.throws(() => createUsageProjection('session', run('too-many-models', { steps: Array.from({ length: 513 }, () => model(null)) })), { code: 'INVALID_USAGE_PROJECTION' });
+  for (const knownSum of ['512000000000001', '2560000000000000', '99999999999999999', '0512000000000000', '-1', '1e12']) {
+    const broken = structuredClone(stats); broken.tokens.inputTokens.knownSum = knownSum;
+    assert.throws(() => parseUsageStats(JSON.stringify(broken)), { code: 'INVALID_USAGE_PROJECTION' });
+  }
+});
+
+test('legacy unclassified steps can fill the complete run budget without fabricated model usage', () => {
+  const stats = createUsageProjection('session', run('legacy-long', { steps: Array.from({ length: 2560 }, () => ({})) })).stats;
+  assert.equal(stats.unclassifiedSteps, 2560); assert.equal(stats.modelSteps, 0);
+  assert.deepEqual(parseUsageStats(JSON.stringify(stats)), stats);
+  assert.ok(Object.values(stats.tokens).every(value => value.knownSum === null && value.reportedSteps === 0 && value.missingSteps === 0));
+  const overflow = { ...stats, unclassifiedSteps: 2561 };
+  assert.throws(() => parseUsageStats(JSON.stringify(overflow)), { code: 'INVALID_USAGE_PROJECTION' });
+  const mixed = createUsageProjection('session', run('mixed', { steps: [...Array.from({ length: 2559 }, () => ({})), model(null)] })).stats;
+  assert.deepEqual(parseUsageStats(JSON.stringify(mixed)), mixed);
+  mixed.unclassifiedSteps++;
+  assert.throws(() => parseUsageStats(JSON.stringify(mixed)), { code: 'INVALID_USAGE_PROJECTION' });
+});
+
+test('SQLite accepts a running record beyond the former 64-step projection limit and aggregates it once', async t => {
+  const f = await fixture(t), session = f.store.createSession();
+  session.run = run('long-active', { status: 'running', steps: [...Array.from({ length: 512 }, () => model({ inputTokens: 1e12 })), ...Array.from({ length: 2048 }, () => ({ type: 'tool' }))] });
+  f.store.putSession(session); f.store.putSession(session);
+  const overview = f.store.getUsageOverview();
+  assert.equal(overview.summary.runs.total, 1); assert.equal(overview.summary.runs.running, 1);
+  assert.equal(overview.summary.modelSteps, 512); assert.equal(overview.summary.tokens.inputTokens.knownSum, '512000000000000');
+  // Keep this test focused on the usage projection; terminal history has its own validator.
+  session.run = null; f.store.putSession(session);
+});
+
 test('current and terminal history share one run identity, including failures without reported usage', async t => {
   const f = await fixture(t), session = f.store.createSession();
   session.run = run('first', { status: 'running', steps: [model({ inputTokens: 9, outputTokens: 3, totalTokens: 12 }), model(null)] });
