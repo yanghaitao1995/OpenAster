@@ -701,7 +701,7 @@ export function createRuntime({ workspace: workspaceInput, providers, getSession
     const progress = await step(ctx, 'model', title, ctx.provider.model);
     progress.purpose = purpose;
     if (contextPlan) progress.contextPlan = contextPlan;
-    if (contextUsage) progress.contextUsage = Object.fromEntries(['estimatedInputTokens', 'contextWindowTokens', 'reservedOutputTokens', 'thresholdTokens'].map(key => [key, contextUsage[key]]));
+    if (contextUsage) progress.contextUsage = Object.fromEntries(['estimatedInputTokens', 'contextWindowTokens', 'reservedOutputTokens', 'thresholdTokens', 'configuredOutputTokens'].filter(key => Object.hasOwn(contextUsage, key)).map(key => [key, contextUsage[key]]));
     await persist(ctx);
     let stream, reply;
     try {
@@ -859,7 +859,10 @@ export function createRuntime({ workspace: workspaceInput, providers, getSession
               prepared.contextPlan = { ...prepared.contextPlan, compaction: { summaryStepId: summaryStep.id,
                 artifactIds: history.filter(message => message.role === 'tool' && !included.has(message.artifactId)).map(message => message.artifactId) } };
             }
-            reply = await requestModel(ctx, { ...contextOptions, ...prepared, purpose: continuing ? 'continuation' : 'response' });
+            // The measured request and the actual provider call must use the
+            // same per-request output ceiling. Keep the saved connection intact.
+            reply = await requestModel(ctx, { ...contextOptions, ...prepared,
+              provider: { ...ctx.provider, maxTokens: prepared.effectiveMaxTokens }, purpose: continuing ? 'continuation' : 'response' });
           } catch (error) {
             if (error?.code === 'MODEL_CONTEXT_LIMIT' && ctx.provider.autoCompact !== false && !forcedAfterFailure && ctx.budget.modelCalls < ctx.budget.maxModelCalls) {
               forceCompact = true; forcedAfterFailure = true; continue;

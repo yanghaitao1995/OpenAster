@@ -37,9 +37,11 @@ export function validateRunBudget(value) {
   return value;
 }
 export function validateContextUsage(value) {
-  shape(value, ['estimatedInputTokens', 'contextWindowTokens', 'reservedOutputTokens', 'thresholdTokens']);
+  shape(value, ['estimatedInputTokens', 'contextWindowTokens', 'reservedOutputTokens', 'thresholdTokens', 'configuredOutputTokens'],
+    ['estimatedInputTokens', 'contextWindowTokens', 'reservedOutputTokens', 'thresholdTokens']);
   requireValue(Object.values(value).every(item => Number.isSafeInteger(item) && item >= 0));
   requireValue(value.contextWindowTokens >= 8192 && value.contextWindowTokens <= 2000000 && value.reservedOutputTokens <= 131072 && value.thresholdTokens <= value.contextWindowTokens);
+  if (Object.hasOwn(value, 'configuredOutputTokens')) requireValue(value.configuredOutputTokens >= 128 && value.configuredOutputTokens <= 131072 && value.reservedOutputTokens <= value.configuredOutputTokens);
   return value;
 }
 function fields(value, names) { return Object.fromEntries(names.filter(key => Object.hasOwn(value, key)).map(key => [key, value[key]])); }
