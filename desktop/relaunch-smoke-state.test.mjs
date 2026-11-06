@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { openRelaunchSmokeState, readSmokeRecord, isSmokeProcessAlive } from './relaunch-smoke-state.mjs';
 import { createSmokeFailure } from './smoke-diagnostics.mjs';
+import { readAppImageRuntime } from './appimage-relaunch.mjs';
 
 function fixture(t) {
   const parent = fs.realpathSync(tmpdir());
@@ -216,4 +217,64 @@ test('root aliases are refused before any stage writes', t => {
   t.after(() => fs.unlinkSync(alias));
   assert.throws(() => openRelaunchSmokeState({ directory: alias, owner: f.owner, phase: 0 }), { code: 'RELAUNCH_SMOKE_UNSAFE' });
   assert.deepEqual(fs.readdirSync(f.directory), ['.smoke-owner']);
+});
+
+function appImageFixture(t) {
+  const parent = fs.realpathSync(tmpdir()), root = fs.mkdtempSync(path.join(parent, 'openaster-image-state-'));
+  t.after(() => { assert.equal(path.dirname(fs.realpathSync(root)), parent); fs.rmSync(root, { recursive: true, force: true }); });
+  const image = path.join(root, 'OpenAster.AppImage'), bytes = Buffer.alloc(128, 1);
+  Buffer.from([0x7f, 0x45, 0x4c, 0x46]).copy(bytes); bytes[8] = 0x41; bytes[9] = 0x49; bytes[10] = 2;
+  fs.writeFileSync(image, bytes, { mode: 0o700 });
+  function mount(phase) {
+    const directory = path.join(root, `mount-${phase}`), executable = path.join(directory, 'openaster');
+    fs.mkdirSync(path.join(directory, 'resources'), { recursive: true }); fs.writeFileSync(executable, 'executable');
+    fs.writeFileSync(path.join(directory, 'resources', 'app.asar'), 'archive');
+    const observe = () => readAppImageRuntime({ platform: 'linux', isPackaged: true, executable, env: { APPIMAGE: image, APPDIR: directory } });
+    return { directory, executable, observe, options: () => ({ executable, appImage: observe() }) };
+  }
+  return { root, image, bytes, mount };
+}
+
+test('five AppImage stages bind the same outer image and payload after every previous mount disappears', t => {
+  const f = fixture(t), image = appImageFixture(t); allPreviousExited(t); let previous;
+  for (let phase = 0; phase <= 4; phase++) {
+    const runtime = image.mount(phase);
+    if (previous) fs.rmSync(previous.directory, { recursive: true });
+    const state = stage(f, phase, runtime.options());
+    assert.equal(read(f, `.relaunch-entry-${phase}.json`).version, 2);
+    assert.equal(read(f, `.relaunch-entry-${phase}.json`).executable, image.image);
+    if (phase < 4) next(state);
+    else { state.record({ checked: true }); state.finish({ ok: true }); }
+    previous = runtime;
+  }
+  fs.rmSync(previous.directory, { recursive: true });
+  const result = read(f, '.relaunch-result.json');
+  assert.deepEqual(result.pids, [800001, 800002, 800003, 800004, 800005]);
+  assert.equal(result.proofs.length, 5); assert.equal(result.result.ok, true);
+  assert.equal(new Set(Array.from({ length: 5 }, (_, phase) => read(f, `.relaunch-entry-${phase}.json`).appImage.mount)).size, 5);
+});
+
+test('AppImage tickets cannot switch image or payload, drop the variant, or substitute a current executable', t => {
+  const f = fixture(t), image = appImageFixture(t), first = image.mount(0), second = image.mount(1); allPreviousExited(t);
+  next(stage(f, 0, first.options())); const valid = read(f, '.relaunch-ticket-1.json');
+  for (const mutate of [value => { delete value.appImage; }, value => { value.version = 1; delete value.appImage; },
+    value => { value.appImage.image.sha256 = 'a'.repeat(64); }, value => { value.appImage.payload.archive.sha256 = 'b'.repeat(64); },
+    value => { value.appImage.payload.executable.relative = '../openaster'; }]) {
+    const value = structuredClone(valid); mutate(value); rewrite(f, '.relaunch-ticket-1.json', value);
+    assert.throws(() => stage(f, 1, second.options())); assert.equal(fs.existsSync(f.file('.relaunch-entry-1.json')), false);
+  }
+  rewrite(f, '.relaunch-ticket-1.json', valid);
+  assert.throws(() => stage(f, 1, { ...second.options(), executable: image.image }), { code: 'RELAUNCH_SMOKE_UNSAFE' });
+  fs.writeFileSync(path.join(second.directory, 'resources', 'app.asar'), 'foreign archive');
+  assert.throws(() => stage(f, 1, second.options()), { code: 'RELAUNCH_SMOKE_INVALID' });
+  fs.writeFileSync(path.join(second.directory, 'resources', 'app.asar'), 'archive');
+  fs.renameSync(image.image, image.image + '.old'); fs.writeFileSync(image.image, image.bytes, { mode: 0o700 });
+  assert.throws(() => stage(f, 1, second.options()), { code: 'RELAUNCH_SMOKE_INVALID' });
+});
+
+test('ordinary executable changes remain invalid and cannot upgrade an existing ticket into AppImage form', t => {
+  const f = fixture(t), image = appImageFixture(t), runtime = image.mount(0); allPreviousExited(t); next(stage(f, 0));
+  assert.throws(() => stage(f, 1, { executable: image.image }), { code: 'RELAUNCH_SMOKE_INVALID' });
+  assert.throws(() => stage(f, 1, runtime.options()), { code: 'RELAUNCH_SMOKE_INVALID' });
+  assert.equal(fs.existsSync(f.file('.relaunch-entry-1.json')), false);
 });

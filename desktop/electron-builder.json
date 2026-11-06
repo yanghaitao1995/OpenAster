@@ -37,6 +37,7 @@
     "desktop/draft-relaunch-ui.mjs",
     "desktop/draft-relaunch-proof.mjs",
     "desktop/relaunch-smoke-state.mjs",
+    "desktop/appimage-relaunch.mjs",
     "desktop/smoke-diagnostics.mjs",
     "desktop/smoke-readiness.mjs",
     "desktop/resources/icon.png",

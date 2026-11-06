@@ -23,12 +23,16 @@ import { openRelaunchSmokeState } from './relaunch-smoke-state.mjs';
 import { createRelaunchSmokeScenario } from './relaunch-smoke.mjs';
 import { createSmokeController, createSmokeStageDiagnostic } from './smoke-diagnostics.mjs';
 import { createSmokeReadiness } from './smoke-readiness.mjs';
+import { readAppImageRuntime, appImageRelaunchOptions } from './appimage-relaunch.mjs';
 
 app.setName('OpenAster');
 app.enableSandbox();
 const smokeMode = process.argv.includes('--smoke-test');
 const relaunchSmokeMode = smokeMode && process.argv.includes('--relaunch-smoke-test');
 const backupSmokeMode = smokeMode && (process.argv.includes('--backup-smoke-test') || relaunchSmokeMode);
+let appImageRuntime = null, appImageRuntimeError;
+try { appImageRuntime = readAppImageRuntime({ isPackaged: app.isPackaged }); }
+catch (error) { appImageRuntimeError = error; }
 let relaunchSmokeState;
 let relaunchScenario;
 let smokeTransitioning = false;
@@ -60,7 +64,8 @@ if (smokeMode) {
       const stages = process.argv.filter(value => value.startsWith('--smoke-phase='));
       if (stages.length !== 1 || !/^--smoke-phase=[0-4]$/.test(stages[0])) throw new Error();
       guardStage = 'relaunch-state';
-      relaunchSmokeState = openRelaunchSmokeState({ directory: smokeDirectory, owner, phase: Number(stages[0].slice(-1)) });
+      if (appImageRuntimeError) throw appImageRuntimeError;
+      relaunchSmokeState = openRelaunchSmokeState({ directory: smokeDirectory, owner, phase: Number(stages[0].slice(-1)), appImage: appImageRuntime });
     } else {
       guardStage = 'fresh-directory';
       if (readdirSync(smokeDirectory).some(name => name !== '.smoke-owner')) throw new Error();
@@ -263,15 +268,20 @@ async function configureWorkspaceActions() {
           prepare: selected => relaunchScenario.beforeRelaunch(selected.id),
           launch: next => {
             const args = [...process.argv.slice(1).filter(value => !value.startsWith('--smoke-phase=')), `--smoke-phase=${next.nextPhase}`];
+            const options = appImageRuntime === null ? { args } : appImageRelaunchOptions(appImageRuntime, { isPackaged: app.isPackaged, args });
             smokeTransitioning = true; closing = true; clearTimeout(smokeTimer);
-            app.relaunch({ args });
+            app.relaunch(options);
           },
         });
         return;
       }
       if (backupSmokeMode) { smokeLifecycleEvents.push('relaunch'); return; }
       closing = true;
-      try { app.relaunch(); }
+      try {
+        if (appImageRuntimeError) throw appImageRuntimeError;
+        if (appImageRuntime === null) app.relaunch();
+        else app.relaunch(appImageRelaunchOptions(appImageRuntime, { isPackaged: app.isPackaged }));
+      }
       catch { dialog.showErrorBox('请重新打开 OpenAster', '应用未能自动重新打开。请手动启动 OpenAster。'); }
     },
     quit: () => {

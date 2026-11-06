@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { validateSmokeFailure } from './smoke-diagnostics.mjs';
+import { validateAppImageObservation, readAppImageRuntime, sameAppImageProgram } from './appimage-relaunch.mjs';
 
 const OWNER = /^[a-f0-9]{64}$/;
 const PROFILE = /^(?:default|[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
@@ -107,10 +108,14 @@ function proofsValue(proofs, length) {
 }
 function validateRecord(record, name, binding) {
   copyJson(record, MAX_RECORD);
-  const common = ['version', 'type', 'owner', 'rootIdentity', 'executable', 'phase', 'pid'];
-  requireValue(record?.version === 1 && record.owner === binding.owner && OWNER.test(record.owner) && identityValue(record.rootIdentity)
+  const imageVariant = record?.version === 2;
+  const common = ['version', 'type', 'owner', 'rootIdentity', 'executable', 'phase', 'pid', ...(imageVariant ? ['appImage'] : [])];
+  requireValue((record?.version === 1 || imageVariant) && record.owner === binding.owner && OWNER.test(record.owner) && identityValue(record.rootIdentity)
     && sameIdentity(record.rootIdentity, binding.rootIdentity) && phaseValue(record.phase) && pidValue(record.pid));
-  requireValue(record.executable === executablePath(record.executable));
+  if (imageVariant) {
+    validateAppImageObservation(record.appImage);
+    requireValue(record.executable === record.appImage.image.canonical);
+  } else requireValue(record.executable === executablePath(record.executable));
   if (name.startsWith('.relaunch-entry-')) {
     requireValue(shape(record, [...common, 'previousPid', 'expectedProfileId']) && record.type === 'entry' && name === entryName(record.phase));
     requireValue(record.phase === 0 ? record.previousPid === null && record.expectedProfileId === null : pidValue(record.previousPid) && PROFILE.test(record.expectedProfileId));
@@ -172,9 +177,18 @@ export function readSmokeRecord({ directory, owner, name }) {
 }
 
 /** Synchronous, local, single-writer protocol. No launches, kills, or cleanup. */
-export function openRelaunchSmokeState({ directory, owner, phase, pid = process.pid, executable = process.execPath }) {
+export function openRelaunchSmokeState({ directory, owner, phase, pid = process.pid, executable = process.execPath, appImage = null }) {
   requireValue(phaseValue(phase) && pidValue(pid));
-  const binding = createBinding(directory, owner), exe = executablePath(executable);
+  const binding = createBinding(directory, owner);
+  if (appImage !== null) {
+    appImage = copyJson(appImage); validateAppImageObservation(appImage);
+    const current = readAppImageRuntime({ platform: 'linux', isPackaged: true, executable,
+      env: { APPIMAGE: appImage.image.canonical, APPDIR: appImage.mount } });
+    requireValue(current !== null && sameAppImageProgram(current, appImage) && current.mount === appImage.mount);
+  }
+  const exe = appImage === null ? executablePath(executable) : appImage.image.canonical;
+  const matchesProgram = record => record.executable === exe && (appImage === null ? record.version === 1
+    : record.version === 2 && sameAppImageProgram(record.appImage, appImage));
   let fixture = null, proofs = [], expectedProfileId = null, previousPid = null, prepared = false, finished = false;
   try { fs.lstatSync(path.join(binding.directory, RESULT)); throw failure('FINISHED', 'This smoke already has a final result.'); }
   catch (cause) { if (cause.code !== 'ENOENT') throw cause; }
@@ -182,14 +196,15 @@ export function openRelaunchSmokeState({ directory, owner, phase, pid = process.
     requireValue(fs.readdirSync(binding.directory).length === 1 && fs.readdirSync(binding.directory)[0] === '.smoke-owner', 'Phase zero requires a new owner-only directory.');
   } else {
     const ticket = readRecord(binding, ticketName(phase)).value;
-    requireValue(ticket.executable === exe && ticket.pid !== pid, 'Relaunch ticket executable or PID does not match.');
+    requireValue(matchesProgram(ticket) && ticket.pid !== pid, 'Relaunch ticket executable or PID does not match.');
     const entries = Array.from({ length: phase }, (_, i) => readRecord(binding, entryName(i)).value);
-    requireValue(entries.every((entry, i) => entry.executable === exe && entry.pid === ticket.proofs[i].pid && (i === 0 || entry.previousPid === entries[i - 1].pid)) && new Set(entries.map(entry => entry.pid)).size === phase && entries.every(entry => entry.pid !== pid));
+    requireValue(entries.every((entry, i) => matchesProgram(entry) && entry.pid === ticket.proofs[i].pid && (i === 0 || entry.previousPid === entries[i - 1].pid)) && new Set(entries.map(entry => entry.pid)).size === phase && entries.every(entry => entry.pid !== pid));
     previousPid = ticket.pid; requireValue(entries.at(-1).pid === previousPid);
     if (isSmokeProcessAlive(previousPid)) throw failure('PREVIOUS_ALIVE', 'The previous smoke process must exit before relaunch entry.');
     fixture = ticket.fixture; proofs = ticket.proofs; expectedProfileId = ticket.expectedProfileId;
   }
-  const base = { version: 1, owner, rootIdentity: binding.rootIdentity, executable: exe, phase, pid };
+  const base = { version: appImage === null ? 1 : 2, owner, rootIdentity: binding.rootIdentity, executable: exe, phase, pid,
+    ...(appImage === null ? {} : { appImage }) };
   const entry = { ...base, type: 'entry', previousPid, expectedProfileId };
   const entryIdentity = writeRecord(binding, entryName(phase), entry);
   function verify() {
@@ -220,7 +235,7 @@ export function openRelaunchSmokeState({ directory, owner, phase, pid = process.
       if (!value.ok) validateSmokeFailure(value, { phase });
       if (value.ok) requireValue(phase === 4 && proofs.length === 5 && !prepared, 'Success requires all five stages.');
       const entries = Array.from({ length: phase + 1 }, (_, i) => readRecord(binding, entryName(i)).value);
-      requireValue(entries.every(item => item.executable === exe));
+      requireValue(entries.every(matchesProgram));
       const record = { ...base, type: 'result', fixture, proofs, pids: entries.map(item => item.pid), result: value };
       writeRecord(binding, RESULT, record); finished = true;
       return { resultPath: path.join(binding.directory, RESULT) };
