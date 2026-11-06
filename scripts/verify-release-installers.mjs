@@ -120,8 +120,20 @@ export function executionEnvironment(source) {
   // Installed programs need OS paths, not workflow/authentication variables.
   const names = new Set(['path', 'home', 'userprofile', 'appdata', 'localappdata', 'systemroot', 'windir', 'comspec',
     'pathext', 'temp', 'tmp', 'tmpdir', 'programfiles', 'programfiles(x86)', 'programdata', 'lang', 'lc_all', 'lc_ctype',
-    'display', 'xauthority', 'xdg_runtime_dir', 'xdg_config_home', 'xdg_data_home', 'dbus_session_bus_address']);
+    'display', 'xauthority', 'xdg_runtime_dir', 'xdg_config_home', 'xdg_data_home', 'xdg_current_desktop', 'dbus_session_bus_address']);
   return Object.fromEntries(Object.entries(source).filter(([key, value]) => names.has(key.toLowerCase()) && typeof value === 'string' && !value.includes('\0')));
+}
+
+export async function confirmOwnedUnixGroupStopped(pid, { signal = process.kill, now = Date.now,
+  pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)) } = {}) {
+  if (!Number.isSafeInteger(pid) || pid <= 1) fail('Invalid owned command process group');
+  const deadline = now() + 2000;
+  while (true) {
+    try { signal(-pid, 0); }
+    catch (error) { return { confirmed: error.code === 'ESRCH', ...(error.code !== 'ESRCH' ? { errorCode: error.code ?? 'UNKNOWN' } : {}) }; }
+    if (now() >= deadline) return { confirmed: false };
+    await pause(50);
+  }
 }
 
 function diagnosticText(value, limit = 1600) {
@@ -268,9 +280,20 @@ export async function main({ candidate = false } = {}) {
       clearTimeout(timer); clearTimeout(reapTimer);
       await terminationPromise;
       if (result.signal === 'cleanup-timeout') termination.cleanupUnconfirmed = true;
+      // Fixture descendants may outlive a failed direct child. Linux keyring
+      // scenarios also require teardown after success. Only the detached PGID
+      // created by this invocation is signalled, from its surviving owner.
+      const linuxKeyringSmoke = candidate && process.platform === 'linux' && /^installed-(?:basic|backup|relaunch)-smoke$/u.test(name);
+      if (process.platform !== 'win32' && child.pid && (result.code !== 0 || timedOut || spawnError || linuxKeyringSmoke)) {
+        if (!termination.requested) stopOwned();
+        const stopped = await confirmOwnedUnixGroupStopped(child.pid);
+        termination.groupExitConfirmed = stopped.confirmed;
+        if (!stopped.confirmed) { termination.cleanupUnconfirmed = true; if (stopped.errorCode) termination.errorCode = stopped.errorCode; }
+      }
       await fs.writeFile(path.join(output, log), outputText);
       const facts = { executable: path.basename(executable), args, log, ...result, timedOut, durationMs: Date.now() - started, ...(spawnError ? { spawnError } : {}), ...(termination.requested ? { termination } : {}) };
       receipt.steps.at(-1).command = facts;
+      if (termination.cleanupUnconfirmed) fail(`${name} owned process group cleanup was not confirmed; see ${log}`);
       if (result.code !== 0 || timedOut || spawnError) fail(`${name} failed (${spawnError ?? result.code ?? result.signal}); see ${log}`);
       return { ...facts, outputText };
     });
@@ -391,7 +414,10 @@ export async function main({ candidate = false } = {}) {
           if (kind === 'appimage') await verifyBeforeExecution();
           const args = [path.join(source, 'scripts', script), executable, '--software-rendering', ...extraArgs];
           const result = process.platform === 'linux'
-            ? await command('installed-' + scenario + '-smoke', 'xvfb-run', ['-a', '--server-args=-screen 0 1280x800x24', process.execPath, ...args], { timeoutMs })
+            ? await command('installed-' + scenario + '-smoke', 'xvfb-run', ['-a', '--server-args=-screen 0 1280x800x24', process.execPath,
+              path.join(source, 'scripts', 'linux-keyring-session.mjs'), scenario, executable], { timeoutMs,
+              env: { ...executionEnvironment(process.env), GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
+                RUNNER_ENVIRONMENT: process.env.RUNNER_ENVIRONMENT, GITHUB_REPOSITORY: process.env.GITHUB_REPOSITORY, RUNNER_TEMP: process.env.RUNNER_TEMP } })
             : await command('installed-' + scenario + '-smoke', process.execPath, args, { timeoutMs });
           const facts = await step('validate-' + scenario + '-result', async () => validateCandidateScenario(result.outputText, scenario));
           receipt.scenarios[scenario] = { status: 'passed', facts };
