@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import test from 'node:test';
+import { MAX_MODEL_OUTPUT_BYTES } from '../core/model-limits.mjs';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import path from 'node:path';
@@ -20,7 +21,7 @@ async function fixture(t, providerCall, limits = {}) {
   const dataDir = path.join(root, 'data'), workspace = path.join(dataDir, 'workspace');
   await fs.mkdir(workspace, { recursive: true });
   let store = new Store(dataDir);
-  store.putProvider({ id: 'p', name: 'Fixture', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1', enabled: true });
+  store.putProvider({ id: 'p', name: 'Fixture', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1', enabled: true, autoContinue: false });
   const session = store.createSession({ providerId: 'p' }), snapshots = [];
   const runtime = createRuntime({ workspace: createWorkspace(workspace), providers: async id => store.getProvider(id), getSession: async id => store.getSession(id), saveSession: async (value, metadata) => { store.putSession(value, metadata); snapshots.push(structuredClone(value)); },
     providerCall, limits: { streamCheckpointMs: 1, providerRetryBaseMs: 1, providerRetryMaxMs: 1, ...limits } });
@@ -78,7 +79,7 @@ test('service restart marks current explanation as cancelled and preserves curre
 
 test('history public fields reject unbounded, injected or malformed records without silently truncating', () => {
   const base = { sessionId: 's', run: { id: 'r', status: 'failed', steps: [{ id: 'm', type: 'model', publicReasoning: 'shown', interruptedOutputs: [{ attempt: 1, content: 'partial' }] }] }, approvals: [] };
-  for (const mutate of [record => { record.run.steps[0].publicReasoning = { signature: 'opaque' }; }, record => { record.run.steps[0].interruptedOutputs[0].wire = {}; }, record => { record.run.steps[0].interruptedOutputs[0].attempt = 0; }, record => { record.run.steps[0].publicReasoning = 'x'.repeat(256 * 1024 + 1); }]) {
+  for (const mutate of [record => { record.run.steps[0].publicReasoning = { signature: 'opaque' }; }, record => { record.run.steps[0].interruptedOutputs[0].wire = {}; }, record => { record.run.steps[0].interruptedOutputs[0].attempt = 0; }, record => { record.run.steps[0].publicReasoning = 'x'.repeat(MAX_MODEL_OUTPUT_BYTES + 1); }]) {
     const value = structuredClone(base); mutate(value); assert.throws(() => validateRunHistoryRecord(value), { code: 'INVALID_RUN_HISTORY' });
   }
   const values = Array.from({ length: INTERRUPTED_OUTPUT_BYTES / (256 * 1024) + 1 }, (_, i) => ({ attempt: i + 1, content: 'x'.repeat(256 * 1024) }));
@@ -126,7 +127,7 @@ for (const type of ['openai', 'responses']) for (const complete of [false, true]
     assert.equal(calls, 1); assert.equal(saved.run.status, 'failed'); assert.equal(saved.approvals.length, 0);
     assert.equal(saved.run.steps.length, 1); assert.equal(saved.run.steps[0].type, 'model');
     assert.deepEqual(await fs.readdir(f.workspace), []); assert.equal(saved.messages.filter(value => value.role === 'assistant').length, 0);
-    assert.equal(saved.run.error.code, complete ? 'INVALID_PROVIDER_RESPONSE' : type === 'openai' ? 'MODEL_OUTPUT_LIMIT' : 'MODEL_RESPONSE_INCOMPLETE');
+    assert.equal(saved.run.error.code, complete ? 'INVALID_PROVIDER_RESPONSE' : 'MODEL_OUTPUT_LIMIT');
     if (complete) assert.equal(saved.run.output, null);
     else {
       assert.equal(saved.run.output.content, 'received body'); assert.equal(saved.run.output.publicReasoning, 'public explanation'); assert.equal(saved.run.output.status, 'interrupted');

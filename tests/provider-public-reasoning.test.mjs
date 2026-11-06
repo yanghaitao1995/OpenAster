@@ -86,7 +86,7 @@ test('truncated thinking stream and explicit incomplete terminal never return an
   await assert.rejects(callProvider(provider('openai'), { messages, onText: () => {}, onPublicReasoning: value => seen.push(value), fetchImpl: async () => new Response(sse(chat({ reasoning_content: 'partial explanation', tool_calls: [{ index: 0, id: 'c', type: 'function', function: { name: 'write_file', arguments: '{' } }] })), { headers: { 'content-type': 'text/event-stream' } }) }), { code: 'MODEL_RESPONSE_INCOMPLETE' });
   assert.deepEqual(seen, ['partial explanation']);
   let attempts = 0;
-  await assert.rejects(retryProviderRequest(() => { attempts++; return callProvider(provider('responses'), { messages, onText: () => {}, fetchImpl: async () => new Response(sse({ type: 'response.incomplete', response: { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } } }), { headers: { 'content-type': 'text/event-stream' } }) }); }, { baseDelayMs: 1, maxDelayMs: 1 }), { code: 'MODEL_RESPONSE_INCOMPLETE' });
+  await assert.rejects(retryProviderRequest(() => { attempts++; return callProvider(provider('responses'), { messages, onText: () => {}, fetchImpl: async () => new Response(sse({ type: 'response.incomplete', response: { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' } } }), { headers: { 'content-type': 'text/event-stream' } }) }); }, { baseDelayMs: 1, maxDelayMs: 1 }), { code: 'MODEL_OUTPUT_LIMIT' });
   assert.equal(attempts, 1);
 });
 
@@ -97,7 +97,7 @@ for (const type of Object.keys(json)) test(`${type} explicit JSON truncation pre
   else if (type === 'anthropic') data.stop_reason = 'max_tokens';
   else { data.status = 'incomplete'; data.incomplete_details = { reason: 'max_output_tokens' }; }
   const error = await callProvider({ ...provider(type), streaming: false }, { messages, onText: value => text.push(value), onPublicReasoning: value => visible.push(value), fetchImpl: async () => Response.json(data) }).then(() => assert.fail('must not accept truncation'), value => value);
-  assert.equal(error.code, type === 'responses' ? 'MODEL_RESPONSE_INCOMPLETE' : 'MODEL_OUTPUT_LIMIT');
+  assert.equal(error.code, 'MODEL_OUTPUT_LIMIT');
   assert.deepEqual(text, ['OK']); assert.deepEqual(visible, ['public explanation']);
   assert.doesNotMatch(JSON.stringify(error), /public explanation|opaque|encrypted/);
 });

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRequest, parseResponse, callProvider, testProvider, validateProvider } from '../core/providers.mjs';
 import { TOOL_DEFINITIONS } from '../core/runtime.mjs';
+import { DEFAULT_MAX_OUTPUT_TOKENS, MAX_OUTPUT_TOKENS, MAX_JSON_RESPONSE_BYTES } from '../core/model-limits.mjs';
 
 const provider = (type, extra = {}) => ({ id: 'provider-1', type, model: 'user-selected-model', baseUrl: type === 'ollama' ? 'http://127.0.0.1:11434' : 'https://example.test/v1', apiKey: 'test-secret', ...extra });
 const user = { role: 'user', content: 'Read notes.txt' };
@@ -16,7 +17,7 @@ test('provider validation requires secure URLs and bounded model/key configurati
   assert.equal(validateProvider(provider('ollama', { baseUrl: 'http://[::1]:11434' })).type, 'ollama');
   assert.throws(() => validateProvider(provider('openai', { model: '' })), { code: 'INVALID_MODEL' });
   assert.throws(() => validateProvider(provider('openai', { apiKey: 'evil\r\nx:y' })), { code: 'INVALID_API_KEY' });
-  assert.throws(() => validateProvider(provider('openai', { maxTokens: 100000 })), { code: 'INVALID_PROVIDER' });
+  assert.throws(() => validateProvider(provider('openai', { maxTokens: MAX_OUTPUT_TOKENS + 1 })), { code: 'INVALID_PROVIDER' });
   assert.throws(() => validateProvider(provider('openai', { tokenParameter: '__proto__' })), { code: 'INVALID_PROVIDER' });
 });
 
@@ -31,7 +32,7 @@ test('OpenAI chat preserves call ids, serialized arguments and reasoning fields 
   assert.deepEqual(body.messages[2], message);
   assert.deepEqual(body.messages[3], { role: 'tool', tool_call_id: 'call1', content: toolResult().content });
   assert.equal(body.tools[0].function.name, 'list_workspace');
-  assert.equal(body.max_completion_tokens, 4096);
+  assert.equal(body.max_completion_tokens, DEFAULT_MAX_OUTPUT_TOKENS);
 });
 
 test('OpenAI-compatible legacy token parameter is explicit and configurable', () => {
@@ -112,7 +113,7 @@ test('bounded transport refuses redirects and never exposes upstream error body 
 });
 
 test('response bound applies to headerless chunked bodies and declared content length', async () => {
-  for (const response of [new Response('x'.repeat(1024 * 1024 + 1)), new Response('{}', { headers: { 'content-length': String(1024 * 1024 + 1) } })]) {
+  for (const response of [new Response('x'.repeat(MAX_JSON_RESPONSE_BYTES + 1)), new Response('{}', { headers: { 'content-length': String(MAX_JSON_RESPONSE_BYTES + 1) } })]) {
     await assert.rejects(callProvider(provider('openai'), { messages: [user], fetchImpl: async () => response }), { code: 'PROVIDER_RESPONSE_TOO_LARGE' });
   }
   await assert.rejects(callProvider(provider('openai'), { messages: [user], fetchImpl: async () => new Response('not JSON') }), { code: 'INVALID_PROVIDER_RESPONSE' });

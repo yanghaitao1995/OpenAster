@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { diagnoseProvider } from '../core/provider-diagnostics.mjs';
 import { callProvider, parseResponse, testProvider } from '../core/providers.mjs';
 import { CoreError } from '../core/errors.mjs';
+import { MAX_JSON_RESPONSE_BYTES } from '../core/model-limits.mjs';
 
 const types=['openai','responses','anthropic','ollama'];
 const provider=(type='openai',extra={})=>({id:'diagnostic-provider',name:'本机诊断',type,baseUrl:'https://fixture.invalid/v1',model:'diagnostic-model',streaming:true,toolMode:'workspace',maxTokens:1234,tokenParameter:'max_tokens',apiKey:'private-key-sentinel',envKey:'PRIVATE_ENV_SENTINEL',...extra});
@@ -79,7 +80,7 @@ for(const type of types)test(`diagnostic ${type}: four real loopback requests ve
   assert.deepEqual(Object.values(report.checks).map(item=>item.status),['passed','passed','passed']);
   assert.equal(report.requestsStarted,4);assert.deepEqual(Object.values(report.checks).map(item=>item.requestCount),[1,1,2]);
   assert.equal(report.version,1);assert.ok(Date.parse(report.finishedAt)>=Date.parse(report.startedAt));
-  assert.deepEqual(Object.keys(report.connection).sort(),['baseUrl','enabled','id','maxTokens','model','name','streaming','tokenParameter','toolMode','type']);
+  assert.deepEqual(Object.keys(report.connection),['id','name','type','baseUrl','model','streaming','toolMode','tokenParameter','maxTokens','contextWindowTokens','autoCompact','autoContinue','maxModelCalls','maxTools','maxRunMinutes','enabled']);
   for(const check of Object.values(report.checks))assert.deepEqual(Object.keys(check).sort(),['code','durationMs','message','requestCount','status']);
   const serialized=JSON.stringify(report);for(const secret of ['private-key-sentinel','PRIVATE_ENV_SENTINEL','private-response-sentinel','private-reasoning-sentinel','preserved-signature','apiKey','envKey','usage'])assert.ok(!serialized.includes(secret),secret);
   const [full,stream,first,second]=f.requests;assert.equal(full.stream,false);assert.equal(stream.stream,true);assert.equal(first.stream,false);assert.equal(second.stream,false);
@@ -99,6 +100,7 @@ test('diagnostic respects disabled capabilities, demo, disabled provider and saf
   assert.equal(count,1);assert.equal(report.checks.stream.code,'STREAM_DISABLED');assert.equal(report.checks.tools.code,'TOOLS_DISABLED');
   const demo=await diagnoseProvider({type:'demo'},{fetchImpl});assert.equal(demo.requestsStarted,0);assert.equal(count,1);assert.ok(Object.values(demo.checks).every(check=>check.status==='skipped'&&check.code==='DEMO_NO_NETWORK'));
   assert.equal(demo.connection.id,null);assert.equal(demo.connection.name,null);assert.equal(demo.connection.tokenParameter,null);assert.equal(demo.connection.maxTokens,null);
+  assert.deepEqual(Object.fromEntries(['contextWindowTokens','autoCompact','autoContinue','maxModelCalls','maxTools','maxRunMinutes'].map(key=>[key,demo.connection[key]])),{contextWindowTokens:131072,autoCompact:true,autoContinue:true,maxModelCalls:64,maxTools:256,maxRunMinutes:60});
   await assert.rejects(diagnoseProvider(provider('openai',{enabled:false}),{fetchImpl}),{code:'PROVIDER_DISABLED'});assert.equal(count,1);
   for(const timeoutMs of [0,-1,1.5,30001,Infinity,'30'])await assert.rejects(diagnoseProvider(provider(),{fetchImpl,timeoutMs}),{code:'INVALID_DIAGNOSTIC_OPTIONS'});
 });
@@ -148,9 +150,15 @@ test('auth, rate limiting and unavailable connection skip follow-up probes and n
 });
 
 test('bounded timeout, oversized body and invalid JSON produce fixed errors without retries',async()=>{
-  for(const [fetchImpl,code]of [[async()=>new Promise(()=>{}),'PROVIDER_TIMEOUT'],[async()=>new Response('{}',{headers:{'content-length':'1048577'}}),'PROVIDER_RESPONSE_TOO_LARGE'],[async()=>new Response('private-invalid-response'),'INVALID_PROVIDER_RESPONSE']]){
+  for(const [fetchImpl,code]of [[async()=>new Promise(()=>{}),'PROVIDER_TIMEOUT'],[async()=>new Response('{}',{headers:{'content-length':String(MAX_JSON_RESPONSE_BYTES+1)}}),'PROVIDER_RESPONSE_TOO_LARGE'],[async()=>new Response('private-invalid-response'),'INVALID_PROVIDER_RESPONSE']]){
     const report=await diagnoseProvider(provider(),{fetchImpl,timeoutMs:10});assert.equal(report.requestsStarted,3);assert.ok(Object.values(report.checks).every(check=>check.status==='failed'&&check.code===code));assert.ok(!JSON.stringify(report).includes('private-'));
   }
+});
+
+test('context exhaustion retains a fixed diagnostic explanation without upstream error text',async()=>{
+  const report=await diagnoseProvider(provider('anthropic',{streaming:false,toolMode:'none'}),{fetchImpl:async()=>Response.json({role:'assistant',stop_reason:'model_context_window_exceeded',content:[{type:'text',text:'private-response-sentinel'}]})});
+  assert.equal(report.requestsStarted,1);assert.equal(report.checks.text.code,'MODEL_CONTEXT_LIMIT');assert.equal(report.checks.text.status,'failed');
+  assert.match(report.checks.text.message,/上下文窗口/);assert.doesNotMatch(JSON.stringify(report),/private-response-sentinel/);
 });
 
 test('an interrupted SSE never passes even after visible text, and later independent tools can still verify',async t=>{

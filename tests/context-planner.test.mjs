@@ -104,3 +104,18 @@ for (const type of ['openai', 'responses', 'anthropic', 'ollama']) test(`${type}
   assert.equal(page.content, Buffer.from(source.content).subarray(0, page.endOffset).toString('utf8'));
   assert.deepEqual(messages, before);
 });
+
+test('explicit tool-result modes preserve true wire budget and keep the most recent requested page whole', () => {
+  const full = artifact('source', 'x'.repeat(50000)), page = artifact('page', 'y'.repeat(9000), 'read_tool_result');
+  const messages = [user, { role: 'assistant', content: 'read old source' }, tool(full), { role: 'assistant', content: 'read exact page' }, tool(page)];
+  const artifacts = new Map([[full.id, full], [page.id, page]]), original = structuredClone(messages);
+  for (const toolResultMode of ['excerpt', 'reference']) {
+    const result = planContext(provider('openai'), { messages, artifacts, toolResultMode });
+    assert.equal(result.contextPlan.requestByteLimit, 2 * 1024 * 1024);
+    assert.equal(result.contextPlan.toolResults[0].mode, toolResultMode);
+    assert.equal(result.contextPlan.toolResults[1].mode, 'full'); assert.equal(result.messages.at(-1).content, page.content);
+    assert.equal(result.messages[1], messages[1]);
+  }
+  assert.deepEqual(messages, original);
+  assert.throws(() => planContext(provider('openai'), { messages, artifacts, toolResultMode: 'truncate' }), TypeError);
+});

@@ -15,7 +15,7 @@ function fixture(t, options = {}) {
   let session = { id: 's', title: '新任务', providerId: 'p', createdAt: '2026-10-28T00:00:00.000Z', updatedAt: '2026-10-28T00:00:00.000Z', messages: options.messages ?? [], approvals: [], run: null };
   const artifacts = new Map(), files = new Map(), saves = [], reservations = new Map(), releases = [], audits = [];
   let reads = 0, writes = 0, calls = 0;
-  const provider = { id: 'p', name: 'Fixture', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1', streaming: false, ...options.provider };
+  const provider = { id: 'p', name: 'Fixture', type: 'openai', model: 'fixture', baseUrl: 'https://fixture.invalid/v1', streaming: false, autoCompact: false, contextWindowTokens: 2000000, ...options.provider };
   const workspace = { read: async path => { reads++; const content = files.get(path) ?? options.fileContent ?? 'file'; return { path, content, sha256: sha(content) }; },
     prepareWrite: async ({ path, content }) => ({ path, content, originalContent: null, originalHash: null, newHash: sha(content), bytes: Buffer.byteLength(content) }),
     commitWrite: async proposal => { writes++; files.set(proposal.path, proposal.content); return { path: proposal.path, bytes: proposal.bytes, sha256: proposal.newHash }; }, discardWrite() {}, ...options.workspace };

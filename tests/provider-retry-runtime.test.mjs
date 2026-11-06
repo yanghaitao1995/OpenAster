@@ -51,9 +51,9 @@ test('network retries after a committed write never execute the write or approva
   assert.equal(receivedResult.name, 'write_file'); assert.equal(JSON.parse(receivedResult.content).result.path, 'one.txt');
 });
 
-test('model waiting exceeds the execution budget, remains cancellable, and does not consume model turns', async t => {
+test('model waiting excludes execution time, remains cancellable, and counts every request', async t => {
   let calls = 0;
-  const f = await fixture(t, { limits: { maxRunMs: 15, maxModelCalls: 1, providerAttemptTimeoutMs: 20 }, providerCall: async () => { calls++; return new Promise(() => {}); } });
+  const f = await fixture(t, { limits: { maxRunMs: 15, maxModelCalls: 4, providerAttemptTimeoutMs: 20 }, providerCall: async () => { calls++; return new Promise(() => {}); } });
   await f.runtime.start('s', { content: 'Wait' }); await until(() => calls >= 3);
   assert.equal(f.get().run.status, 'running'); f.runtime.cancel('s'); await f.done();
   assert.equal(f.get().run.status, 'cancelled'); assert.equal(f.get().run.steps[0].status, 'cancelled'); assert.ok(f.get().run.steps[0].finishedAt);
