@@ -5,6 +5,8 @@ import path from 'node:path';
 import { homedir } from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { createRegistryDiagnostic } from './workspace-errors.mjs';
+import { createWorkspace } from '../core/workspace.mjs';
+import { initializeSkillDirectory, DEFAULT_SKILLS_ROOT } from '../core/skills.mjs';
 
 const LIMIT = 100;
 const MAX_BYTES = 1024 * 1024;
@@ -66,6 +68,20 @@ async function existingDirectory(location) {
 }
 function validIdentity(identity, workspace) {
   return shape(identity, ['canonical', 'dev', 'ino']) && identity.canonical === workspace && decimal(identity.dev) && decimal(identity.ino) && identity.ino !== '0';
+}
+
+/** Startup must establish the controlled workspace before seeding ./skills.
+ * Registry initialization remains read-only with respect to workspace contents.
+ * External/restored roots must retain their existing no-recreation policy. */
+export async function initializeProfileWorkspace(profile, options) {
+  if (!profile || !['default', 'external', 'restored'].includes(profile.kind)
+    || (profile.kind !== 'default' && options?.createRoot !== false)) {
+    throw error('WORKSPACE_INVALID_CONFIG', '工作区启动配置无效。');
+  }
+  await createWorkspace(profile.workspace, options).getIdentity();
+  const skillsDirectory = path.join(profile.workspace, 'skills');
+  await initializeSkillDirectory(DEFAULT_SKILLS_ROOT, skillsDirectory);
+  return skillsDirectory;
 }
 
 /** Single-process registry; the desktop lifecycle must serialize profile switches.

@@ -1,4 +1,3 @@
-import { initializeSkillDirectory, DEFAULT_SKILLS_ROOT } from '../core/skills.mjs';
 // SPDX-License-Identifier: Apache-2.0
 import { app, BrowserWindow, Menu, dialog, safeStorage, session, shell, clipboard } from 'electron';
 import path from 'node:path';
@@ -12,7 +11,7 @@ import { startServer } from '../server/index.mjs';
 import { createWorkspaceManager } from '../server/workspace-manager.mjs';
 import { createSecretStore } from './secret-store.mjs';
 import { createDesktopDraftRepository } from './composer-drafts.mjs';
-import { createWorkspaceProfiles } from './workspace-profiles.mjs';
+import { createWorkspaceProfiles, initializeProfileWorkspace } from './workspace-profiles.mjs';
 import { describeWorkspaceFailure } from './workspace-errors.mjs';
 import { createDesktopLifecycle } from './lifecycle.mjs';
 import { createNativeLeaveGuard, createDeferredNativeQuit } from './native-leave.mjs';
@@ -41,24 +40,44 @@ let smokeDirectory;
 let smokeTimer;
 let smokeReadiness;
 if (smokeMode) {
+  let guardStage = 'configuration';
   try {
     const requested = process.env.OPENASTER_SMOKE_DATA_DIR;
     const owner = process.env.OPENASTER_SMOKE_OWNER;
     if (!requested || !path.isAbsolute(requested) || !owner || !/^[a-f0-9]{64}$/.test(owner)) throw new Error();
-    smokeDirectory = realpathSync(requested);
-    const temporaryRoot = realpathSync(tmpdir());
+    guardStage = 'requested-canonical';
+    // Match fs.promises.realpath in the smoke runners, including Windows 8.3 aliases.
+    smokeDirectory = realpathSync.native(requested);
+    guardStage = 'temporary-root';
+    const temporaryRoot = realpathSync.native(tmpdir());
+    guardStage = 'temporary-child';
     const relative = path.relative(temporaryRoot, smokeDirectory);
     if (relative.startsWith('..') || path.isAbsolute(relative) || !/^openaster-smoke-[a-zA-Z0-9]+$/.test(relative)) throw new Error();
+    guardStage = 'root-directory';
     if (lstatSync(requested).isSymbolicLink() || !lstatSync(smokeDirectory).isDirectory()) throw new Error();
     if (relaunchSmokeMode) {
+      guardStage = 'relaunch-arguments';
       const stages = process.argv.filter(value => value.startsWith('--smoke-phase='));
       if (stages.length !== 1 || !/^--smoke-phase=[0-4]$/.test(stages[0])) throw new Error();
+      guardStage = 'relaunch-state';
       relaunchSmokeState = openRelaunchSmokeState({ directory: smokeDirectory, owner, phase: Number(stages[0].slice(-1)) });
-    } else if (readdirSync(smokeDirectory).some(name => name !== '.smoke-owner')) throw new Error();
+    } else {
+      guardStage = 'fresh-directory';
+      if (readdirSync(smokeDirectory).some(name => name !== '.smoke-owner')) throw new Error();
+    }
+    guardStage = 'owner-marker';
     if (readFileSync(path.join(smokeDirectory, '.smoke-owner'), 'utf8') !== owner) throw new Error();
+    guardStage = 'user-data-path';
     app.setPath('userData', backupSmokeMode ? path.join(smokeDirectory, 'data') : smokeDirectory);
+    guardStage = 'session-data-path';
     app.setPath('sessionData', path.join(smokeDirectory, 'chromium'));
-  } catch {
+  } catch (error) {
+    const suppliedCode = error && typeof error === 'object' ? Object.getOwnPropertyDescriptor(error, 'code')?.value : undefined;
+    const allowedCodes = new Set(['EACCES', 'EPERM', 'ENOENT', 'ENOTDIR', 'ELOOP', 'EINVAL', 'EBUSY', 'EIO',
+      'RELAUNCH_SMOKE_INVALID', 'RELAUNCH_SMOKE_CHANGED', 'RELAUNCH_SMOKE_UNSAFE', 'RELAUNCH_SMOKE_OWNER',
+      'RELAUNCH_SMOKE_EXISTS', 'RELAUNCH_SMOKE_INCOMPLETE', 'RELAUNCH_SMOKE_FINISHED',
+      'RELAUNCH_SMOKE_PREVIOUS_ALIVE', 'RELAUNCH_SMOKE_PROCESS_UNKNOWN']);
+    console.error(`OPENASTER_SMOKE_GUARD_FAILURE ${JSON.stringify({ version: 1, stage: guardStage, code: allowedCodes.has(suppliedCode) ? suppliedCode : 'SMOKE_GUARD_REJECTED' })}`);
     console.error('Smoke test requires a fresh, owned temporary directory. Use scripts/desktop-smoke.mjs.');
     app.exit(2);
   }
@@ -284,8 +303,7 @@ async function configureWorkspaceActions() {
 }
 
 async function startProfileService() {
-  const skillsDirectory=path.join(activeProfile.workspace,'skills');
-  await initializeSkillDirectory(DEFAULT_SKILLS_ROOT,skillsDirectory);
+  const skillsDirectory = await initializeProfileWorkspace(activeProfile, workspaceOptions(activeProfile));
   const deviceDraftStore = createDesktopDraftRepository({ directory: path.join(activeProfile.dataDir, 'device-drafts'), crypto: safeStorage });
   const workspaceManager = createWorkspaceManager({ profiles, getCurrent: async () => activeProfile,
     projectsRoot: path.join(app.getPath('home'), 'OpenAster Projects'), homeDirectory: app.getPath('home'),
