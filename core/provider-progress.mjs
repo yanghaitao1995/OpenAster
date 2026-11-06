@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { CoreError } from './errors.mjs';
+import { MAX_MODEL_OUTPUT_BYTES } from './model-limits.mjs';
 
-export const PUBLIC_OUTPUT_BYTES = 256 * 1024;
+export const PUBLIC_OUTPUT_BYTES = MAX_MODEL_OUTPUT_BYTES;
 export const INTERRUPTED_OUTPUT_BYTES = 2 * 1024 * 1024;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const invalid = () => new CoreError('INVALID_PROVIDER_PROGRESS', '模型公开输出记录无效。');
 export function validatePublicOutput(value) {
   if (typeof value !== 'string' || !value.isWellFormed() || value.includes('\0')) throw invalid();
-  if (Buffer.byteLength(value) > PUBLIC_OUTPUT_BYTES) throw new CoreError('MODEL_OUTPUT_LIMIT', '单段模型公开输出超过 256 KiB 保存上限。请缩小请求后继续；已保存内容不会被当作完整答复。', 413);
+  if (Buffer.byteLength(value) > PUBLIC_OUTPUT_BYTES) throw new CoreError('MODEL_OUTPUT_LIMIT', '单段模型公开输出超过本地 1 MiB 保存上限。已保存内容仍可查看，但不代表完整答复。', 413);
   return value;
 }
 

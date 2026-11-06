@@ -8,8 +8,8 @@
 import { CoreError, checkAbort } from './errors.mjs';
 import { validateTerminal } from './provider-terminal.mjs';
 import { publicReasoning } from './provider-progress.mjs';
+import { MAX_MODEL_OUTPUT_BYTES, MAX_STREAM_RESPONSE_BYTES } from './model-limits.mjs';
 
-const MAX_CONTENT = 256 * 1024;
 const MAX_TOOLS = 8;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const invalid = () => new CoreError('INVALID_PROVIDER_RESPONSE', '服务商流式响应格式无效。', 502);
@@ -30,6 +30,23 @@ const identity = (target, key, value) => {
   target[key] = value;
 };
 
+// A token-limit terminal is known, but continuation also requires the global
+// end marker and validation of already queued trailing data.
+function deferredTerminal(type, data, options) {
+  try { validateTerminal(type, data, options); return null; }
+  catch (error) {
+    if (['MODEL_OUTPUT_LIMIT', 'MODEL_CONTEXT_LIMIT'].includes(error.code)) return error;
+    throw error;
+  }
+}
+function requireCompletion(done, terminalError) {
+  if (terminalError) {
+    if (!done) delete terminalError.continuationSafe;
+    throw terminalError;
+  }
+  if (!done) throw incomplete();
+}
+
 /** Abort even when a custom fetch, stream reader or async consumer ignores AbortSignal. */
 export function withAbort(promise, signal) {
   if (!signal) return Promise.resolve(promise);
@@ -47,8 +64,9 @@ function emitter(onText, signal) {
   let bytes = 0;
   return async text => {
     string(text);
+    if (!text.isWellFormed() || text.includes('\0')) throw invalid();
     bytes += Buffer.byteLength(text);
-    if (bytes > MAX_CONTENT) throw new CoreError('MODEL_OUTPUT_LIMIT', '单段模型公开输出超过 256 KiB 保存上限。请缩小请求后继续；已保存内容不会被当作完整答复。', 413);
+    if (bytes > MAX_MODEL_OUTPUT_BYTES) throw new CoreError('MODEL_OUTPUT_LIMIT', '单段模型公开输出超过本地 1 MiB 保存上限。已保存内容仍可查看，但不代表完整答复。', 413);
     checkAbort(signal);
     if (text && onText) await withAbort(Promise.resolve().then(() => onText(text)), signal);
     checkAbort(signal);
@@ -62,8 +80,10 @@ function chatCollector(emit, emitReasoning) {
   let usage = null;
   let started = false;
   let done = false;
+  let terminalError;
   return {
     get done() { return done; },
+    get terminalError() { return terminalError; },
     async event(data) {
       if (done) throw invalid();
       if (data === '[DONE]') {
@@ -114,13 +134,13 @@ function chatCollector(emit, emitReasoning) {
         }
       }
       if (choice.finish_reason != null) {
-        validateTerminal('openai', { choices: [{ finish_reason: choice.finish_reason }] }, { hasTools: calls.size > 0 });
+        terminalError = deferredTerminal('openai', { choices: [{ finish_reason: choice.finish_reason }] }, { hasTools: calls.size > 0 });
         finishReason = choice.finish_reason;
         usage = has(data, 'usage') ? data.usage : null;
       }
     },
     result() {
-      if (!done) throw incomplete();
+      requireCompletion(done, terminalError);
       if (calls.size) {
         message.tool_calls = [...calls.entries()].sort(([left], [right]) => left - right).map(([position, call], expected) => {
           if (position !== expected) throw invalid();
@@ -135,6 +155,7 @@ function chatCollector(emit, emitReasoning) {
 function responsesCollector(emit, emitReasoning) {
   let done = false;
   let terminal;
+  let terminalError;
   let sequence = -1;
   let terminalSentinel = false;
   const items = new Map();
@@ -157,6 +178,7 @@ function responsesCollector(emit, emitReasoning) {
   }
   return {
     get done() { return done; },
+    get terminalError() { return terminalError; },
     async event(data) {
       if (data === '[DONE]') {
         if (!done || terminalSentinel) throw incomplete();
@@ -170,10 +192,32 @@ function responsesCollector(emit, emitReasoning) {
       }
       if (data.type === 'response.failed' || data.type === 'response.cancelled') throw streamError();
       if (data.type === 'response.incomplete') {
-        // An explicit token/safety terminal cannot improve by retrying the same
-        // request indefinitely. Transport EOF without a terminal remains retryable.
-        validateTerminal('responses', data.response ?? { status: 'incomplete' });
-        throw incomplete();
+        const response = data.response ?? { status: 'incomplete' };
+        if (!object(response) || response.status !== 'incomplete') throw incomplete();
+        const hasOutput = Array.isArray(response.output);
+        const hasTools = !hasOutput || response.output.some(item => !['message', 'reasoning'].includes(item?.type))
+          || [...items.values()].some(value => !['message', 'reasoning'].includes(value.item.type));
+        const unfamiliarContent = hasOutput && response.output.some(item => item?.type === 'message'
+          && (!Array.isArray(item.content) || item.content.some(part => !['output_text', 'refusal'].includes(part?.type))));
+        terminalError = deferredTerminal('responses', response, { hasTools, allowContinuation: !hasTools && !unfamiliarContent });
+        if (hasOutput) {
+          for (const [position, value] of items) {
+            if (response.output[position]?.id !== value.item.id || response.output[position]?.type !== value.item.type) throw invalid();
+          }
+          const finalText = response.output.filter(item => item?.type === 'message').map(item => {
+            if (item.role !== 'assistant' || !Array.isArray(item.content)) throw invalid();
+            return item.content.filter(part => ['output_text', 'refusal'].includes(part?.type))
+              .map(part => string(part.type === 'refusal' ? part.refusal : part.text)).join('\n');
+          }).join('\n');
+          if (!parts.size && !visible) await emit(finalText);
+          else if (visible !== finalText) throw invalid();
+          const finalReasoning = publicReasoning('responses', response);
+          if (!summaries.size && !reasoning) await emitReasoning(finalReasoning);
+          else if (reasoning !== finalReasoning) throw invalid();
+        }
+        terminal = response;
+        done = true;
+        return;
       }
       if (data.type === 'response.output_item.added') {
         const position = index(data.output_index);
@@ -253,7 +297,7 @@ function responsesCollector(emit, emitReasoning) {
       }
       // Unknown lifecycle/progress events are ignored. Their text is never displayed.
     },
-    result() { if (!done) throw incomplete(); return terminal; },
+    result() { requireCompletion(done, terminalError); return terminal; },
   };
 }
 
@@ -261,6 +305,7 @@ function anthropicCollector(emit, emitReasoning) {
   let message;
   let done = false;
   let stopReason;
+  let terminalError;
   const blocks = [];
   const open = new Set();
   const inputs = new Map();
@@ -268,6 +313,7 @@ function anthropicCollector(emit, emitReasoning) {
   let thinkingBlocks = 0;
   return {
     get done() { return done; },
+    get terminalError() { return terminalError; },
     async event(data) {
       if (!object(data) || typeof data.type !== 'string' || done) throw invalid();
       if (data.type === 'ping') return;
@@ -320,7 +366,8 @@ function anthropicCollector(emit, emitReasoning) {
       } else if (data.type === 'message_delta') {
         if (!message || open.size || !object(data.delta)) throw invalid();
         if (data.delta.stop_reason != null) {
-          validateTerminal('anthropic', { stop_reason: data.delta.stop_reason }, { hasTools: inputs.size > 0 });
+          terminalError = deferredTerminal('anthropic', { stop_reason: data.delta.stop_reason }, { hasTools: inputs.size > 0,
+            allowContinuation: !inputs.size && blocks.every(block => ['text', 'thinking', 'redacted_thinking'].includes(block.type)) });
           if (stopReason && stopReason !== data.delta.stop_reason) throw invalid();
           stopReason = data.delta.stop_reason;
         }
@@ -328,12 +375,12 @@ function anthropicCollector(emit, emitReasoning) {
         if (data.delta.stop_reason != null && (!object(data.usage) || !has(data.usage, 'output_tokens')) && object(message.usage)) message.usage.output_tokens = null;
         for (const key of ['stop_sequence', 'input_transformations']) if (has(data.delta, key)) message[key] = data.delta[key];
       } else if (data.type === 'message_stop') {
-        if (!message || open.size || !stopReason || (inputs.size && stopReason !== 'tool_use')) throw incomplete();
+        if (!message || open.size || !stopReason || (inputs.size && stopReason !== 'tool_use' && !terminalError)) throw incomplete();
         done = true;
       }
     },
     result() {
-      if (!done) throw incomplete();
+      requireCompletion(done, terminalError);
       // JSON parsing is deliberately deferred until the whole stream succeeds.
       for (const [position, partial] of inputs) {
         if (partial) { try { blocks[position].input = JSON.parse(partial); } catch { throw invalid(); } }
@@ -347,24 +394,27 @@ function ollamaCollector(emit, emitReasoning) {
   const message = { role: 'assistant', content: '' };
   let terminal;
   let done = false;
+  let terminalError;
   return {
     get done() { return done; },
+    get terminalError() { return terminalError; },
     async event(data) {
       if (!object(data) || done || typeof data.done !== 'boolean' || !object(data.message) || data.message.role !== 'assistant') throw invalid();
       if (data.message.content != null) { message.content += string(data.message.content); await emit(data.message.content, !data.done); }
       if (data.message.thinking != null) { message.thinking = (message.thinking ?? '') + string(data.message.thinking); await emitReasoning(data.message.thinking); }
+      if (data.message.function_call != null || data.message.audio != null) throw invalid();
       if (data.message.tool_calls != null) {
         if (!Array.isArray(data.message.tool_calls)) throw invalid();
         (message.tool_calls ??= []).push(...data.message.tool_calls);
         if (message.tool_calls.length > MAX_TOOLS) throw invalid();
       }
       if (data.done) {
-        validateTerminal('ollama', data, { hasTools: Boolean(message.tool_calls?.length) });
+        terminalError = deferredTerminal('ollama', data, { hasTools: Boolean(message.tool_calls?.length) });
         terminal = { ...data, message };
         done = true;
       }
     },
-    result() { if (!done) throw incomplete(); return terminal; },
+    result() { requireCompletion(done, terminalError); return terminal; },
   };
 }
 
@@ -417,7 +467,8 @@ function framing(format, accept) {
   };
 }
 
-async function readStream(type, reader, { onText, onPublicReasoning, onActivity, signal, maxBytes = 1024 * 1024 }) {
+async function readStream(type, reader, { onText, onPublicReasoning, onActivity, signal, maxBytes = MAX_STREAM_RESPONSE_BYTES }) {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_STREAM_RESPONSE_BYTES) throw new TypeError('Invalid provider stream byte limit');
   const emitText = emitter(onText, signal);
   let incrementalText = false;
   const emit = async (text, beforeTerminal = false) => {
@@ -440,6 +491,7 @@ async function readStream(type, reader, { onText, onPublicReasoning, onActivity,
   const decoder = new TextDecoder('utf-8', { fatal: true });
   const noBufferedChunk = Symbol('no buffered chunk');
   let total = 0;
+  try {
   while (true) {
     checkAbort(signal);
     // After completion inspect already queued chunks, but never await a future EOF.
@@ -450,7 +502,7 @@ async function readStream(type, reader, { onText, onPublicReasoning, onActivity,
     if (!(next.value instanceof Uint8Array)) throw invalid();
     if (next.value.byteLength) onActivity?.();
     total += next.value.byteLength;
-    if (total > maxBytes) throw new CoreError('PROVIDER_RESPONSE_TOO_LARGE', '服务商响应超过 1 MiB 限制。', 502);
+    if (total > maxBytes) throw new CoreError('PROVIDER_RESPONSE_TOO_LARGE', `服务商流式响应超过本地 ${maxBytes} 字节传输上限。`, 502);
     let text;
     try { text = decoder.decode(next.value, { stream: true }); } catch { throw invalid(); }
     await frame.push(text);
@@ -460,6 +512,15 @@ async function readStream(type, reader, { onText, onPublicReasoning, onActivity,
   await frame.push(tail, true);
   checkAbort(signal);
   return { data: collector.result(), incrementalText };
+  } catch (error) {
+    if (collector.terminalError && error !== collector.terminalError) {
+      delete collector.terminalError.continuationSafe;
+      // A known limit never becomes a billable replay when the final marker is
+      // missing, the transport stalls, or the consumer is cancelled afterwards.
+      if (['CANCELLED', 'MODEL_RESPONSE_INCOMPLETE'].includes(error.code)) throw collector.terminalError;
+    }
+    throw error;
+  }
 }
 
 /** Preserve the existing raw-data interface for protocol consumers. */

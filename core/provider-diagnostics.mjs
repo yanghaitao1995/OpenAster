@@ -28,6 +28,7 @@ const MESSAGES = Object.freeze({
   INVALID_PROVIDER_RESPONSE: '本次响应未通过所选协议的格式验证。',
   MODEL_RESPONSE_INCOMPLETE: '本次模型响应未完整结束。',
   MODEL_OUTPUT_LIMIT: '本次响应达到输出上限，未完成验证。',
+  MODEL_CONTEXT_LIMIT: '本次请求达到模型上下文窗口上限，未完成验证。',
   PROVIDER_STREAM_ERROR: '模型服务在流式响应中报告错误。',
   PROVIDER_TEXT_TEST_FAILED: '本次未获得不含工具调用的完整文本回复。',
   DIAGNOSTIC_FAILED: '本次诊断未完成，请核对连接设置后重试。',
@@ -35,7 +36,7 @@ const MESSAGES = Object.freeze({
 const CONNECTION_FAILURES = new Set(['PROVIDER_AUTH_FAILED', 'PROVIDER_RATE_LIMIT', 'PROVIDER_UNAVAILABLE']);
 const ERROR_CODES = new Set(['PROVIDER_AUTH_FAILED', 'PROVIDER_RATE_LIMIT', 'PROVIDER_HTTP_ERROR', 'PROVIDER_UNAVAILABLE',
   'PROVIDER_TIMEOUT', 'PROVIDER_RESPONSE_TOO_LARGE', 'INVALID_PROVIDER_RESPONSE', 'MODEL_RESPONSE_INCOMPLETE',
-  'MODEL_OUTPUT_LIMIT', 'PROVIDER_STREAM_ERROR', 'PROVIDER_TEXT_TEST_FAILED']);
+  'MODEL_OUTPUT_LIMIT', 'MODEL_CONTEXT_LIMIT', 'PROVIDER_STREAM_ERROR', 'PROVIDER_TEXT_TEST_FAILED']);
 const outcome = (status, code) => ({ status, code, message: MESSAGES[code] });
 const textReply = reply => typeof reply.content === 'string' && Boolean(reply.content.trim()) && reply.content.isWellFormed()
   && !reply.content.includes('\0') && reply.toolCalls.length === 0;
@@ -48,7 +49,9 @@ function connectionSnapshot(provider) {
   return { id: provider.id ?? null, name: provider.name ?? null, type: provider.type, baseUrl: provider.baseUrl,
     model: provider.model, streaming: provider.streaming, toolMode: provider.toolMode,
     tokenParameter: provider.type === 'demo' ? null : provider.tokenParameter,
-    maxTokens: provider.type === 'demo' ? null : provider.maxTokens, enabled: true };
+    maxTokens: provider.type === 'demo' ? null : provider.maxTokens,
+    contextWindowTokens: provider.contextWindowTokens, autoCompact: provider.autoCompact, autoContinue: provider.autoContinue,
+    maxModelCalls: provider.maxModelCalls, maxTools: provider.maxTools, maxRunMinutes: provider.maxRunMinutes, enabled: true };
 }
 
 function validChallenge(calls, nonce) {

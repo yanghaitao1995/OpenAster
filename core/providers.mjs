@@ -6,10 +6,10 @@ import { validateTerminal } from './provider-terminal.mjs';
 import { validateImages } from './image-attachments.mjs';
 import { publicReasoning } from './provider-progress.mjs';
 import { providerActivityTimeout } from './provider-timeout.mjs';
+import { MIN_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, MAX_OUTPUT_TOKENS, MAX_MODEL_OUTPUT_BYTES, MAX_JSON_RESPONSE_BYTES, MAX_STREAM_RESPONSE_BYTES } from './model-limits.mjs';
 
 export const PROVIDER_TYPES = ['demo', 'openai', 'responses', 'anthropic', 'ollama'];
 const DEFAULT_URLS = { openai: 'https://api.openai.com/v1', responses: 'https://api.openai.com/v1', anthropic: 'https://api.anthropic.com/v1', ollama: 'http://127.0.0.1:11434' };
-const MAX_RESPONSE = 1024 * 1024;
 const MAX_REQUEST = 2 * 1024 * 1024;
 const MAX_TOOL_CALLS = 8;
 
@@ -19,10 +19,25 @@ export function validateProvider(provider) {
   if (provider.enabled === false) throw new CoreError('PROVIDER_DISABLED', '该服务商已停用。', 409);
   if (provider.streaming !== undefined && typeof provider.streaming !== 'boolean') throw new CoreError('INVALID_PROVIDER', '流式输出设置须为布尔值。');
   if (provider.toolMode !== undefined && !['workspace', 'none'].includes(provider.toolMode)) throw new CoreError('INVALID_PROVIDER', '工具模式须为 workspace 或 none。');
+  const taskSettings = {};
+  for (const [key, initial, min, max, label] of [
+    ['contextWindowTokens', 131072, 8192, 2000000, '上下文窗口'],
+    ['maxModelCalls', 64, 1, 512, '每轮任务的模型请求次数'],
+    ['maxTools', 256, 1, 2048, '每轮任务的工具次数'],
+    ['maxRunMinutes', 60, 1, 240, '每轮任务的执行时间（分钟）'],
+  ]) {
+    const value = provider[key];
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < min || value > max)) throw new CoreError('INVALID_PROVIDER', `${label}须为 ${min} 到 ${max} 的整数。`);
+    taskSettings[key] = value ?? initial;
+  }
+  for (const key of ['autoCompact', 'autoContinue']) {
+    if (provider[key] !== undefined && typeof provider[key] !== 'boolean') throw new CoreError('INVALID_PROVIDER', '自动压缩与自动续写设置须为布尔值。');
+    taskSettings[key] = provider[key] ?? true;
+  }
   const toolMode = provider.toolMode ?? 'workspace';
   if (provider.type === 'demo') {
     if (toolMode !== 'workspace') throw new CoreError('INVALID_PROVIDER', '本地演示仅支持工作区工具模式。');
-    return { ...provider, type: 'demo', model: 'deterministic-demo', baseUrl: '', streaming: provider.streaming ?? true, toolMode };
+    return { ...provider, ...taskSettings, type: 'demo', model: 'deterministic-demo', baseUrl: '', streaming: provider.streaming ?? true, toolMode };
   }
   if (typeof provider.model !== 'string' || !provider.model.trim() || provider.model.length > 200 || !provider.model.isWellFormed() || /[\x00-\x1f\x7f]/u.test(provider.model)) throw new CoreError('INVALID_MODEL', '请填写有效模型标识。');
   if (provider.baseUrl != null && (typeof provider.baseUrl !== 'string' || provider.baseUrl.length > 2048 || /[%\\\x00-\x20\x7f]/u.test(provider.baseUrl))) throw new CoreError('INVALID_PROVIDER_URL', '服务商地址不能包含编码路径、空白或控制字符。');
@@ -34,8 +49,8 @@ export function validateProvider(provider) {
   }
   if (provider.apiKey != null && (typeof provider.apiKey !== 'string' || provider.apiKey.length > 8192 || /[\x00-\x1f\x7f]/u.test(provider.apiKey))) throw new CoreError('INVALID_API_KEY', '密钥格式无效。');
   if (provider.tokenParameter != null && !['max_completion_tokens', 'max_tokens'].includes(provider.tokenParameter)) throw new CoreError('INVALID_PROVIDER', '输出令牌参数无效。');
-  if (provider.maxTokens != null && (!Number.isSafeInteger(provider.maxTokens) || provider.maxTokens < 128 || provider.maxTokens > 16384)) throw new CoreError('INVALID_PROVIDER', '输出令牌上限须为 128 到 16384。');
-  return { ...provider, baseUrl: url.href.replace(/\/+$/u, ''), model: provider.model.trim(), tokenParameter: provider.tokenParameter ?? 'max_completion_tokens', maxTokens: provider.maxTokens ?? 4096, streaming: provider.streaming ?? true, toolMode };
+  if (provider.maxTokens != null && (!Number.isSafeInteger(provider.maxTokens) || provider.maxTokens < MIN_OUTPUT_TOKENS || provider.maxTokens > MAX_OUTPUT_TOKENS)) throw new CoreError('INVALID_PROVIDER', `每次回复的输出令牌上限须为 ${MIN_OUTPUT_TOKENS} 到 ${MAX_OUTPUT_TOKENS}，实际支持范围取决于模型。`);
+  return { ...provider, ...taskSettings, baseUrl: url.href.replace(/\/+$/u, ''), model: provider.model.trim(), tokenParameter: provider.tokenParameter ?? 'max_completion_tokens', maxTokens: provider.maxTokens ?? DEFAULT_MAX_OUTPUT_TOKENS, streaming: provider.streaming ?? true, toolMode };
 }
 
 function object(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
@@ -178,18 +193,23 @@ export function parseResponse(type, data, { onIncompleteOutput } = {}) {
   if (!object(data)) throw invalid();
   let content = '';
   let rawCalls = [];
+  let hasOtherToolData = false;
   let wire;
   if (type === 'openai' || type === 'ollama') {
     const message = type === 'openai' ? data.choices?.[0]?.message : data.message;
     if (!object(message) || message.role !== 'assistant') throw invalid();
     content = contentText(message.content) || contentText(message.refusal);
     rawCalls = message.tool_calls ?? [];
+    hasOtherToolData = message.function_call != null || message.audio != null
+      || (type === 'openai' && data.choices.length !== 1)
+      || (Array.isArray(message.content) && message.content.some(part => !['text', 'output_text'].includes(part?.type)));
     // Preserve provider-specific assistant fields (e.g. reasoning_content) for exact continuation.
     wire = { type, message };
   } else if (type === 'anthropic') {
     if (!Array.isArray(data.content)) throw invalid();
     content = contentText(data.content.filter(part => part?.type === 'text'));
     rawCalls = data.content.filter(part => part?.type === 'tool_use');
+    hasOtherToolData = data.role !== 'assistant' || data.content.some(part => !['text', 'thinking', 'redacted_thinking', 'tool_use'].includes(part?.type));
     wire = { type, content: data.content };
   } else if (type === 'responses') {
     if (!Array.isArray(data.output)) throw invalid();
@@ -203,20 +223,22 @@ export function parseResponse(type, data, { onIncompleteOutput } = {}) {
       }).join('\n');
     }).join('\n');
     rawCalls = data.output.filter(item => item?.type === 'function_call');
+    hasOtherToolData = data.output.some(item => !['message', 'reasoning', 'function_call'].includes(item?.type)
+      || (item?.type === 'message' && (item.role !== 'assistant' || item.content.some(part => !['output_text', 'refusal'].includes(part?.type)))));
     wire = { type, output: data.output };
   } else throw invalid();
   if (!Array.isArray(rawCalls)) throw invalid();
   const reasoning = publicReasoning(type, data);
   // A terminal token limit may leave function arguments as unfinished JSON.
   // Preserve validated public output before parsing any executable tool data.
-  try { validateTerminal(type, data, { hasTools: rawCalls.length > 0, allowMissingText: true }); }
+  try { validateTerminal(type, data, { hasTools: rawCalls.length > 0, allowContinuation: !rawCalls.length && !hasOtherToolData, allowMissingText: true }); }
   catch (error) {
-    if (['MODEL_OUTPUT_LIMIT', 'MODEL_RESPONSE_INCOMPLETE'].includes(error.code) && typeof content === 'string'
-      && content.isWellFormed() && !content.includes('\0') && Buffer.byteLength(content) <= 256 * 1024) onIncompleteOutput?.({ content, ...(reasoning ? { publicReasoning: reasoning } : {}) });
+    if (['MODEL_OUTPUT_LIMIT', 'MODEL_CONTEXT_LIMIT', 'MODEL_RESPONSE_INCOMPLETE'].includes(error.code) && typeof content === 'string'
+      && content.isWellFormed() && !content.includes('\0') && Buffer.byteLength(content) <= MAX_MODEL_OUTPUT_BYTES) onIncompleteOutput?.({ content, ...(reasoning ? { publicReasoning: reasoning } : {}) });
     throw error;
   }
   const toolCalls = normalizeCalls(rawCalls, type);
-  if (typeof content !== 'string' || Buffer.byteLength(content) > 256 * 1024 || (!content && !toolCalls.length)) throw invalid();
+  if (typeof content !== 'string' || Buffer.byteLength(content) > MAX_MODEL_OUTPUT_BYTES || (!content && !toolCalls.length)) throw invalid();
   return { content, toolCalls, wire, usage: normalizeProviderUsage(type, data), ...(reasoning ? { publicReasoning: reasoning } : {}) };
 }
 
@@ -257,12 +279,13 @@ export async function callProvider(providerInput, options) {
     }
     if (!response.body) throw invalid();
     reader = response.body.getReader();
-    if (Number(response.headers.get('content-length')) > MAX_RESPONSE) throw new CoreError('PROVIDER_RESPONSE_TOO_LARGE', '服务商响应超过 1 MiB 限制。', 502);
     const contentType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
     const streamResponse = contentType === 'text/event-stream' || (provider.type === 'ollama' && ['application/x-ndjson', 'application/ndjson'].includes(contentType));
+    const maxResponseBytes = streamResponse ? MAX_STREAM_RESPONSE_BYTES : MAX_JSON_RESPONSE_BYTES;
+    if (Number(response.headers.get('content-length')) > maxResponseBytes) throw new CoreError('PROVIDER_RESPONSE_TOO_LARGE', `服务商${streamResponse ? '流式' : ' JSON'}响应超过本地 ${maxResponseBytes / (1024 * 1024)} MiB 传输上限。`, 502);
     if (streamResponse) {
       if (!streaming || (provider.type === 'ollama' ? contentType === 'text/event-stream' : contentType !== 'text/event-stream')) throw invalid();
-      const { data, incrementalText } = await readProviderStreamWithTransport(provider.type, reader, { onText, onPublicReasoning, onActivity: activity, signal: combined, maxBytes: MAX_RESPONSE });
+      const { data, incrementalText } = await readProviderStreamWithTransport(provider.type, reader, { onText, onPublicReasoning, onActivity: activity, signal: combined, maxBytes: MAX_STREAM_RESPONSE_BYTES });
       checkAbort(combined);
       return { ...accepted(data), transport: { format: provider.type === 'ollama' ? 'ndjson' : 'sse', incrementalText } };
     }
@@ -273,7 +296,7 @@ export async function callProvider(providerInput, options) {
       if (done) break;
       if (value.byteLength) activity();
       total += value.byteLength;
-      if (total > MAX_RESPONSE) throw new CoreError('PROVIDER_RESPONSE_TOO_LARGE', '服务商响应超过 1 MiB 限制。', 502);
+      if (total > MAX_JSON_RESPONSE_BYTES) throw new CoreError('PROVIDER_RESPONSE_TOO_LARGE', '服务商 JSON 响应超过本地 8 MiB 传输上限。', 502);
       chunks.push(value);
     }
     let data;
@@ -296,6 +319,7 @@ export async function callProvider(providerInput, options) {
     return { ...parsed, transport: { format: 'json', incrementalText: false } };
   } catch (error) {
     if (signal?.aborted) throw new CoreError('CANCELLED', '任务已取消。', 409);
+    if (error instanceof CoreError && ['MODEL_OUTPUT_LIMIT', 'MODEL_CONTEXT_LIMIT'].includes(error.code)) throw error;
     if (timeout.signal.aborted) throw new CoreError('PROVIDER_TIMEOUT', '模型服务请求超时，请重试。', 504);
     if (error instanceof CoreError) throw error;
     throw new CoreError('PROVIDER_UNAVAILABLE', '无法连接模型服务，请检查网络和服务商地址。', 502);

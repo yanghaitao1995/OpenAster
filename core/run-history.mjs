@@ -8,9 +8,11 @@ import { validateToolResultRef, validateContextPlan } from './tool-artifacts.mjs
 import { commandHistory, validateCommandHistory } from './command-schema.mjs';
 
 export const RUN_HISTORY_MAX_BYTES = 8 * 1024 * 1024;
+export const RUN_HISTORY_MAX_STEPS = 2560;
+export const RUN_HISTORY_MAX_APPROVALS = 2068;
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
-const RUN_FIELDS = ['id', 'status', 'steps', 'output', 'startedAt', 'finishedAt', 'error', 'connection', 'requestMessageId', 'requestPreview'];
-const STEP_FIELDS = ['id', 'type', 'title', 'detail', 'status', 'createdAt', 'usage', 'toolResultRef', 'contextPlan', 'finishedAt', 'phase', 'connection', 'publicSummary', 'publicSummaryTruncated', 'publicReasoning', 'interruptedOutputs'];
+const RUN_FIELDS = ['id', 'status', 'steps', 'output', 'startedAt', 'finishedAt', 'error', 'connection', 'requestMessageId', 'requestPreview', 'budget'];
+const STEP_FIELDS = ['id', 'type', 'title', 'detail', 'status', 'createdAt', 'usage', 'toolResultRef', 'contextPlan', 'finishedAt', 'phase', 'connection', 'publicSummary', 'publicSummaryTruncated', 'publicReasoning', 'interruptedOutputs', 'purpose', 'contextUsage'];
 const CONNECTION_FIELDS = ['providerId', 'name', 'type', 'model', 'toolMode'];
 const APPROVAL_FIELDS = ['id', 'tool', 'path', 'status', 'createdAt', 'resolvedAt', 'appliedAt', 'originalHash', 'proposedHash'];
 const USAGE_FIELDS = ['inputTokens', 'outputTokens', 'totalTokens', 'cachedInputTokens', 'cacheWriteInputTokens', 'reasoningOutputTokens'];
@@ -29,6 +31,17 @@ function timestamp(value) {
     && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value);
 }
 function optional(value, key, check) { if (Object.hasOwn(value, key) && value[key] !== null) check(value[key]); }
+export function validateRunBudget(value) {
+  shape(value, ['maxModelCalls', 'maxTools', 'maxRunMs', 'modelCalls', 'toolCalls']);
+  for (const [key, min, max] of [['maxModelCalls', 1, 512], ['maxTools', 1, 2048], ['maxRunMs', 1, 14400000], ['modelCalls', 0, value.maxModelCalls], ['toolCalls', 0, value.maxTools]]) requireValue(Number.isSafeInteger(value[key]) && value[key] >= min && value[key] <= max);
+  return value;
+}
+export function validateContextUsage(value) {
+  shape(value, ['estimatedInputTokens', 'contextWindowTokens', 'reservedOutputTokens', 'thresholdTokens']);
+  requireValue(Object.values(value).every(item => Number.isSafeInteger(item) && item >= 0));
+  requireValue(value.contextWindowTokens >= 8192 && value.contextWindowTokens <= 2000000 && value.reservedOutputTokens <= 131072 && value.thresholdTokens <= value.contextWindowTokens);
+  return value;
+}
 function fields(value, names) { return Object.fromEntries(names.filter(key => Object.hasOwn(value, key)).map(key => [key, value[key]])); }
 function jsonCopy(value) {
   let json;
@@ -44,6 +57,7 @@ export function validateRunHistoryRecord(value) {
   shape(record, ['sessionId', 'run', 'approvals']); id(record.sessionId);
   const run = record.run;
   shape(run, RUN_FIELDS, ['id', 'status']); id(run.id); requireValue(TERMINAL.has(run.status));
+  if (Object.hasOwn(run, 'budget')) validateRunBudget(run.budget);
   for (const key of ['startedAt', 'finishedAt']) optional(run, key, timestamp);
   if (Object.hasOwn(run, 'requestMessageId')) id(run.requestMessageId);
   if (Object.hasOwn(run, 'requestPreview')) { text(run.requestPreview); requireValue(run.requestPreview.length <= 240); }
@@ -57,13 +71,15 @@ export function validateRunHistoryRecord(value) {
     requireValue(run.connection.type !== 'demo' || run.connection.toolMode === 'workspace');
   }
   if (run.steps != null) {
-    requireValue(Array.isArray(run.steps) && run.steps.length <= 64);
+    requireValue(Array.isArray(run.steps) && run.steps.length <= RUN_HISTORY_MAX_STEPS);
     const ids = new Set();
     for (const step of run.steps) {
       // Older stores accepted sparse step metadata. Keep missing fields missing.
       shape(step, STEP_FIELDS, []);
       if (Object.hasOwn(step, 'id')) { id(step.id); requireValue(!ids.has(step.id)); ids.add(step.id); }
       if (Object.hasOwn(step, 'type')) requireValue(['model', 'tool'].includes(step.type));
+      if (Object.hasOwn(step, 'purpose')) requireValue(step.type === 'model' && ['response', 'compaction', 'continuation'].includes(step.purpose));
+      if (Object.hasOwn(step, 'contextUsage')) { requireValue(step.type === 'model'); validateContextUsage(step.contextUsage); }
       if (Object.hasOwn(step, 'status')) requireValue(['running', 'completed', 'failed', 'cancelled'].includes(step.status));
       for (const key of ['title', 'detail']) if (Object.hasOwn(step, key)) text(step[key]);
       if (Object.hasOwn(step, 'createdAt')) timestamp(step.createdAt);
@@ -99,6 +115,7 @@ export function validateRunHistoryRecord(value) {
   }
   if (run.output != null) {
     shape(run.output, ['stepId', 'content', 'status', 'publicReasoning'], ['stepId', 'content', 'status']); id(run.output.stepId); text(run.output.content);
+    try { validatePublicOutput(run.output.content); } catch { throw invalid(); }
     if (Object.hasOwn(run.output, 'publicReasoning')) { try { validatePublicOutput(run.output.publicReasoning); } catch { throw invalid(); } }
     requireValue(['streaming', 'processing', 'interrupted'].includes(run.output.status));
   }
@@ -106,7 +123,7 @@ export function validateRunHistoryRecord(value) {
     if (typeof run.error === 'string') text(run.error);
     else { shape(run.error, ['code', 'message']); text(run.error.code); text(run.error.message); }
   }
-  requireValue(Array.isArray(record.approvals) && record.approvals.length <= 64);
+  requireValue(Array.isArray(record.approvals) && record.approvals.length <= RUN_HISTORY_MAX_APPROVALS);
   const approvals = new Set();
   for (const approval of record.approvals) {
     shape(approval, [...APPROVAL_FIELDS, ...(approval.tool === 'run_command' ? ['command', 'startedAt'] : [])]); id(approval.id); requireValue(!approvals.has(approval.id)); approvals.add(approval.id);
@@ -167,14 +184,23 @@ export function summarizeRunHistory(record) {
 /** Check references without loading full tool bodies during streaming checkpoints. */
 export function validateRunArtifactLinks(run, { sessionId, getArtifact, isBoundary } = {}) {
   if (!run) return;
-  const preceding = new Map();
+  const preceding = new Map(), completedCompactions = new Map();
   let completePreceding = true;
   for (const step of run.steps ?? []) {
     if (Object.hasOwn(step, 'contextPlan')) {
       requireValue(step.type === 'model' && typeof step.id === 'string' && completePreceding);
       id(sessionId); id(run.id); id(step.id);
       let plan; try { plan = validateContextPlan(step.contextPlan); } catch { throw invalid(); }
-      requireValue(plan.toolResults.length === preceding.size && plan.toolResults.every((item, index) => item.artifactId === [...preceding.keys()][index]));
+      const summarizedIds = plan.compaction?.artifactIds ?? [];
+      if (plan.compaction) {
+        const availableAtSummary = completedCompactions.get(plan.compaction.summaryStepId);
+        requireValue(Number.isSafeInteger(availableAtSummary) && summarizedIds.length <= availableAtSummary);
+      }
+      // Compaction accounts for an exact older prefix. It never permits missing,
+      // reordered, cross-run, or future evidence to masquerade as a valid plan.
+      const coveredIds = [...summarizedIds, ...plan.toolResults.map(item => item.artifactId)];
+      const precedingIds = [...preceding.keys()];
+      requireValue(coveredIds.length === precedingIds.length && coveredIds.every((artifactId, index) => artifactId === precedingIds[index]));
       for (const item of plan.toolResults) {
         const artifact = preceding.get(item.artifactId);
         requireValue(Boolean(artifact) && artifact.bytes === item.sourceBytes);
@@ -198,6 +224,9 @@ export function validateRunArtifactLinks(run, { sessionId, getArtifact, isBounda
       preceding.set(artifact.id, artifact);
     }
     if (!['model', 'tool'].includes(step.type) || typeof step.id !== 'string' || (step.type === 'tool' && !Object.hasOwn(step, 'toolResultRef'))) completePreceding = false;
+    if (step.type === 'model' && step.purpose === 'compaction' && step.status === 'completed') {
+      id(step.id); completedCompactions.set(step.id, preceding.size);
+    }
   }
   return preceding;
 }

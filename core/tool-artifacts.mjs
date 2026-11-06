@@ -8,7 +8,7 @@ export const TOOL_ARTIFACT_LIMITS = Object.freeze({
   maxBytes: 2 * 1024 * 1024,
   runBytes: 16 * 1024 * 1024,
   storeBytes: 128 * 1024 * 1024,
-  maxPerRun: 32,
+  maxPerRun: 2048,
   pageBytes: 8192,
   maxPageBytes: 16384,
 });
@@ -90,12 +90,14 @@ export function validateToolArtifact(value) {
 }
 
 export function validateContextPlan(value) {
-  const clean = fields(value, PLAN_FIELDS, invalidPlan);
+  let hasCompaction;
+  try { hasCompaction = Boolean(Object.getOwnPropertyDescriptor(value, 'compaction')); } catch { throw invalidPlan(); }
+  const clean = fields(value, hasCompaction ? [...PLAN_FIELDS, 'compaction'] : PLAN_FIELDS, invalidPlan);
   requireValue(clean.version === 1 && clean.policy === 'preserve-messages-reference-tools', invalidPlan);
   requireValue(integer(clean.requestByteLimit, 1, MODEL_REQUEST_BYTE_LIMIT)
     && integer(clean.requestBytes, 1, clean.requestByteLimit), invalidPlan);
   requireValue(typeof clean.requestSha256 === 'string' && HASH.test(clean.requestSha256), invalidPlan);
-  requireValue(integer(clean.preservedMessages, 1, 1024), invalidPlan);
+  requireValue(integer(clean.preservedMessages, 1, 2048), invalidPlan);
   const seen = new Set();
   clean.toolResults = array(clean.toolResults, TOOL_ARTIFACT_LIMITS.maxPerRun, invalidPlan).map(value => {
     const item = fields(value, ['artifactId', 'mode', 'sourceBytes', 'sentBytes', 'ranges'], invalidPlan);
@@ -118,6 +120,16 @@ export function validateContextPlan(value) {
     else requireValue(item.ranges.length > 0 && included < item.sourceBytes, invalidPlan);
     return item;
   });
+  if (hasCompaction) {
+    const compaction = fields(clean.compaction, ['summaryStepId', 'artifactIds'], invalidPlan);
+    requireValue(typeof compaction.summaryStepId === 'string' && ID.test(compaction.summaryStepId), invalidPlan);
+    compaction.artifactIds = array(compaction.artifactIds, TOOL_ARTIFACT_LIMITS.maxPerRun - seen.size, invalidPlan).map(artifactId => {
+      requireValue(typeof artifactId === 'string' && ID.test(artifactId) && !seen.has(artifactId), invalidPlan);
+      seen.add(artifactId);
+      return artifactId;
+    });
+    clean.compaction = compaction;
+  }
   return clean;
 }
 

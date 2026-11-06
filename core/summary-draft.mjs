@@ -41,14 +41,22 @@ function dense(value, max) {
     && Object.hasOwn(Object.getOwnPropertyDescriptor(value, String(index)), 'value'));
   return value;
 }
-const PROVIDER_FIELDS = ['id', 'name', 'type', 'baseUrl', 'model', 'streaming', 'toolMode', 'tokenParameter', 'maxTokens', 'enabled'];
+const PROVIDER_FIELDS = ['id', 'name', 'type', 'baseUrl', 'model', 'streaming', 'toolMode', 'tokenParameter', 'maxTokens'];
+const OPTIONAL_PROVIDER_FIELDS = ['contextWindowTokens', 'autoCompact', 'autoContinue', 'maxModelCalls', 'maxTools', 'maxRunMinutes'];
+function optionalProviderFields(value) {
+  requireValue(value && typeof value === 'object' && !Array.isArray(value));
+  return OPTIONAL_PROVIDER_FIELDS.filter(key => Object.hasOwn(value, key));
+}
 function safeProvider(value) {
   const provider = validateProvider(value);
   if (provider.type === 'demo') throw new CoreError('SUMMARY_PROVIDER_UNSUPPORTED', '本地演示不能生成模型摘要，请明确选择一个真实模型连接。', 409);
   if (!validId(provider.id)) throw new CoreError('INVALID_PROVIDER', '模型连接标识无效。');
   return { id: provider.id, name: provider.name ?? provider.id, type: provider.type, baseUrl: provider.baseUrl,
     model: provider.model, streaming: provider.streaming, toolMode: provider.toolMode,
-    tokenParameter: provider.tokenParameter, maxTokens: provider.maxTokens, enabled: true };
+    tokenParameter: provider.tokenParameter, maxTokens: provider.maxTokens,
+    // Keep the byte-for-byte projection of older version-1 snapshots. New
+    // settings are hash-bound only when present in the source configuration.
+    ...Object.fromEntries(optionalProviderFields(value).map(key => [key, provider[key]])), enabled: true };
 }
 function connection(provider) {
   return { providerId: provider.id, name: provider.name, type: provider.type, model: provider.model, toolMode: 'none' };
@@ -144,7 +152,7 @@ function validatePreview(value) {
     && preview.source.title.trim() && preview.source.title.length <= 160 && validHash(preview.source.hash) && integer(preview.source.messageCount, 1, 201));
   preview.files = shape(preview.files, ['count', 'bytes']);
   requireValue(integer(preview.files.count, 0, 1005) && integer(preview.files.bytes, 0, SUMMARY_DRAFT_LIMITS.sourceBytes));
-  preview.provider = shape(preview.provider, PROVIDER_FIELDS);
+  preview.provider = shape(preview.provider, [...PROVIDER_FIELDS, ...optionalProviderFields(preview.provider), 'enabled']);
   requireValue(equal(preview.provider, safeProvider(preview.provider)));
   requireValue(preview.version === 1 && integer(preview.sourceBytes, 2, SUMMARY_DRAFT_LIMITS.sourceBytes) && validHash(preview.sourceSha256)
     && preview.chunkByteLimit === SUMMARY_DRAFT_LIMITS.chunkBytes && integer(preview.partCount, 1, SUMMARY_DRAFT_LIMITS.maxParts)
@@ -281,7 +289,8 @@ const MESSAGES = Object.freeze({
   PROVIDER_RATE_LIMIT: '摘要模型连接暂时限流。', PROVIDER_HTTP_ERROR: '摘要模型服务返回 HTTP 错误。',
   PROVIDER_UNAVAILABLE: '无法连接摘要模型服务。', PROVIDER_RESPONSE_TOO_LARGE: '摘要模型响应超过本地容量限制。',
   INVALID_PROVIDER_RESPONSE: '摘要模型响应格式无效。', MODEL_RESPONSE_INCOMPLETE: '摘要模型响应没有完整结束。',
-  MODEL_OUTPUT_LIMIT: '摘要模型达到输出或上下文上限，未接受部分结果。', PROVIDER_STREAM_ERROR: '摘要模型响应出现传输错误。',
+  MODEL_OUTPUT_LIMIT: '摘要模型达到输出上限，未接受部分结果。',
+  MODEL_CONTEXT_LIMIT: '摘要请求达到模型上下文窗口上限，未接受部分结果。', PROVIDER_STREAM_ERROR: '摘要模型响应出现传输错误。',
   SUMMARY_FAILED: '摘要生成失败，尚未得到完整草稿。'
 });
 function safeError(error, signal) {
@@ -305,7 +314,7 @@ function replyText(reply) {
 
 /** Independent sequential requests. There is no workspace, runtime tool dispatch, resume or automatic retry. */
 export async function generateSummaryDraft(planInput, providerInput, { draft: draftInput, signal, checkpoint, providerCall = callProvider } = {}) {
-  const plan = validatePlan(planInput), resolvedProvider = validateProvider(providerInput), provider = safeProvider(resolvedProvider), draft = validateSummaryDraft(draftInput);
+  const plan = validatePlan(planInput), resolvedProvider = validateProvider(providerInput), provider = safeProvider(providerInput), draft = validateSummaryDraft(draftInput);
   if (!equal(provider, plan.preview.provider) || !equal(draft.preview, plan.preview)) throw new CoreError('SUMMARY_PLAN_CHANGED', '摘要来源或模型配置已改变，请重新确认生成计划。', 409);
   if (draft.status !== 'running' || draft.steps.length || typeof checkpoint !== 'function' || typeof providerCall !== 'function') throw new CoreError('INVALID_SUMMARY_REQUEST', '摘要生成状态或持久化接口无效。');
   let saveFailed = false;

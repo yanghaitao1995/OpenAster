@@ -60,9 +60,19 @@ function measure(provider, options, limit) {
   return { ...measureProviderRequest(provider, options), requestByteLimit: limit };
 }
 
-export function planContext(provider, { messages, artifacts = new Map(), signal, maxRequestBytes = MODEL_REQUEST_BYTE_LIMIT, ...options }) {
+export function planContext(provider, { messages, artifacts = new Map(), signal, maxRequestBytes = MODEL_REQUEST_BYTE_LIMIT, toolResultMode = 'full', ...options }) {
   checkAbort(signal);
-  const views = messages.map(message => message.role === 'tool' ? view(message, artifacts) : { message });
+  if (!['full', 'excerpt', 'reference'].includes(toolResultMode)) throw new TypeError('Invalid tool result mode');
+  const latestAssistant = messages.findLastIndex(message => message.role === 'assistant');
+  const views = messages.map((message, index) => {
+    if (message.role !== 'tool') return { message };
+    const complete = view(message, artifacts);
+    // Explicit page reads in the most recent group are pinned, regardless of
+    // pressure. A context projection must never claim that an unread page was read.
+    if (toolResultMode === 'full' || index > latestAssistant && message.name === 'read_tool_result') return complete;
+    const smaller = view(message, artifacts, toolResultMode);
+    return smaller.entry.sentBytes < complete.entry.sentBytes ? smaller : complete;
+  });
   let prepared = views.map(item => item.message);
   let measurement = measure(provider, { ...options, messages: prepared }, maxRequestBytes);
   // Ordinary reads keep their full text whenever the actual serialized request
@@ -77,7 +87,6 @@ export function planContext(provider, { messages, artifacts = new Map(), signal,
     measurement = measure(provider, { ...options, messages: prepared }, maxRequestBytes);
   }
   // Prefer replacing large old observations; small operation receipts/errors stay full when possible.
-  const latestAssistant = messages.findLastIndex(message => message.role === 'assistant');
   const eligible = views.map((item, index) => ({ item, index })).filter(({ item, index }) => item.entry
     && !(index > latestAssistant && messages[index].name === 'read_tool_result'))
     .sort((a, b) => Number(a.item.entry.sentBytes <= 1024) - Number(b.item.entry.sentBytes <= 1024) || a.index - b.index);

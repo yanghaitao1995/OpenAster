@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { CoreError } from './errors.mjs';
 import { validateContextFiles } from './context-files.mjs';
 import { validateContextHandoff } from './conversation-handoff.mjs';
+import { MAX_MODEL_OUTPUT_BYTES } from './model-limits.mjs';
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/u;
 const HASH = /^[a-f0-9]{64}$/u;
@@ -47,8 +48,9 @@ function sourcePrefix(session, messageId) {
   try {
     for (let i = 0; i <= positions[0]; i++) {
       const message = object(session.messages[i], ['id', 'role', 'content', 'createdAt', 'contextFiles', 'contextHandoff', 'images'], ['id', 'role', 'content', 'createdAt']);
+      const contentLimit = message.role === 'assistant' ? MAX_MODEL_OUTPUT_BYTES : 256 * 1024;
       if (!validId(message.id) || ids.has(message.id) || !['user', 'assistant'].includes(message.role)
-        || !text(message.content, 256 * 1024) || Buffer.byteLength(message.content) > 256 * 1024 || !timestamp(message.createdAt)) throw fail();
+        || !text(message.content, contentLimit) || Buffer.byteLength(message.content) > contentLimit || !timestamp(message.createdAt)) throw fail();
       ids.add(message.id);
       const copy = { id: message.id, role: message.role, content: message.content, createdAt: message.createdAt };
       if(Object.hasOwn(message,'images')) { if(message.role!=='user')throw fail(); copy.images=validateImages(message.images); }

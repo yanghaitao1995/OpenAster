@@ -3,12 +3,18 @@ import { createHash } from 'node:crypto';
 import { CoreError } from './errors.mjs';
 import { sanitizeUsage } from './usage.mjs';
 
-export const USAGE_OVERVIEW_LIMITS = Object.freeze({ runs: 202000, projectionBytes: 256 * 1024 * 1024, rowBytes: 8192, page: 20, maxPage: 50 });
+export const USAGE_OVERVIEW_LIMITS = Object.freeze({ runs: 202000, projectionBytes: 256 * 1024 * 1024, rowBytes: 8192, page: 20, maxPage: 50,
+  runSteps: 2560, modelSteps: 512 });
 export const USAGE_COUNTERS = Object.freeze(['inputTokens', 'outputTokens', 'totalTokens', 'cachedInputTokens', 'cacheWriteInputTokens', 'reasoningOutputTokens']);
 const COUNTS = ['modelSteps', 'stepsWithAnyUsage', 'stepsWithCompleteUsage', 'stepsWithoutUsage', 'unclassifiedSteps', 'runsWithoutStepData', 'unattributedRuns', 'demoRuns'];
 const STATUSES = { running: 'running', awaiting_approval: 'awaitingApproval', completed: 'completed', failed: 'failed', cancelled: 'cancelled' };
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/u;
 const CONNECTION = ['providerId', 'name', 'type', 'model', 'toolMode'];
+// Match the per-step bound enforced by sanitizeUsage without converting sums
+// back to Number. The decimal width also admits bounded legacy step counts.
+const MAX_STEP_TOKENS = 1000000000000n;
+const MAX_ROW_TOKENS = BigInt(USAGE_OVERVIEW_LIMITS.runSteps) * MAX_STEP_TOKENS;
+const TOKEN_SUM = new RegExp(`^(?:0|[1-9]\\d{0,${MAX_ROW_TOKENS.toString().length - 1}})$`, 'u');
 const invalid = () => new CoreError('INVALID_USAGE_PROJECTION', '已保存的用量投影无效，请保留数据并检查数据库。', 503);
 function requireValue(value) { if (!value) throw invalid(); }
 const text = (value, max) => typeof value === 'string' && value.length <= max && value.trim().length > 0 && value.isWellFormed() && !value.includes('\0');
@@ -39,11 +45,12 @@ export function createUsageProjection(sessionId, run) {
   stats.unattributedRuns = Number(connection === null); stats.demoRuns = Number(connection?.type === 'demo');
   stats.runsWithoutStepData = Number(run.steps == null);
   if (run.steps != null) {
-    requireValue(Array.isArray(run.steps) && run.steps.length <= 64);
+    requireValue(Array.isArray(run.steps) && run.steps.length <= USAGE_OVERVIEW_LIMITS.runSteps);
     for (const step of run.steps) {
       if (step?.type === 'tool') continue;
       if (step?.type !== 'model') { stats.unclassifiedSteps++; continue; }
       stats.modelSteps++;
+      requireValue(stats.modelSteps <= USAGE_OVERVIEW_LIMITS.modelSteps);
       const usage = sanitizeUsage(step.usage);
       if (usage) stats.stepsWithAnyUsage++; else stats.stepsWithoutUsage++;
       if (usage && ['inputTokens', 'outputTokens', 'totalTokens'].every(key => usage[key] !== null)) stats.stepsWithCompleteUsage++;
@@ -67,11 +74,12 @@ export function parseUsageStats(json) {
   requireValue(exact(value, ['runs', ...COUNTS, 'tokens']) && exact(value.runs, ['total', ...Object.values(STATUSES)]) && exact(value.tokens, USAGE_COUNTERS));
   requireValue(value.runs.total === 1 && Object.values(STATUSES).every(key => [0, 1].includes(value.runs[key]))
     && Object.values(STATUSES).reduce((n, key) => n + value.runs[key], 0) === 1);
-  for (const key of COUNTS) requireValue(Number.isSafeInteger(value[key]) && value[key] >= 0 && value[key] <= 64);
+  for (const key of COUNTS) requireValue(Number.isSafeInteger(value[key]) && value[key] >= 0 && value[key] <= USAGE_OVERVIEW_LIMITS.runSteps);
+  for (const key of ['modelSteps', 'stepsWithAnyUsage', 'stepsWithCompleteUsage', 'stepsWithoutUsage']) requireValue(value[key] <= USAGE_OVERVIEW_LIMITS.modelSteps);
   for (const key of ['runsWithoutStepData', 'unattributedRuns', 'demoRuns']) requireValue(value[key] <= 1);
   requireValue(value.unattributedRuns + value.demoRuns <= 1);
   requireValue(value.stepsWithAnyUsage + value.stepsWithoutUsage === value.modelSteps
-    && value.stepsWithCompleteUsage <= value.stepsWithAnyUsage && value.modelSteps + value.unclassifiedSteps <= 64);
+    && value.stepsWithCompleteUsage <= value.stepsWithAnyUsage && value.modelSteps + value.unclassifiedSteps <= USAGE_OVERVIEW_LIMITS.runSteps);
   if (value.runsWithoutStepData) requireValue(value.modelSteps === 0 && value.unclassifiedSteps === 0);
   for (const key of USAGE_COUNTERS) {
     const token = value.tokens[key];
@@ -80,8 +88,8 @@ export function parseUsageStats(json) {
       && token.missingSteps === value.modelSteps - token.reportedSteps);
     if (['inputTokens', 'outputTokens', 'totalTokens'].includes(key)) requireValue(value.stepsWithCompleteUsage <= token.reportedSteps);
     if (token.reportedSteps === 0) requireValue(token.knownSum === null);
-    else requireValue(typeof token.knownSum === 'string' && /^(?:0|[1-9]\d{0,13})$/u.test(token.knownSum)
-      && BigInt(token.knownSum) <= BigInt(token.reportedSteps) * 1000000000000n);
+    else requireValue(typeof token.knownSum === 'string' && TOKEN_SUM.test(token.knownSum)
+      && BigInt(token.knownSum) <= MAX_ROW_TOKENS && BigInt(token.knownSum) <= BigInt(token.reportedSteps) * MAX_STEP_TOKENS);
   }
   requireValue(value.stepsWithAnyUsage <= USAGE_COUNTERS.reduce((total, key) => total + value.tokens[key].reportedSteps, 0));
   const primaryReports = ['inputTokens', 'outputTokens', 'totalTokens'].reduce((total, key) => total + value.tokens[key].reportedSteps, 0);

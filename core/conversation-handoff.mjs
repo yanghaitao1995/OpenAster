@@ -3,6 +3,7 @@ import { validateImages } from './image-attachments.mjs';
 import { createHash } from 'node:crypto';
 import { CoreError } from './errors.mjs';
 import { validateContextFiles } from './context-files.mjs';
+import { MAX_MODEL_OUTPUT_BYTES } from './model-limits.mjs';
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/u;
 const HASH = /^[a-f0-9]{64}$/u;
@@ -84,8 +85,9 @@ export function snapshotConversationHandoff(session) {
     const copied = [], ids = new Set(); let totalBytes = 2;
     for (let index = 0; index < messages.length; index++) {
       const message = object(own(messages, String(index)), ['id', 'role', 'content', 'createdAt', 'contextFiles', 'contextHandoff', 'images'], ['id', 'role', 'content', 'createdAt'], invalid);
+      const contentLimit = message.role === 'assistant' ? MAX_MODEL_OUTPUT_BYTES : 256 * 1024;
       if (!validId(message.id) || ids.has(message.id) || !['user', 'assistant'].includes(message.role)
-        || !text(message.content, 256 * 1024) || Buffer.byteLength(message.content) > 256 * 1024 || !timestamp(message.createdAt)) throw invalid();
+        || !text(message.content, contentLimit) || Buffer.byteLength(message.content) > contentLimit || !timestamp(message.createdAt)) throw invalid();
       ids.add(message.id);
       if(Object.hasOwn(message,'images')) { if(message.role!=='user')throw invalid(); message.images=validateImages(message.images); }
       if (Object.hasOwn(message, 'contextFiles')) {
