@@ -16,7 +16,9 @@ export function modelStepTitle(step) {
 export function contextUsageText(value) {
   if (!value || !Number.isSafeInteger(value.estimatedInputTokens) || !Number.isSafeInteger(value.contextWindowTokens) || value.estimatedInputTokens < 0 || value.contextWindowTokens < 1) return '';
   const percent = Math.ceil(value.estimatedInputTokens / value.contextWindowTokens * 100), format = number => number.toLocaleString('zh-CN');
-  return `上下文约 ${percent}% · 输入约 ${format(value.estimatedInputTokens)} / ${format(value.contextWindowTokens)} token${Number.isSafeInteger(value.reservedOutputTokens) ? ` · 预留输出 ${format(value.reservedOutputTokens)}` : ''}`;
+  const reserved = Number.isSafeInteger(value.reservedOutputTokens) ? ` · 本次输出预算 ${format(value.reservedOutputTokens)}` : '';
+  const configured = Number.isSafeInteger(value.configuredOutputTokens) ? `（配置上限 ${format(value.configuredOutputTokens)}）` : '';
+  return `上下文约 ${percent}%（仅输入） · 输入约 ${format(value.estimatedInputTokens)} / 窗口 ${format(value.contextWindowTokens)} token${reserved}${configured}`;
 }
 function webSource(title, address) {
   if (typeof address !== 'string' || address.length > 2048 || /[\s\x00-\x1f\x7f]/u.test(address)) return null;
