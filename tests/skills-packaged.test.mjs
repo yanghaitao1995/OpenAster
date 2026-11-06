@@ -39,9 +39,11 @@ async function fixture(t) {
   const source = path.join(directory, 'source');
   await fs.mkdir(path.join(source, 'core'), { recursive: true });
   await fs.mkdir(path.join(source, 'server'));
+  await fs.mkdir(path.join(source, 'desktop'));
   await fs.writeFile(path.join(source, 'package.json'), '{"type":"module"}\n');
   for (const file of moduleFiles) await fs.copyFile(path.join(root, 'core', file), path.join(source, 'core', file));
   await fs.copyFile(path.join(root, 'server/skills.mjs'), path.join(source, 'server/skills.mjs'));
+  for (const file of ['workspace-profiles.mjs', 'workspace-errors.mjs']) await fs.copyFile(path.join(root, 'desktop', file), path.join(source, 'desktop', file));
   await fs.cp(path.join(root, 'skills'), path.join(source, 'skills'), { recursive: true, errorOnExist: true, force: false });
   const probe = path.join(directory, 'probe.mjs');
   await fs.writeFile(probe, `
@@ -121,4 +123,57 @@ test('a packaged application missing physical skill resources fails closed witho
   await asar.createPackage(f.source, archive);
   const result = await probe(f, archive, path.join(`${archive}.unpacked`, 'skills'), 'missing', 'SKILLS_NOT_FOUND');
   assert.equal(result.expectedError, 'SKILLS_NOT_FOUND');
+});
+
+test('real Electron ASAR first startup creates the default workspace before skills and never recreates a bound external root', { timeout: 45_000 }, async t => {
+  const f = await fixture(t), archive = path.join(f.directory, 'app.asar');
+  await asar.createPackageWithOptions(f.source, archive, { unpack: '**/skills/**/*' });
+  const entry = path.join(f.directory, 'first-start.mjs');
+  await fs.writeFile(entry, `
+import assert from 'node:assert/strict';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+const [application, directory] = process.argv.slice(2);
+const { createWorkspaceProfiles, initializeProfileWorkspace } = await import(pathToFileURL(path.join(application, 'desktop/workspace-profiles.mjs')));
+const { createSkillRegistry, DEFAULT_SKILLS_ROOT } = await import(pathToFileURL(path.join(application, 'core/skills.mjs')));
+assert.equal(DEFAULT_SKILLS_ROOT, path.join(application + '.unpacked', 'skills'));
+await fs.mkdir(directory);
+const homeDirectory = path.join(directory, 'home'), install = path.join(directory, 'install'), userData = path.join(directory, 'user-data');
+await fs.mkdir(homeDirectory); await fs.mkdir(install);
+const profiles = createWorkspaceProfiles({ userData, homeDirectory, appRoots: [install] });
+await profiles.initialize();
+const active = await profiles.getActive();
+assert.equal(active.kind, 'default');
+await assert.rejects(fs.lstat(active.workspace), { code: 'ENOENT' });
+const skills = await initializeProfileWorkspace(active);
+assert.equal((await fs.lstat(active.workspace)).isDirectory(), true);
+assert.equal((await createSkillRegistry(skills).catalog()).length, 6);
+assert.ok((await createSkillRegistry(skills).readResource('code', 'references/verification.md')).bytes > 0);
+const note = path.join(active.workspace, 'user-note.txt'); await fs.writeFile(note, 'keep this existing user file');
+assert.equal(await initializeProfileWorkspace(active), skills);
+assert.equal(await fs.readFile(note, 'utf8'), 'keep this existing user file');
+const external = path.join(directory, 'external'); await fs.mkdir(external);
+const selected = await profiles.activate(await profiles.inspect(external));
+const options = { createRoot: false, expectedIdentity: selected.identity, protectedRoots: [userData, install], denySensitivePaths: true, projectScan: true };
+await fs.rename(external, path.join(directory, 'original-external'));
+await assert.rejects(initializeProfileWorkspace(selected, options), { code: 'WORKSPACE_CHANGED' });
+await assert.rejects(fs.lstat(external), { code: 'ENOENT' });
+await fs.mkdir(external);
+await assert.rejects(initializeProfileWorkspace(selected, options), { code: 'WORKSPACE_CHANGED' });
+await assert.rejects(fs.lstat(path.join(external, 'skills')), { code: 'ENOENT' });
+await assert.rejects(initializeProfileWorkspace(selected), { code: 'WORKSPACE_INVALID_CONFIG' });
+console.log('FIRST_START_ASAR_RESULT ' + JSON.stringify({ ok: true, electron: process.versions.electron,
+  initiallyMissingWorkspace: true, defaultWorkspaceSeeded: true, catalog: 6, existingFilePreserved: true,
+  missingExternalRejected: true, replacedExternalRejected: true }));
+`);
+  const env = { ...process.env, ELECTRON_RUN_AS_NODE: '1' }; delete env.NODE_OPTIONS;
+  const { stdout } = await execute(electron, [entry, archive, path.join(f.directory, 'fresh-profile')], {
+    env, windowsHide: true, timeout: 20_000, maxBuffer: 128 * 1024,
+  });
+  const line = stdout.split(/\r?\n/u).find(value => value.startsWith('FIRST_START_ASAR_RESULT '));
+  assert.ok(line, 'Electron did not return the first-start regression result');
+  const result = JSON.parse(line.slice('FIRST_START_ASAR_RESULT '.length));
+  assert.equal(result.ok, true); assert.ok(result.electron);
+  for (const key of ['initiallyMissingWorkspace', 'defaultWorkspaceSeeded', 'existingFilePreserved', 'missingExternalRejected', 'replacedExternalRejected']) assert.equal(result[key], true);
 });
