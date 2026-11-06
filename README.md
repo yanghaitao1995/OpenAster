@@ -2,7 +2,7 @@
 
 一个可以连接自己的模型、读写项目文件并运行命令的开源智能体工作台。浏览器、桌面应用和移动客户端使用同一套任务界面。
 
-OpenAster 通过 **Vibe Coding** 开发：使用自然语言与 AI 编程工具迭代实现，再检查代码和运行测试。它是个人学习与探索项目，当前版本为 **0.2.2 预览版**。
+OpenAster 通过 **Vibe Coding** 开发：使用自然语言与 AI 编程工具迭代实现，再检查代码和运行测试。它是个人学习与探索项目，当前版本为 **0.2.3 预览版**。
 
 [上手教程](docs/TUTORIAL.md) · [使用说明](docs/GETTING_STARTED.md) · [下载与平台状态](docs/PLATFORMS.md) · [开发指南](docs/DEVELOPMENT.md)
 
@@ -119,7 +119,7 @@ PORT=4320 pnpm start
 
 ## 安装包
 
-可下载的安装包以 [GitHub Releases](https://github.com/yanghaitao1995/OpenAster/releases) 中对应版本的实际附件和逐项说明为准；下载前核对系统、架构、签名状态和 SHA-256。没有列出的安装包表示该版本尚未提供。各平台的使用条件见[平台说明](docs/PLATFORMS.md)；当前不提供可在 iPhone 上直接安装的 IPA。
+0.2.3 的安装文件、SHA-256、签名状态和逐项验证结果见 [版本下载页](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3)。桌面文件按 Windows x64、macOS arm64 和 Linux x86_64 / amd64 区分，Android 提供调试 APK；只下载对应系统与架构的实际附件，没有列出的包表示尚未提供。各平台条件及 Android 调试签名的升级限制见[平台说明](docs/PLATFORMS.md)。当前不提供可在 iPhone 上直接安装的 IPA 或 TestFlight 邀请。
 
 ## 仓库结构
 
