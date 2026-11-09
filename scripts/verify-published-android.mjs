@@ -70,6 +70,17 @@ export function kvmDeviceIdentity(stat) {
   const minor = (device & 0xffn) | ((device >> 12n) & 0xffffff00n);
   return `${stat.dev}:${stat.ino}:${major.toString(16)}:${minor.toString(16)}:${stat.uid}:${stat.gid}:${(stat.mode & 0o7777).toString(8)}`;
 }
+export async function prepareOfficialAndroidSdk(sdk, command) {
+  const bin = path.join(sdk, 'cmdline-tools', 'latest', 'bin'), emulator = path.join(sdk, 'emulator', 'emulator');
+  await command('sdk-licenses', path.join(bin, 'sdkmanager'), ['--licenses'], { timeout: 120000, stdin: 'y\n'.repeat(64) });
+  await command('sdk-image', path.join(bin, 'sdkmanager'), ['platform-tools', 'emulator', IMAGE], { timeout: 600000, stdin: 'y\n'.repeat(16) });
+  await command('emulator-version', emulator, ['-version']);
+  await command('adb-version', path.join(sdk, 'platform-tools', 'adb'), ['version']);
+  // Fresh hosted images may not contain emulator until sdkmanager completes.
+  const result = await command('hardware-acceleration', emulator, ['-accel-check']);
+  requireFact(/KVM[^\n]*(installed|usable)|KVM.*version/iu.test(result.text), 'Emulator did not confirm usable KVM');
+  return { image: IMAGE, officialComponents: ['platform-tools', 'emulator', IMAGE], kvmUsable: true };
+}
 export function acceptanceMode(args) {
   requireFact(Array.isArray(args) && (args.length === 0 || args.length === 1 && args[0] === '--candidate'),
     'Usage: verify-published-android.mjs [--candidate]');
@@ -407,7 +418,7 @@ export async function main(args = process.argv.slice(2)) {
           sourceUnchanged: true, generatedExclusions: ['mobile/android', 'mobile/ios', 'mobile/www'], ...artifact };
       });
     }
-    const checkKvm = () => step('kvm-access-precondition', async () => {
+    const checkKvmDevice = () => step('kvm-device-precondition', async () => {
       try {
         requireFact(process.getuid() > 0 && process.getuid() === process.geteuid(), 'Android acceptance must run as a non-root runner');
         if (candidate) {
@@ -417,15 +428,14 @@ export async function main(args = process.argv.slice(2)) {
           receipt.kvmAccessContext.device = process.env.OPENASTER_KVM_DEVICE;
         }
         await fs.access('/dev/kvm', constants.R_OK | constants.W_OK);
-        const result = await command('hardware-acceleration', emulatorPath, ['-accel-check']);
-        requireFact(/KVM[^\n]*(installed|usable)|KVM.*version/iu.test(result.text), 'Emulator did not confirm usable KVM'); return { kvmUsable: true };
+        return { deviceReadableWritable: true };
       } catch (error) {
         receipt.environmentBlocked = true;
         throw new Error(`KVM precondition failed. No permissions or security settings were changed. ${error.code ?? clean(error.message)}`);
       }
     });
     if (!candidate) {
-      await checkKvm();
+      await checkKvmDevice();
       apkFile = path.join(temporary, APK.file);
       await step('download-published-apk', () => download(apkFile));
       receipt.observations.artifactVerified = true;
@@ -466,12 +476,10 @@ export async function main(args = process.argv.slice(2)) {
     });
     // Preserve static version/signature/UI identity evidence even when this
     // runner cannot grant access to KVM. Never count that evidence as a boot.
-    if (candidate) await checkKvm();
-    await step('official-sdk-and-fresh-avd', async () => {
+    if (candidate) await checkKvmDevice();
+    await step('official-sdk-and-hardware-acceleration', () => prepareOfficialAndroidSdk(env.ANDROID_HOME, command));
+    await step('fresh-isolated-avd', async () => {
       const bin = path.join(env.ANDROID_HOME, 'cmdline-tools', 'latest', 'bin');
-      await command('sdk-licenses', path.join(bin, 'sdkmanager'), ['--licenses'], { timeout: 120000, stdin: 'y\n'.repeat(64) });
-      await command('sdk-image', path.join(bin, 'sdkmanager'), ['platform-tools', 'emulator', IMAGE], { timeout: 600000, stdin: 'y\n'.repeat(16) });
-      await command('emulator-version', emulatorPath, ['-version']); await command('adb-version', adbPath, ['version']);
       await command('create-fresh-avd', path.join(bin, 'avdmanager'), ['create', 'avd', '-n', avdName, '-k', IMAGE, '-p', path.join(temporary, 'avds', `${avdName}.avd`)], { timeout: 90000, stdin: 'no\n' });
       const configFile = path.join(temporary, 'avds', `${avdName}.avd`, 'config.ini');
       const values = new Map((await fs.readFile(configFile, 'utf8')).split(/\r?\n/u).filter(line => line.includes('=')).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
