@@ -29,6 +29,19 @@ export function assertHostedAndroid(env, platform, arch) {
     && env.RUNNER_ENVIRONMENT === 'github-hosted' && env.GITHUB_REPOSITORY === 'yanghaitao1995/OpenAster',
   'Android acceptance requires this repository on an ephemeral Linux x64 GitHub-hosted runner');
 }
+export function assertKvmProcessIdentity(identity, expected) {
+  const validId = value => Number.isInteger(value) && value > 0 && value < 0xffffffff;
+  requireFact(validId(expected.uid) && validId(expected.gid)
+    && identity.uid === expected.uid && identity.euid === expected.uid
+    && identity.gid === expected.gid && identity.egid === expected.gid,
+  'KVM acceptance must retain the original non-root runner UID and use the existing KVM real/effective GID');
+  return { ...identity, scope: 'process-tree-primary-group', accountMembershipChanged: false };
+}
+export function kvmDeviceIdentity(stat) {
+  requireFact(stat.isCharacterDevice() && !stat.isSymbolicLink() && stat.uid === 0,
+    'KVM must be an existing root-owned character device without links');
+  return `${stat.dev}:${stat.ino}:${stat.rdev}:${stat.uid}:${stat.gid}:${(stat.mode & 0o7777).toString(8)}`;
+}
 export function acceptanceMode(args) {
   requireFact(Array.isArray(args) && (args.length === 0 || args.length === 1 && args[0] === '--candidate'),
     'Usage: verify-published-android.mjs [--candidate]');
@@ -68,8 +81,8 @@ export async function readCandidateArtifact(workspace) {
     return JSON.parse(await fs.readFile(file, 'utf8'));
   };
   const pkg = await json('package.json'), mobile = await json('mobile/package.json'), version = await json('mobile/android-version.json');
-  requireFact(pkg.version === '0.2.3' && mobile.version === pkg.version && version.versionCode === 13
-    && Object.keys(version).length === 1, 'Candidate must use the reviewed 0.2.3 version and Android code 13');
+  requireFact(pkg.version === '0.2.4' && mobile.version === pkg.version && version.versionCode === 14
+    && Object.keys(version).length === 1, 'Candidate must use the reviewed 0.2.4 version and Android code 14');
   const relative = 'mobile/android/app/build/outputs/apk/debug/app-debug.apk';
   const current = await ordinaryCandidatePath(root, relative);
   const identity = await verifyCandidateBytes(current), build = await sharedBuildInfo(root);
@@ -358,6 +371,16 @@ export async function main(args = process.argv.slice(2)) {
     }
     const checkKvm = () => step('kvm-access-precondition', async () => {
       try {
+        requireFact(process.getuid() > 0 && process.getuid() === process.geteuid(), 'Android acceptance must run as a non-root runner');
+        if (candidate) {
+          const identity = { uid: process.getuid(), euid: process.geteuid(), gid: process.getgid(), egid: process.getegid() };
+          const expected = { uid: Number(process.env.OPENASTER_KVM_RUNNER_UID), gid: Number(process.env.OPENASTER_KVM_GID) };
+          receipt.kvmAccessContext = assertKvmProcessIdentity(identity, expected);
+          const device = await fs.lstat('/dev/kvm');
+          requireFact(device.gid === expected.gid && kvmDeviceIdentity(device) === process.env.OPENASTER_KVM_DEVICE,
+            'KVM device identity, owner, group or mode changed before acceptance');
+          receipt.kvmAccessContext.device = process.env.OPENASTER_KVM_DEVICE;
+        }
         await fs.access('/dev/kvm', constants.R_OK | constants.W_OK);
         const result = await command('hardware-acceleration', emulatorPath, ['-accel-check']);
         requireFact(/KVM[^\n]*(installed|usable)|KVM.*version/iu.test(result.text), 'Emulator did not confirm usable KVM'); return { kvmUsable: true };

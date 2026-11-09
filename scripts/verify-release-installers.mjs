@@ -17,7 +17,7 @@ export const ARTIFACTS = Object.freeze({
   deb: Object.freeze({ platform: 'linux', arch: 'x64', file: 'OpenAster-0.2.2-linux-amd64.deb', bytes: 102126448, sha256: '7e494162f1f7f8ddb463c76681845a00d35d91d4fdf19a681b5421a3dd677b70' }),
   appimage: Object.freeze({ platform: 'linux', arch: 'x64', file: 'OpenAster-0.2.2-linux-x86_64.AppImage', bytes: 126116425, sha256: '9a2022e4181d188b22c8f8362acd1b5d72e8057ec95073b65a4f7a8caed97538' }),
 });
-export const CANDIDATE_VERSION = '0.2.3';
+export const CANDIDATE_VERSION = '0.2.4';
 export const CANDIDATE_ARTIFACTS = Object.freeze(Object.fromEntries(Object.entries(ARTIFACTS).map(([kind, artifact]) => [kind,
   Object.freeze({ platform: artifact.platform, arch: artifact.arch, file: artifact.file.replace('0.2.2', CANDIDATE_VERSION) })])));
 const fail = message => { throw new Error(message); };
@@ -112,6 +112,36 @@ export function validateCandidateScenario(output, scenario) {
     }
   }
   return facts;
+}
+
+export async function verifyMacCandidateSignature(bundle, stage, command, expected) {
+  if (!path.isAbsolute(bundle) || path.basename(bundle) !== 'OpenAster.app' || /[\x00-\x1f\x7f]/u.test(bundle)
+    || !['dmg', 'installed'].includes(stage) || typeof command !== 'function') fail('Invalid fixed macOS signature verification target');
+  // Verify the complete bundle, including nested code, before reading identity.
+  // These commands never sign code or change Gatekeeper, Keychain or quarantine.
+  await command(stage + '-code-signature-verify', '/usr/bin/codesign', ['--verify', '--deep', '--strict', bundle]);
+  const displayed = await command(stage + '-code-signature-identity', '/usr/bin/codesign', ['--display', '--verbose=4', '--requirements=-', bundle]);
+  const output = displayed?.outputText;
+  if (typeof output !== 'string' || output.length > 65536 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/u.test(output)) fail('Invalid macOS signature identity output');
+  const lines = output.split(/\r?\n/u);
+  const field = prefix => {
+    const matches = lines.filter(line => line.startsWith(prefix));
+    if (matches.length !== 1 || !matches[0].slice(prefix.length).trim()) fail('Missing or ambiguous macOS signature identity field');
+    return matches[0].slice(prefix.length);
+  };
+  const executable = field('Executable='), identifier = field('Identifier='), signature = field('Signature='), teamIdentifier = field('TeamIdentifier=');
+  const cdHash = field('CDHash='), designatedRequirement = field('designated => '), directory = field('CodeDirectory ');
+  const flagMatch = /(?:^| )flags=0x([a-f0-9]{1,8})\([^\r\n]*?\)(?: |$)/iu.exec(directory);
+  const flags = flagMatch ? Number.parseInt(flagMatch[1], 16) : 0;
+  if (executable !== path.join(bundle, 'Contents', 'MacOS', 'OpenAster') || identifier !== 'org.openaster.preview'
+    || signature !== 'adhoc' || teamIdentifier !== 'not set' || (flags & 0x10002) !== 0x10002
+    || !/^[a-f0-9]{40}$/iu.test(cdHash) || designatedRequirement.length > 8192) fail('Candidate macOS bundle lacks the expected ad hoc hardened-runtime identity');
+  const identity = { identifier, signature, teamIdentifier, cdHash: cdHash.toLowerCase(), designatedRequirement, flags,
+    hardenedRuntime: true, developerId: false, notarizationVerified: false };
+  if (expected && ['identifier', 'signature', 'teamIdentifier', 'cdHash', 'designatedRequirement', 'flags'].some(key => identity[key] !== expected[key])) {
+    fail('Copied macOS bundle signature identity differs from the read-only DMG');
+  }
+  return identity;
 }
 
 function assertRunnerIdentity(env) {
@@ -371,8 +401,13 @@ export async function main({ candidate = false } = {}) {
       mounted = true;
       await verifyBeforeExecution();
       await command('dmg-mount-readonly', '/usr/bin/hdiutil', ['attach', '-readonly', '-nobrowse', '-noautoopen', '-mountpoint', mountpoint, asset], { timeoutMs: 90000 });
-      const destination = path.join(temporary, 'OpenAster.app');
-      await command('copy-app-preserve-metadata', '/usr/bin/ditto', ['--rsrc', '--extattr', path.join(mountpoint, 'OpenAster.app'), destination]);
+      const mountedApp = path.join(mountpoint, 'OpenAster.app'), destination = path.join(temporary, 'OpenAster.app');
+      const dmgSignature = candidate ? await verifyMacCandidateSignature(mountedApp, 'dmg', command) : null;
+      await command('copy-app-preserve-metadata', '/usr/bin/ditto', ['--rsrc', '--extattr', mountedApp, destination]);
+      if (candidate) receipt.macCodeSignature = {
+        dmg: dmgSignature, installed: await verifyMacCandidateSignature(destination, 'installed', command, dmgSignature), identitiesMatch: true,
+        scope: 'Complete ad hoc bundle code integrity with hardened runtime; no Apple Developer ID or notarization claim.',
+      };
       await command('dmg-detach', '/usr/bin/hdiutil', ['detach', mountpoint], { timeoutMs: 30000 }); mounted = false;
       executable = path.join(destination, 'Contents', 'MacOS', 'OpenAster');
     } else {
