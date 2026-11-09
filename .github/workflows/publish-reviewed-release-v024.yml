@@ -1,0 +1,102 @@
+name: Publish verified OpenAster 0.2.4 draft
+on:
+  push:
+    branches: [ops/publish-reviewed-v024]
+    paths: [.github/workflows/publish-reviewed-release-v024.yml]
+permissions: {}
+concurrency:
+  group: openaster-reviewed-release-v024
+  cancel-in-progress: false
+jobs:
+  publish-existing-draft:
+    if: github.repository == 'yanghaitao1995/OpenAster' && github.actor == 'yanghaitao1995' && github.ref == 'refs/heads/ops/publish-reviewed-v024'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - name: Verify frozen draft and publish it once
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          const repository = 'yanghaitao1995/OpenAster';
+          const releaseId = 438775246;
+          const frozenCommit = 'f206d5fd4d45274046a738ca591c2cbce4c4a20c';
+          const frozenTree = 'b0abed081e09cbc3d2205407a6485a9dddd225e9';
+          const expectedBody = 'cee2f5554800f097a3bfbcdd854c938c8f98e516ab5fa907abc63146c4b6604b';
+          const assets = [
+            ['OpenAster-0.2.4-win-x64.exe', 121669587, 'b2b8def5f2be9fbb0a321f4408e447a75ed16bf14b2b4e4122387c266bf0d022'],
+            ['OpenAster-0.2.4-mac-arm64.dmg', 119663392, '2efe48d36f907564cf474cc6b1c3789cc26db7497d9d93a33203b8d58e25bed7'],
+            ['OpenAster-0.2.4-linux-amd64.deb', 101095068, '402074cb773733018bfb79686f9d9ecd944b04c93715f8e7ed502e5f844ea3d1'],
+            ['OpenAster-0.2.4-linux-x86_64.AppImage', 126128827, '5a1800b390fd7654ac6841dba6be0aad8e45c1fe415299bb4b92a6790ebe12ee'],
+            ['OpenAster-0.2.4-android-vc14-debug.apk', 4124501, '05e766d97f3d80e2ff965ba31c141ffdf1468ebc943ea749fde04c88f3ab7484'],
+          ];
+          const api = async (path, method = 'GET', payload, allowMissing = false) => {
+            const response = await fetch(`https://api.github.com/repos/${repository}/${path}`, {
+              method,
+              redirect: 'error',
+              headers: {
+                Authorization: `Bearer ${process.env.GH_TOKEN}`,
+                Accept: 'application/vnd.github+json',
+                'X-GitHub-Api-Version': '2022-11-28',
+                'Content-Type': 'application/json',
+              },
+              body: payload === undefined ? undefined : JSON.stringify(payload),
+              signal: AbortSignal.timeout(30000),
+            });
+            if (allowMissing && response.status === 404) return null;
+            if (!response.ok) throw new Error(`GitHub ${method} ${path}: HTTP ${response.status}`);
+            return response.json();
+          };
+          const verifyRelease = (release) => {
+            assert.equal(release.id, releaseId, 'Unexpected release');
+            assert.equal(release.tag_name, 'v0.2.4', 'Unexpected tag');
+            assert.equal(release.name, 'OpenAster 0.2.4 预览版', 'Unexpected title');
+            assert.equal(release.prerelease, true, 'Preview flag changed');
+            const body = release.body.replace(/\r\n?/g, '\n').trimEnd();
+            assert.equal(createHash('sha256').update(body).digest('hex'), expectedBody, 'Description changed');
+            assert.equal(release.assets.length, assets.length, 'Unexpected asset count');
+            for (const [name, size, digest] of assets) {
+              const matches = release.assets.filter(asset => asset.name === name);
+              assert.equal(matches.length, 1, `Missing or duplicate asset: ${name}`);
+              assert.equal(matches[0].size, size, `Size mismatch: ${name}`);
+              assert.equal(matches[0].digest, `sha256:${digest}`, `Digest mismatch: ${name}`);
+              assert.equal(matches[0].state, 'uploaded', `Incomplete upload: ${name}`);
+            }
+          };
+          const release = await api(`releases/${releaseId}`);
+          verifyRelease(release);
+          const commit = await api(`git/commits/${frozenCommit}`);
+          assert.equal(commit.sha, frozenCommit);
+          assert.equal(commit.tree.sha, frozenTree, 'Frozen source tree mismatch');
+          const main = await api('commits/main');
+          assert.equal(main.commit.tree.sha, frozenTree, 'Default source has changed');
+          const existingTag = await api('git/ref/tags/v0.2.4', 'GET', undefined, true);
+          if (existingTag) {
+            assert.equal(existingTag.object.type, 'commit', 'Unexpected existing tag type');
+            assert.equal(existingTag.object.sha, frozenCommit, 'Existing tag source mismatch');
+          }
+          if (release.draft) {
+            assert.ok(['fix/installer-024', 'f206d5f', frozenCommit].includes(release.target_commitish), 'Draft target changed');
+            const updated = await api(`releases/${releaseId}`, 'PATCH', {
+              draft: false, prerelease: true, make_latest: 'false',
+              tag_name: 'v0.2.4', target_commitish: frozenCommit,
+            });
+            verifyRelease(updated);
+            assert.equal(updated.draft, false, 'Release remains a draft');
+          }
+          const published = await api(`releases/${releaseId}`);
+          verifyRelease(published);
+          assert.equal(published.draft, false);
+          assert.ok(published.published_at, 'Publication timestamp missing');
+          const tag = await api('git/ref/tags/v0.2.4');
+          assert.equal(tag.object.type, 'commit', 'Unexpected tag type');
+          assert.equal(tag.object.sha, frozenCommit, 'Published tag source mismatch');
+          console.log(JSON.stringify({ releaseId, url: published.html_url,
+            publishedAt: published.published_at, sourceCommit: frozenCommit,
+            assets: assets.map(([name, size, sha256]) => ({name, size, sha256})) }, null, 2));
+          NODE
