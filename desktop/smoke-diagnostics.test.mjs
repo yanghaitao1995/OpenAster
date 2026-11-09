@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createSmokeFailure, validateSmokeFailure, createSmokeController, assertSmokeTransition, createSmokeStageDiagnostic, parseSmokeStageDiagnostic } from './smoke-diagnostics.mjs';
+import { createSmokeFailure, validateSmokeFailure, createSmokeController, assertSmokeTransition, createSmokeStageDiagnostic, parseSmokeStageDiagnostic,
+  createAppImageHandoffDiagnostic, parseAppImageHandoffDiagnostic } from './smoke-diagnostics.mjs';
 import { createDesktopLifecycle } from './lifecycle.mjs';
 import { openRelaunchSmokeState, readSmokeRecord } from './relaunch-smoke-state.mjs';
 
@@ -202,4 +203,34 @@ test('normal relaunch preserves selection/prepare/launch order without creating 
   const f = fixture(), calls = [];
   assert.equal(await f.controller.relaunch({ select: async () => { calls.push('select'); return 'default'; }, prepare: id => { assert.equal(id, 'default'); calls.push('prepare'); return { nextPhase: 3 }; }, launch: next => { assert.equal(next.nextPhase, 3); calls.push('launch'); } }), true);
   assert.deepEqual(calls, ['select', 'prepare', 'launch']); assert.deepEqual(f.events, []); assert.equal(f.controller.failed, false);
+});
+
+test('asynchronous relaunch ACK must settle before lifecycle quits, and rejection retains the failure', async () => {
+  for (const rejected of [false, true]) {
+    const accepted = gate(), entered = gate(), f = fixture(); let quit = false;
+    const lifecycle = createDesktopLifecycle({ closeService: async () => {}, reportError: async () => {},
+      relaunch: () => f.controller.relaunch({ select: async () => 'default', prepare: () => ({}),
+        launch: async () => { entered.resolve(); await accepted.promise; if (rejected) throw native('APPIMAGE_HANDOFF_FAILED'); } }),
+      quit: () => { if (!f.controller.failed) quit = true; } });
+    const pending = lifecycle.run('backup', context => context.stopService());
+    await entered.promise; assert.equal(quit, false); assert.deepEqual(f.outputs, []);
+    accepted.resolve(); await pending; assert.equal(quit, !rejected);
+    if (rejected) { assert.equal(f.outputs[0].diagnostic.code, 'APPIMAGE_HANDOFF_FAILED'); assert.equal(f.outputs[0].error, 'relaunch-failed'); }
+  }
+});
+
+test('AppImage handoff diagnostics contain only fixed stages and the measured privilege boolean', () => {
+  const prefix = 'OPENASTER_APPIMAGE_HANDOFF_DIAGNOSTIC ';
+  for (const stage of ['parent-spawn', 'parent-accepted', 'successor-ready', 'predecessor-exited', 'handoff-failed']) {
+    for (const noNewPrivileges of [null, true, false]) {
+      const value = createAppImageHandoffDiagnostic(stage, noNewPrivileges);
+      assert.deepEqual(parseAppImageHandoffDiagnostic(prefix + JSON.stringify(value)), value);
+    }
+  }
+  for (const value of [{ version: 1, stage: 'private/path', noNewPrivileges: false },
+    { version: 1, stage: 'parent-spawn', noNewPrivileges: 'secret' },
+    { version: 1, stage: 'parent-spawn', noNewPrivileges: false, nonce: 'private' }]) {
+    assert.equal(parseAppImageHandoffDiagnostic(prefix + JSON.stringify(value)), null);
+  }
+  assert.equal(parseAppImageHandoffDiagnostic(prefix + 'x'.repeat(257)), null);
 });

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // AppImage mounts are temporary. Relaunch the verified outer image, never a
-// pathname inside a previous mount. This module does not launch any process.
+// pathname inside a previous mount. The successor cannot open a workspace until
+// its verified predecessor has exited; no shell or detached process is used.
 import nodeFs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+import { Socket } from 'node:net';
 
 // Hash the physical archive without changing Electron's global ASAR setting.
 const fs = process.versions.electron ? createRequire(import.meta.url)('original-fs') : nodeFs;
@@ -111,4 +114,153 @@ export function appImageRelaunchOptions(observation, { args = process.argv.slice
   requireValue(Array.isArray(args) && args.every(value => typeof value === 'string' && !value.includes('\0')));
   // Electron's execPath override does not automatically preserve argv.
   return { execPath: current.image.canonical, args: [...args] };
+}
+
+const HANDOFF = 'OPENASTER_APPIMAGE_HANDOFF';
+const HANDOFF_MS = 10000, MESSAGE_BYTES = 16384;
+const handoffError = () => Object.assign(new Error('AppImage restart handoff did not complete.'), { code: 'APPIMAGE_HANDOFF_FAILED' });
+const ensureHandoff = condition => { if (!condition) throw handoffError(); };
+const processId = value => Number.isSafeInteger(value) && value > 1;
+const identityValid = value => exact(value, ['pid', 'uid', 'started']) && processId(value.pid)
+  && Number.isSafeInteger(value.uid) && value.uid >= 0 && digits(value.started) && value.started !== '0';
+
+export function readAppImageProcessIdentity(pid) {
+  ensureHandoff(processId(pid) && process.platform === 'linux');
+  const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8');
+  ensureHandoff(stat.length <= 8192 && stat.startsWith(`${pid} (`));
+  const fields = stat.slice(stat.lastIndexOf(')') + 2).trim().split(/\s+/u);
+  const value = { pid, uid: fs.statSync(`/proc/${pid}`).uid, started: fields[19] };
+  ensureHandoff(identityValid(value)); return value;
+}
+
+export function readAppImageNoNewPrivileges() {
+  try {
+    if (process.platform !== 'linux') return null;
+    const status = fs.readFileSync('/proc/self/status', 'utf8');
+    if (status.length > 65536) return null;
+    const match = /^NoNewPrivs:\s*([01])\s*$/mu.exec(status);
+    return match ? match[1] === '1' : null;
+  } catch { return null; }
+}
+
+// ESRCH is required, not pipe EOF or a changed /proc identity. A reused PID or
+// an unreadable live process must never release the workspace gate.
+export async function waitForAppImageParentExit(parent, { readIdentity = readAppImageProcessIdentity,
+  signal = (pid, value) => process.kill(pid, value), now = () => performance.now(),
+  pause = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
+  ensureHandoff(identityValid(parent));
+  const deadline = now() + HANDOFF_MS;
+  while (now() < deadline) {
+    try { signal(parent.pid, 0); }
+    catch (error) { if (error.code === 'ESRCH') return; throw handoffError(); }
+    try {
+      const current = readIdentity(parent.pid);
+      ensureHandoff(identityValid(current) && current.uid === parent.uid && current.started === parent.started);
+    } catch (error) {
+      // /proc can disappear between kill(0) and read. Confirm ESRCH separately.
+      if (error.code !== 'ENOENT') throw handoffError();
+      try { signal(parent.pid, 0); } catch (again) { if (again.code === 'ESRCH') return; }
+      throw handoffError();
+    }
+    await pause(50);
+  }
+  throw handoffError();
+}
+
+function readMessage(channel) {
+  return new Promise((resolve, reject) => {
+    let bytes = Buffer.alloc(0);
+    const finish = (error, value) => {
+      clearTimeout(timer); channel.off('data', receive); channel.off('end', failed); channel.off('close', failed); channel.off('error', failed);
+      if (error) reject(handoffError()); else resolve(value);
+    };
+    const failed = () => finish(true);
+    const receive = chunk => {
+      if (bytes.length + chunk.length > MESSAGE_BYTES) return finish(true);
+      bytes = Buffer.concat([bytes, chunk]);
+      if (!bytes.includes(10)) return;
+      try {
+        ensureHandoff(bytes.indexOf(10) === bytes.length - 1);
+        finish(false, JSON.parse(bytes.subarray(0, -1).toString('utf8')));
+      } catch { finish(true); }
+    };
+    const timer = setTimeout(failed, HANDOFF_MS);
+    channel.on('data', receive); channel.once('end', failed); channel.once('close', failed); channel.once('error', failed);
+  });
+}
+
+// Exported for a real duplex-channel regression; all messages are bounded and
+// nonce-bound. Paths and nonce travel only on the inherited private pipe.
+export async function sendAppImageHandoff(channel, { observation, parent, childPid }) {
+  validateAppImageObservation(observation); ensureHandoff(identityValid(parent) && processId(childPid));
+  const nonce = randomBytes(32).toString('hex');
+  const pending = readMessage(channel);
+  channel.write(JSON.stringify({ version: 1, nonce, parent, observation }) + '\n');
+  const ack = await pending;
+  ensureHandoff(exact(ack, ['version', 'nonce', 'pid', 'ready', 'noNewPrivileges']) && ack.version === 1
+    && ack.nonce === nonce && ack.pid === childPid && ack.ready === true
+    && (ack.noNewPrivileges === null || typeof ack.noNewPrivileges === 'boolean'));
+  return ack.noNewPrivileges;
+}
+
+export async function receiveAppImageHandoff(channel, { observation, pid = process.pid, parentPid = process.ppid,
+  uid = process.getuid?.(), readIdentity = readAppImageProcessIdentity, waitForExit = waitForAppImageParentExit,
+  verifyCurrent = () => readAppImageRuntime({ isPackaged: true }), noNewPrivileges = readAppImageNoNewPrivileges(),
+  report = () => {} }) {
+  const message = await readMessage(channel);
+  ensureHandoff(exact(message, ['version', 'nonce', 'parent', 'observation']) && message.version === 1
+    && digest(message.nonce) && identityValid(message.parent) && message.parent.pid === parentPid && message.parent.uid === uid);
+  const parent = readIdentity(parentPid);
+  ensureHandoff(identityValid(parent) && parent.started === message.parent.started && parent.uid === uid);
+  ensureHandoff(observation !== null && sameAppImageProgram(message.observation, observation));
+  await new Promise((resolve, reject) => channel.write(JSON.stringify({ version: 1, nonce: message.nonce, pid, ready: true,
+    noNewPrivileges }) + '\n', error => error ? reject(handoffError()) : resolve()));
+  channel.destroy();
+  report('successor-ready', noNewPrivileges);
+  await waitForExit(parent);
+  const current = verifyCurrent();
+  ensureHandoff(current !== null && sameAppImageProgram(observation, current) && current.mount === observation.mount);
+  report('predecessor-exited', noNewPrivileges);
+}
+
+export async function acceptAppImageRelaunch(observation, { env = process.env, report = () => {} } = {}) {
+  if (env[HANDOFF] === undefined) return false;
+  const requested = env[HANDOFF]; delete env[HANDOFF];
+  ensureHandoff(requested === '1' && process.platform === 'linux' && observation !== null);
+  const info = fs.fstatSync(3); ensureHandoff(info.isSocket() || info.isFIFO());
+  const channel = new Socket({ fd: 3, readable: true, writable: true });
+  channel.on('error', () => {}); // Errors are converted to a fixed failure below.
+  try { await receiveAppImageHandoff(channel, { observation, report }); return true; }
+  catch { throw handoffError(); }
+  finally { channel.destroy(); }
+}
+
+export async function spawnAppImageRelaunch(observation, { report = () => {}, ...runtime } = {}) {
+  ensureHandoff(process.platform === 'linux');
+  const options = appImageRelaunchOptions(observation, runtime), parent = readAppImageProcessIdentity(process.pid);
+  const env = { ...process.env, [HANDOFF]: '1' };
+  // AppImage's normal FUSE runtime execs AppRun, which execs this application:
+  // both keep the spawned PID and inherited FD3. Extract-and-run is unsupported.
+  ensureHandoff(env.APPIMAGE_EXTRACT_AND_RUN === undefined && env.TARGET_APPIMAGE === undefined);
+  delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS;
+  report('parent-spawn', readAppImageNoNewPrivileges());
+  const child = spawn(options.execPath, options.args, { env, cwd: path.dirname(options.execPath),
+    shell: false, detached: false, stdio: ['ignore', 'inherit', 'inherit', 'pipe'] });
+  const channel = child.stdio[3];
+  let exited = false;
+  child.once('exit', () => { exited = true; });
+  child.on('error', () => { channel?.destroy(); });
+  channel?.on('error', () => {});
+  try {
+    ensureHandoff(channel && processId(child.pid));
+    const noNewPrivileges = await sendAppImageHandoff(channel, { observation, parent, childPid: child.pid });
+    ensureHandoff(!exited);
+    report('parent-accepted', noNewPrivileges);
+  } catch {
+    // ChildProcess refers only to this just-spawned child, never a discovered PID.
+    if (!exited && child.pid) child.kill('SIGTERM');
+    throw handoffError();
+  } finally {
+    channel?.destroy(); child.unref();
+  }
 }

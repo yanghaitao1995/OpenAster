@@ -21,9 +21,9 @@ import { runBackupJob } from './backup-worker-client.mjs';
 import { createWorkspace } from '../core/workspace.mjs';
 import { openRelaunchSmokeState } from './relaunch-smoke-state.mjs';
 import { createRelaunchSmokeScenario } from './relaunch-smoke.mjs';
-import { createSmokeController, createSmokeStageDiagnostic } from './smoke-diagnostics.mjs';
+import { createSmokeController, createSmokeStageDiagnostic, createAppImageHandoffDiagnostic } from './smoke-diagnostics.mjs';
 import { createSmokeReadiness } from './smoke-readiness.mjs';
-import { readAppImageRuntime, appImageRelaunchOptions } from './appimage-relaunch.mjs';
+import { readAppImageRuntime, acceptAppImageRelaunch, spawnAppImageRelaunch } from './appimage-relaunch.mjs';
 
 app.setName('OpenAster');
 app.enableSandbox();
@@ -33,6 +33,18 @@ const backupSmokeMode = smokeMode && (process.argv.includes('--backup-smoke-test
 let appImageRuntime = null, appImageRuntimeError;
 try { appImageRuntime = readAppImageRuntime({ isPackaged: app.isPackaged }); }
 catch (error) { appImageRuntimeError = error; }
+const reportAppImageHandoff = (stage, noNewPrivileges = null) => {
+  if (smokeMode) console.error('OPENASTER_APPIMAGE_HANDOFF_DIAGNOSTIC ' + JSON.stringify(createAppImageHandoffDiagnostic(stage, noNewPrivileges)));
+};
+// This precedes smoke entry, profiles, secrets and workspace startup. Electron's
+// event loop stays live while the successor waits for its exact parent to exit.
+if (process.env.OPENASTER_APPIMAGE_HANDOFF !== undefined) {
+  try { await acceptAppImageRelaunch(appImageRuntime, { report: reportAppImageHandoff }); }
+  catch {
+    reportAppImageHandoff('handoff-failed');
+    app.exit(2); process.exit(2);
+  }
+}
 let relaunchSmokeState;
 let relaunchScenario;
 let smokeTransitioning = false;
@@ -266,11 +278,11 @@ async function configureWorkspaceActions() {
       if (relaunchSmokeMode) {
         await smokeController.relaunch({ select: () => profiles.getActive(),
           prepare: selected => relaunchScenario.beforeRelaunch(selected.id),
-          launch: next => {
+          launch: async next => {
             const args = [...process.argv.slice(1).filter(value => !value.startsWith('--smoke-phase=')), `--smoke-phase=${next.nextPhase}`];
-            const options = appImageRuntime === null ? { args } : appImageRelaunchOptions(appImageRuntime, { isPackaged: app.isPackaged, args });
+            if (appImageRuntime === null) app.relaunch({ args });
+            else await spawnAppImageRelaunch(appImageRuntime, { isPackaged: app.isPackaged, args, report: reportAppImageHandoff });
             smokeTransitioning = true; closing = true; clearTimeout(smokeTimer);
-            app.relaunch(options);
           },
         });
         return;
@@ -280,7 +292,7 @@ async function configureWorkspaceActions() {
       try {
         if (appImageRuntimeError) throw appImageRuntimeError;
         if (appImageRuntime === null) app.relaunch();
-        else app.relaunch(appImageRelaunchOptions(appImageRuntime, { isPackaged: app.isPackaged }));
+        else await spawnAppImageRelaunch(appImageRuntime, { isPackaged: app.isPackaged });
       }
       catch { dialog.showErrorBox('请重新打开 OpenAster', '应用未能自动重新打开。请手动启动 OpenAster。'); }
     },

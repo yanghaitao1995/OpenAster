@@ -4,8 +4,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { Duplex, PassThrough } from 'node:stream';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { readAppImageFile, readAppImageRuntime, validateAppImageObservation, sameAppImageFile,
-  sameAppImageProgram, appImageRelaunchOptions } from './appimage-relaunch.mjs';
+  sameAppImageProgram, appImageRelaunchOptions, sendAppImageHandoff, receiveAppImageHandoff,
+  waitForAppImageParentExit, readAppImageProcessIdentity, acceptAppImageRelaunch } from './appimage-relaunch.mjs';
 
 function fixture(t) {
   const parent = fs.realpathSync(tmpdir()), root = fs.mkdtempSync(path.join(parent, 'openaster-image-'));
@@ -92,4 +96,131 @@ test('image mutation during the hash read is rejected and no unbounded second re
 
 test('Linux writable-by-others images cannot become relaunch targets', { skip: process.platform !== 'linux' }, t => {
   const f = fixture(t); fs.chmodSync(f.image, 0o777); assert.throws(() => readAppImageFile(f.image), unsafe);
+});
+
+const handoffFailed = { code: 'APPIMAGE_HANDOFF_FAILED' };
+const gate = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
+const parentIdentity = { pid: 810001, uid: 1000, started: '100' };
+const noProcess = () => { throw Object.assign(new Error('private'), { code: 'ESRCH' }); };
+function channels(t) {
+  const one = new PassThrough(), two = new PassThrough();
+  const sender = Duplex.from({ readable: one, writable: two }), receiver = Duplex.from({ readable: two, writable: one });
+  sender.on('error', () => {}); receiver.on('error', () => {});
+  t.after(() => { sender.destroy(); receiver.destroy(); });
+  return { sender, receiver };
+}
+
+test('handoff ACK releases the predecessor but successor remains gated until exact predecessor exit', async t => {
+  const f = fixture(t), runtime = f.mount(), observation = runtime.observe(), exit = gate(), entered = gate(), verified = [];
+  const { sender, receiver } = channels(t);
+  const receiving = receiveAppImageHandoff(receiver, { observation, pid: 810002, parentPid: parentIdentity.pid, uid: parentIdentity.uid,
+    readIdentity: () => parentIdentity, noNewPrivileges: false,
+    waitForExit: async value => { assert.deepEqual(value, parentIdentity); entered.resolve(); await exit.promise; },
+    verifyCurrent: () => { verified.push('workspace-release'); return runtime.observe(); } });
+  assert.equal(await sendAppImageHandoff(sender, { observation, parent: parentIdentity, childPid: 810002 }), false);
+  await entered.promise; assert.deepEqual(verified, []);
+  exit.resolve(); await receiving; assert.deepEqual(verified, ['workspace-release']);
+});
+
+test('successor refuses unrelated parent, replaced parent and different image before ACK', async t => {
+  for (const change of ['parent', 'started', 'image', 'extra']) {
+    const f = fixture(t), runtime = f.mount(), observation = runtime.observe(), { sender, receiver } = channels(t);
+    const message = { version: 1, nonce: 'a'.repeat(64), parent: { ...parentIdentity }, observation };
+    if (change === 'parent') message.parent.pid++;
+    if (change === 'started') message.parent.started = '101';
+    if (change === 'image') message.observation = { ...observation, image: { ...observation.image, sha256: 'f'.repeat(64) } };
+    if (change === 'extra') message.secret = 'private';
+    let waited = false;
+    const receiving = receiveAppImageHandoff(receiver, { observation, pid: 810002, parentPid: parentIdentity.pid, uid: parentIdentity.uid,
+      readIdentity: () => parentIdentity, waitForExit: async () => { waited = true; } });
+    sender.write(JSON.stringify(message) + '\n');
+    await assert.rejects(receiving, handoffFailed); assert.equal(waited, false);
+  }
+});
+
+test('sender rejects ACK with another nonce or PID, and a closed channel fails without a timeout', async t => {
+  for (const change of ['nonce', 'pid', 'closed']) {
+    const f = fixture(t), observation = f.mount().observe(), { sender, receiver } = channels(t);
+    receiver.once('data', data => {
+      const message = JSON.parse(data.toString());
+      if (change === 'closed') { receiver.end(); return; }
+      receiver.write(JSON.stringify({ version: 1, nonce: change === 'nonce' ? 'b'.repeat(64) : message.nonce,
+        pid: change === 'pid' ? 810003 : 810002, ready: true, noNewPrivileges: false }) + '\n');
+    });
+    await assert.rejects(sendAppImageHandoff(sender, { observation, parent: parentIdentity, childPid: 810002 }), handoffFailed);
+  }
+});
+
+test('a missing ACK and oversized protocol data fail within the fixed handshake bound', async t => {
+  const f = fixture(t), observation = f.mount().observe();
+  {
+    const { sender } = channels(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const failure = assert.rejects(sendAppImageHandoff(sender, { observation, parent: parentIdentity, childPid: 810002 }), handoffFailed);
+    t.mock.timers.tick(10000); await failure; t.mock.timers.reset();
+  }
+  {
+    const { sender, receiver } = channels(t);
+    const failure = assert.rejects(receiveAppImageHandoff(receiver, { observation }), handoffFailed);
+    sender.write('x'.repeat(16385)); await failure;
+  }
+});
+
+test('exit gate requires ESRCH; live, reused or inaccessible parent never releases startup', async () => {
+  let ticks = 0, waits = 0;
+  await waitForAppImageParentExit(parentIdentity, { readIdentity: () => parentIdentity,
+    signal: () => { if (waits === 2) noProcess(); }, now: () => ticks, pause: async ms => { ticks += ms; waits++; } });
+  assert.equal(waits, 2);
+  await assert.rejects(waitForAppImageParentExit(parentIdentity, { readIdentity: () => ({ ...parentIdentity, started: '101' }), signal: () => {} }), handoffFailed);
+  await assert.rejects(waitForAppImageParentExit(parentIdentity, { signal: () => { throw Object.assign(new Error('private'), { code: 'EPERM' }); } }), handoffFailed);
+  ticks = 0;
+  await assert.rejects(waitForAppImageParentExit(parentIdentity, { readIdentity: () => parentIdentity,
+    signal: () => {}, now: () => ticks, pause: async () => { ticks += 10000; } }), handoffFailed);
+  let probes = 0;
+  await waitForAppImageParentExit(parentIdentity, { signal: () => { if (probes++) noProcess(); },
+    readIdentity: () => { throw Object.assign(new Error(), { code: 'ENOENT' }); } });
+  assert.equal(probes, 2);
+});
+
+test('an image changed during parent shutdown cannot release the successor workspace gate', async t => {
+  const f = fixture(t), runtime = f.mount(), observation = runtime.observe(), { sender, receiver } = channels(t);
+  const receiving = receiveAppImageHandoff(receiver, { observation, pid: 810002, parentPid: parentIdentity.pid, uid: parentIdentity.uid,
+    readIdentity: () => parentIdentity, noNewPrivileges: null,
+    waitForExit: async () => { const changed = Buffer.from(f.bytes); changed[40] ^= 1; fs.writeFileSync(f.image, changed); },
+    verifyCurrent: runtime.observe });
+  const failure = assert.rejects(receiving, handoffFailed);
+  assert.equal(await sendAppImageHandoff(sender, { observation, parent: parentIdentity, childPid: 810002 }), null);
+  await failure;
+});
+
+test('ordinary startup does not open a handshake descriptor; forged markers are refused', async () => {
+  assert.equal(await acceptAppImageRelaunch(null, { env: {} }), false);
+  const env = { OPENASTER_APPIMAGE_HANDOFF: 'not-valid' };
+  await assert.rejects(acceptAppImageRelaunch(null, { env }), handoffFailed);
+  assert.equal(Object.hasOwn(env, 'OPENASTER_APPIMAGE_HANDOFF'), false);
+});
+
+// Node-only owned subprocesses prove the actual FD3 transport and OS exit gate.
+// The CI installer test separately proves AppImage/AppRun/Electron preserve FD3.
+test('Linux inherited FD3 handshake waits for a real owned parent to exit', { skip: process.platform !== 'linux', timeout: 20000 }, async t => {
+  let cleanup, completed = false;
+  const f = fixture({ after: work => { cleanup = work; } }), runtime = f.mount(), observation = runtime.observe(), proof = path.join(f.root, 'released.json');
+  const module = new URL('./appimage-relaunch.mjs', import.meta.url).href;
+  const successor = `import fs from 'node:fs'; import { Socket } from 'node:net'; import { receiveAppImageHandoff } from ${JSON.stringify(module)};
+    const observation = ${JSON.stringify(observation)};
+    await receiveAppImageHandoff(new Socket({fd:3, readable:true, writable:true}), {observation, verifyCurrent:()=>observation});
+    fs.writeFileSync(${JSON.stringify(proof)}, JSON.stringify({released:true,pid:process.pid}), {flag:'wx'});`;
+  const predecessor = `import {spawn} from 'node:child_process'; import {sendAppImageHandoff,readAppImageProcessIdentity} from ${JSON.stringify(module)};
+    const child=spawn(process.execPath,['--input-type=module','--eval',${JSON.stringify(successor)}],{stdio:['ignore','inherit','inherit','pipe'],detached:false,shell:false});
+    child.on('error',()=>process.exit(3)); child.stdio[3].on('error',()=>{});
+    await sendAppImageHandoff(child.stdio[3],{observation:${JSON.stringify(observation)},parent:readAppImageProcessIdentity(process.pid),childPid:child.pid});
+    child.stdio[3].destroy(); child.unref(); process.send({ready:true,pid:child.pid}); process.once('message',()=>process.exit(0));`;
+  const parent = spawn(process.execPath, ['--input-type=module', '--eval', predecessor], { stdio: ['ignore', 'pipe', 'pipe', 'ipc'], detached: false, shell: false });
+  let closed = false; const stopped = once(parent, 'close').then(value => { closed = true; return value; });
+  t.after(async () => { if (!closed) parent.kill('SIGTERM'); await stopped; if (completed) cleanup(); });
+  const [ready] = await once(parent, 'message'); assert.equal(ready.ready, true);
+  assert.equal(fs.existsSync(proof), false); assert.equal(readAppImageProcessIdentity(parent.pid).pid, parent.pid);
+  parent.send('exit'); assert.equal((await stopped)[0], 0);
+  const value = JSON.parse(fs.readFileSync(proof, 'utf8')); assert.equal(value.released, true); assert.equal(value.pid, ready.pid);
+  completed = true;
 });
