@@ -491,7 +491,9 @@ export async function main(args = process.argv.slice(2)) {
       for (const port of [5038, 5554, 5555, 8554]) {
         const probe = net.createServer(); await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen({ host: '127.0.0.1', port, exclusive: true }, resolve); }); await new Promise(resolve => probe.close(resolve));
       }
-      adbService = await startService('adb-server', adbPath, ['-L', 'tcp:127.0.0.1:5038', '--one-device', 'openaster-no-usb', 'server', 'nodaemon']); await wait(1000);
+      // ADB accepts literal localhost for its loopback listener, not 127.0.0.1.
+      // Keep numeric client addresses above so clients cannot auto-start a replacement server.
+      adbService = await startService('adb-server', adbPath, ['-L', 'tcp:localhost:5038', '--one-device', 'openaster-no-usb', 'server', 'nodaemon']); await wait(1000);
       requireFact(!adbService.record.closed && !adbService.record.error, 'Owned ADB did not start');
       emulatorService = await startService('emulator', emulatorPath, ['-avd', avdName, '-port', '5554', '-accel', 'on', '-gpu', 'swiftshader', '-memory', '3072', '-cores', '2', '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-camera-back', 'none', '-camera-front', 'none', '-no-metrics', '-no-direct-adb', '-adb-path', adbPath, '-grpc', '8554', '-grpc-use-jwt']);
       const deadline = Date.now() + 240000;
