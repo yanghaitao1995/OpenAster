@@ -39,6 +39,12 @@ jobs:
       - name: Check Android acceptance controls
         if: matrix.platform == 'android'
         run: node --test scripts/verify-published-android.test.mjs scripts/verify-candidate-android.test.mjs
+      - name: Install Android emulator runtime dependency
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          sudo -n apt-get update
+          sudo -n apt-get install -y --no-install-recommends libpulse0
       - name: Install and verify this checkout's Android candidate
         if: matrix.platform == 'android'
         shell: bash
