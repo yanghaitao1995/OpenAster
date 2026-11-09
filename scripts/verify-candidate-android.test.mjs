@@ -21,8 +21,8 @@ async function fixture(t) {
     const file = path.join(root, relative); await fs.mkdir(path.dirname(file), { recursive: true });
     await fs.writeFile(file, Buffer.isBuffer(value) || typeof value === 'string' ? value : JSON.stringify(value));
   };
-  await put('package.json', { version: '0.2.3' }); await put('mobile/package.json', { version: '0.2.3' });
-  await put('mobile/android-version.json', { versionCode: 13 }); await put('public/app.mjs', 'export const fixture = true;');
+  await put('package.json', { version: '0.2.4' }); await put('mobile/package.json', { version: '0.2.4' });
+  await put('mobile/android-version.json', { versionCode: 14 }); await put('public/app.mjs', 'export const fixture = true;');
   const apk = 'mobile/android/app/build/outputs/apk/debug/app-debug.apk';
   await put(apk, Buffer.alloc(2048, 1));
   return { root, put, apk: path.join(root, apk) };
@@ -30,7 +30,7 @@ async function fixture(t) {
 
 test('candidate mode has no arbitrary path, URL, version or revision command-line inputs', () => {
   assert.equal(acceptanceMode([]), 'published'); assert.equal(acceptanceMode(['--candidate']), 'candidate');
-  for (const args of [null, ['other'], ['--candidate', '/tmp/app.apk'], ['--url=https://example.invalid/a.apk'], ['--candidate=0.2.3']]) assert.throws(() => acceptanceMode(args));
+  for (const args of [null, ['other'], ['--candidate', '/tmp/app.apk'], ['--url=https://example.invalid/a.apk'], ['--candidate=0.2.4']]) assert.throws(() => acceptanceMode(args));
 });
 
 test('candidate source must be this hosted repository and the exact dispatched commit', () => {
@@ -42,7 +42,7 @@ test('candidate source must be this hosted repository and the exact dispatched c
 
 test('candidate identity uses fixed local APK, controlled versions, source UI hash and immutable copied bytes', async t => {
   const f = await fixture(t), result = await readCandidateArtifact(f.root);
-  assert.equal(result.sourceFile, f.apk); assert.equal(result.artifact.version, '0.2.3'); assert.equal(result.artifact.versionCode, 13);
+  assert.equal(result.sourceFile, f.apk); assert.equal(result.artifact.version, '0.2.4'); assert.equal(result.artifact.versionCode, 14);
   assert.equal(result.artifact.bytes, 2048); assert.equal(result.artifact.sharedAssets, 1);
   assert.match(result.artifact.sha256, /^[a-f0-9]{64}$/u); assert.match(result.artifact.sharedAssetsSha256, /^[a-f0-9]{64}$/u);
   const copy = path.join(f.root, 'copied.apk'); await fs.copyFile(f.apk, copy);
@@ -57,12 +57,12 @@ test('candidate identity uses fixed local APK, controlled versions, source UI ha
 test('candidate rejects stale or inconsistent machine versions', async t => {
   const f = await fixture(t);
   for (const [file, wrong, original] of [
-    ['package.json', { version: '0.2.2' }, { version: '0.2.3' }],
-    ['mobile/package.json', { version: '0.2.2' }, { version: '0.2.3' }],
-    ['mobile/android-version.json', { versionCode: 12 }, { versionCode: 13 }],
-    ['mobile/android-version.json', { versionCode: 13, other: true }, { versionCode: 13 }],
+    ['package.json', { version: '0.2.2' }, { version: '0.2.4' }],
+    ['mobile/package.json', { version: '0.2.2' }, { version: '0.2.4' }],
+    ['mobile/android-version.json', { versionCode: 12 }, { versionCode: 14 }],
+    ['mobile/android-version.json', { versionCode: 14, other: true }, { versionCode: 14 }],
   ]) {
-    await f.put(file, wrong); await assert.rejects(readCandidateArtifact(f.root), /reviewed 0.2.3/u); await f.put(file, original);
+    await f.put(file, wrong); await assert.rejects(readCandidateArtifact(f.root), /reviewed 0.2.4/u); await f.put(file, original);
   }
 });
 
@@ -76,10 +76,10 @@ test('candidate refuses linked APK ancestors and multiply linked executable byte
 });
 
 test('candidate native APK metadata and certificate evidence reject substitutions', () => {
-  const artifact = { package: 'org.openaster.preview', version: '0.2.3', versionCode: 13 };
-  const line = "package: name='org.openaster.preview' versionCode='13' versionName='0.2.3' compileSdkVersion='36'\n";
+  const artifact = { package: 'org.openaster.preview', version: '0.2.4', versionCode: 14 };
+  const line = "package: name='org.openaster.preview' versionCode='14' versionName='0.2.4' compileSdkVersion='36'\n";
   assert.deepEqual(assertNativeApkVersion(line, artifact), artifact);
-  for (const text of [line.replace("'13'", "'12'"), line.replace('0.2.3', '0.2.2'), line.replace('org.openaster.preview', 'other.package'), line + line, line.replace("versionCode='13'", "versionCode='13' versionCode='13'")]) assert.throws(() => assertNativeApkVersion(text, artifact));
+  for (const text of [line.replace("'14'", "'12'"), line.replace('0.2.4', '0.2.2'), line.replace('org.openaster.preview', 'other.package'), line + line, line.replace("versionCode='14'", "versionCode='14' versionCode='14'")]) assert.throws(() => assertNativeApkVersion(text, artifact));
   const signature = `Verified using v2 scheme (APK Signature Scheme v2): true\nSigner #1 certificate SHA-256 digest: ${'c'.repeat(64)}\n`;
   assert.deepEqual(signatureEvidence(signature).certificateSha256, ['c'.repeat(64)]);
   assert.throws(() => signatureEvidence(signature.replace(': true', ': false')));
@@ -87,7 +87,7 @@ test('candidate native APK metadata and certificate evidence reject substitution
 });
 
 test('candidate packaged UI must match its checkout, not the earlier release', () => {
-  const artifact = { version: '0.2.3', sharedAssets: 1, sharedAssetsSha256: 'd'.repeat(64) };
+  const artifact = { version: '0.2.4', sharedAssets: 1, sharedAssetsSha256: 'd'.repeat(64) };
   const config = { appId: 'org.openaster.preview', server: { hostname: 'localhost', androidScheme: 'https', cleartext: false }, android: { allowMixedContent: false, webContentsDebuggingEnabled: false } };
   const build = { ...artifact, mode: 'companion' };
   assert.doesNotThrow(() => assertPackagedConfiguration(config, build, artifact));

@@ -4,7 +4,7 @@
   "sourceDirectories": ["core", "server", "public", "desktop", "mobile", "scripts", "tests", "skills", "config", ".github"],
   "excludedDirectories": ["node_modules", ".git", ".diagnostics", ".openaster", ".toolchains", ".gradle-cache", ".pnpm-store", "dist", "release", "coverage", "test-results", "__pycache__"],
   "excludedPaths": ["mobile/android", "mobile/ios", "mobile/www"],
-  "sourceExtensions": [".mjs", ".cjs", ".js", ".json", ".html", ".css", ".svg", ".png", ".ico", ".icns", ".webmanifest", ".md", ".txt", ".yml", ".yaml", ".py", ".ps1", ".cs", ".java", ".xml"],
+  "sourceExtensions": [".mjs", ".cjs", ".js", ".json", ".html", ".css", ".svg", ".png", ".ico", ".icns", ".webmanifest", ".md", ".txt", ".yml", ".yaml", ".py", ".ps1", ".sh", ".cs", ".java", ".xml"],
   "documents": ["docs/README.md", "docs/GETTING_STARTED.md", "docs/DEVELOPMENT.md", "docs/PLATFORMS.md", "docs/SECURITY_MODEL.md", "docs/BACKUP.md", "docs/THIRD_PARTY.md", "docs/TUTORIAL.md", "docs/dependency-licenses.json", "docs/sbom.cdx.json"],
   "mediaDirectory": "docs/assets",
   "mediaExtensions": [".png", ".gif", ".webp", ".svg"]

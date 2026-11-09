@@ -70,6 +70,7 @@
     "deleteAppDataOnUninstall": false
   },
   "mac": {
+    "identity": "-",
     "target": [
       "dmg",
       "zip"

@@ -39,12 +39,16 @@ jobs:
       - name: Check Android acceptance controls
         if: matrix.platform == 'android'
         run: node --test scripts/verify-published-android.test.mjs scripts/verify-candidate-android.test.mjs
-      - name: Install and verify this checkout's Android candidate
+      - name: Install Android emulator runtime dependency
         if: matrix.platform == 'android'
         shell: bash
         run: |
-          export JAVA_HOME="$JAVA_HOME_21_X64"
-          node scripts/verify-published-android.mjs --candidate
+          sudo -n apt-get update
+          sudo -n apt-get install -y --no-install-recommends libpulse0
+      - name: Install and verify this checkout's Android candidate
+        if: matrix.platform == 'android'
+        shell: bash
+        run: bash scripts/android-candidate-acceptance.sh
       - name: Build iOS simulator application
         if: matrix.platform == 'ios'
         run: xcodebuild -project mobile/ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -derivedDataPath release/ios-simulator CODE_SIGNING_ALLOWED=NO build

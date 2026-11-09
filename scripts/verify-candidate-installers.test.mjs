@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sharedBuildInfo } from './lib/build-info.mjs';
 import { ARTIFACTS, CANDIDATE_ARTIFACTS, CANDIDATE_VERSION, assertCandidatePolicy, assertCandidateCheckout,
-  candidateArtifactSnapshot, candidateBuildIdentity, verifyArtifactFile, validateCandidateScenario } from './verify-release-installers.mjs';
+  candidateArtifactSnapshot, candidateBuildIdentity, verifyArtifactFile, validateCandidateScenario, verifyMacCandidateSignature } from './verify-release-installers.mjs';
 
 const commit = '1'.repeat(40);
 const environment = () => ({ GITHUB_ACTIONS: 'true', RUNNER_ENVIRONMENT: 'github-hosted', GITHUB_REPOSITORY: 'yanghaitao1995/OpenAster',
@@ -27,11 +27,11 @@ async function fixture(t) {
   return { directory, source };
 }
 
-test('candidate inputs are four fixed local 0.2.3 filenames; published 0.2.2 pins remain unchanged', () => {
-  assert.equal(CANDIDATE_VERSION, '0.2.3');
+test('candidate inputs are four fixed local 0.2.4 filenames; published 0.2.2 pins remain unchanged', () => {
+  assert.equal(CANDIDATE_VERSION, '0.2.4');
   assert.deepEqual(Object.keys(CANDIDATE_ARTIFACTS), ['windows', 'macos', 'deb', 'appimage']);
   for (const [kind, artifact] of Object.entries(CANDIDATE_ARTIFACTS)) {
-    assert.equal(artifact.file, ARTIFACTS[kind].file.replace('0.2.2', '0.2.3'));
+    assert.equal(artifact.file, ARTIFACTS[kind].file.replace('0.2.2', '0.2.4'));
     assert.equal(path.basename(artifact.file), artifact.file);
     assert.ok(Object.isFrozen(artifact));
     assert.match(ARTIFACTS[kind].sha256, /^[a-f0-9]{64}$/u);
@@ -52,9 +52,9 @@ test('candidate policy refuses paths, URLs, unbound commits and non-hosted envir
 
 test('candidate identity binds verifier, build, git HEAD and version to one checkout', () => {
   const env = environment(), source = env.GITHUB_WORKSPACE;
-  assert.doesNotThrow(() => assertCandidateCheckout(env, source, source, commit, '0.2.3'));
-  for (const [actualSource, tools, head, version] of [[source, source, '2'.repeat(40), '0.2.3'], [source, source, commit, '0.2.2'],
-    [path.join(source, 'child'), source, commit, '0.2.3'], [source, path.join(source, 'child'), commit, '0.2.3']]) {
+  assert.doesNotThrow(() => assertCandidateCheckout(env, source, source, commit, '0.2.4'));
+  for (const [actualSource, tools, head, version] of [[source, source, '2'.repeat(40), '0.2.4'], [source, source, commit, '0.2.2'],
+    [path.join(source, 'child'), source, commit, '0.2.4'], [source, path.join(source, 'child'), commit, '0.2.4']]) {
     assert.throws(() => assertCandidateCheckout(env, actualSource, tools, head, version));
   }
 });
@@ -87,7 +87,7 @@ test('candidate does not accept hardlinks or redirected release directories', as
 
 test('candidate generated UI identity must match the current source and package version', async t => {
   const f = await fixture(t);
-  await fs.writeFile(path.join(f.source, 'package.json'), JSON.stringify({ version: '0.2.3' }));
+  await fs.writeFile(path.join(f.source, 'package.json'), JSON.stringify({ version: '0.2.4' }));
   await fs.mkdir(path.join(f.source, 'public')); await fs.writeFile(path.join(f.source, 'public/index.html'), '<p>fixture</p>');
   await fs.mkdir(path.join(f.source, 'dist/public'), { recursive: true });
   const expected = { ...await sharedBuildInfo(f.source), mode: 'desktop-web' }, file = path.join(f.source, 'dist/public/build-info.json');
@@ -135,4 +135,92 @@ test('candidate extended scenarios reject basic-only and unavailable keyring suc
   }
   assert.throws(() => validateCandidateScenario(result(basic) + '\n' + result(basic), 'basic'), /exactly one/u);
   assert.throws(() => validateCandidateScenario(result({ ...basic, sandboxed: false }), 'basic'), /sandbox/u);
+});
+
+const macBundle = location => path.resolve(os.tmpdir(), 'openaster-mac-signature-fixture', location, 'OpenAster.app');
+const macSignatureOutput = bundle => [
+  `Executable=${path.join(bundle, 'Contents', 'MacOS', 'OpenAster')}`,
+  'Identifier=org.openaster.preview',
+  'Format=app bundle with Mach-O thin (arm64)',
+  'CodeDirectory v=20500 size=500 flags=0x10002(adhoc,runtime) hashes=12+7 location=embedded',
+  'Signature=adhoc', 'TeamIdentifier=not set', `CDHash=${'a'.repeat(40)}`,
+  'designated => identifier "org.openaster.preview"', '',
+].join('\n');
+
+test('macOS candidate verifies entire DMG and copied bundle and binds their ad hoc identities', async () => {
+  const calls = [], command = async (name, executable, args) => {
+    calls.push({ name, executable, args });
+    return { outputText: args[0] === '--display' ? macSignatureOutput(args.at(-1)) : '' };
+  };
+  const mounted = macBundle('mounted'), installed = macBundle('installed');
+  const identity = await verifyMacCandidateSignature(mounted, 'dmg', command);
+  assert.deepEqual(await verifyMacCandidateSignature(installed, 'installed', command, identity), identity);
+  assert.equal(identity.hardenedRuntime, true);
+  assert.equal(identity.developerId, false);
+  assert.equal(identity.notarizationVerified, false);
+  assert.deepEqual(calls, [
+    { name: 'dmg-code-signature-verify', executable: '/usr/bin/codesign', args: ['--verify', '--deep', '--strict', mounted] },
+    { name: 'dmg-code-signature-identity', executable: '/usr/bin/codesign', args: ['--display', '--verbose=4', '--requirements=-', mounted] },
+    { name: 'installed-code-signature-verify', executable: '/usr/bin/codesign', args: ['--verify', '--deep', '--strict', installed] },
+    { name: 'installed-code-signature-identity', executable: '/usr/bin/codesign', args: ['--display', '--verbose=4', '--requirements=-', installed] },
+  ]);
+});
+
+test('macOS candidate never reads identity after failed complete-code verification', async () => {
+  const calls = [], command = async (...args) => { calls.push(args); throw new Error('codesign reported an invalid nested signature'); };
+  await assert.rejects(verifyMacCandidateSignature(macBundle('mounted'), 'dmg', command), /invalid nested signature/u);
+  assert.equal(calls.length, 1);
+  for (const [bundle, stage] of [['relative/OpenAster.app', 'dmg'], [macBundle('mounted'), 'unknown'], [macBundle('mounted') + '\n', 'dmg']]) {
+    await assert.rejects(verifyMacCandidateSignature(bundle, stage, command), /Invalid fixed/u);
+  }
+  assert.equal(calls.length, 1);
+});
+
+test('macOS candidate accepts codesign implicit ad hoc requirements from the actual candidate log', async () => {
+  const mounted = macBundle('mounted'), installed = macBundle('installed');
+  const cdHash = 'e702fccc8a20354a1efcac4695e67c5cc9ea023f', requirement = `# designated => cdhash H"${cdHash}"`;
+  const command = async (_name, _executable, args) => ({ outputText: args[0] !== '--display' ? '' : macSignatureOutput(args.at(-1))
+    .replace('size=500', 'size=438').replace('hashes=12+7', 'hashes=3+7').replace('a'.repeat(40), cdHash)
+    .replace('designated => identifier "org.openaster.preview"', `Runtime Version=26.5.0\n${requirement}`) });
+  const identity = await verifyMacCandidateSignature(mounted, 'dmg', command);
+  assert.equal(identity.designatedRequirement, requirement);
+  assert.equal(identity.cdHash, cdHash);
+  assert.deepEqual(await verifyMacCandidateSignature(installed, 'installed', command, identity), identity);
+});
+
+test('macOS candidate refuses incomplete, ambiguous or inappropriate signature identities', async () => {
+  const bundle = macBundle('mounted'), valid = macSignatureOutput(bundle);
+  const invalid = [
+    valid.replace('Identifier=org.openaster.preview', 'Identifier=other.app'),
+    valid.replace('Identifier=org.openaster.preview\n', ''),
+    valid + 'Identifier=org.openaster.preview\n',
+    valid.replace(`Executable=${path.join(bundle, 'Contents', 'MacOS', 'OpenAster')}`, 'Executable=/other/app'),
+    valid.replace('Signature=adhoc', 'Signature=Developer ID'),
+    valid.replace('TeamIdentifier=not set', 'TeamIdentifier=EXAMPLETEAM'),
+    valid.replace('flags=0x10002(adhoc,runtime)', 'flags=0x2(adhoc)'),
+    valid.replace('flags=0x10002(adhoc,runtime)', 'flags=0x10000(runtime)'),
+    valid.replace(`CDHash=${'a'.repeat(40)}`, 'CDHash=invalid'),
+    valid.replace('designated => identifier "org.openaster.preview"\n', ''),
+    valid + 'designated => another requirement\n',
+    valid + '# designated => another requirement\n',
+    valid.replace('designated => identifier "org.openaster.preview"', '# designated => '),
+    valid.replace('designated => identifier "org.openaster.preview"', '#designated => unexpected format'),
+    valid.replace('designated => identifier "org.openaster.preview"', '## designated => unexpected format'),
+    valid.replace('designated => identifier "org.openaster.preview"', 'designated => ' + 'x'.repeat(8193)),
+    valid + '\0', valid + 'x'.repeat(65536), undefined,
+  ];
+  for (const output of invalid) {
+    const command = async (_name, _executable, args) => ({ outputText: args[0] === '--display' ? output : '' });
+    await assert.rejects(verifyMacCandidateSignature(bundle, 'dmg', command), /macOS/u);
+  }
+});
+
+test('macOS candidate rejects changed code or designated requirement after metadata-preserving copy', async () => {
+  const mounted = macBundle('mounted'), installed = macBundle('installed');
+  const identity = await verifyMacCandidateSignature(mounted, 'dmg', async () => ({ outputText: macSignatureOutput(mounted) }));
+  for (const output of [macSignatureOutput(installed).replace('a'.repeat(40), 'b'.repeat(40)),
+    macSignatureOutput(installed).replace('designated => ', '# designated => '),
+    macSignatureOutput(installed).replace('designated => identifier "org.openaster.preview"', 'designated => cdhash H"' + 'a'.repeat(40) + '"')]) {
+    await assert.rejects(verifyMacCandidateSignature(installed, 'installed', async () => ({ outputText: output }), identity), /differs from the read-only DMG/u);
+  }
 });

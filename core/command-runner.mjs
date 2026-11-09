@@ -31,6 +31,26 @@ export function boundCommandOutput(value) {
   return { text: value.slice(0, end), truncated: end !== value.length };
 }
 
+// Darwin can return EPERM from killpg while an exiting group contains only
+// zombies. It is not proof of exit. After pipes and the checkpoint drain, only
+// ESRCH can clear that error; never send another signal to a possibly reused ID.
+export async function confirmDarwinCommandGroupGone(pid, error, { deadline, platform = process.platform,
+  probe = (target, signal) => process.kill(target, signal), now = () => performance.now(),
+  pause = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
+  if (platform !== 'darwin' || error?.code !== 'EPERM' || !Number.isSafeInteger(pid) || pid <= 1 || !Number.isFinite(deadline)) return false;
+  const end = Math.min(deadline, now() + 1000);
+  for (;;) {
+    try { probe(-pid, 0); }
+    catch (failure) {
+      if (failure.code === 'ESRCH') return true;
+      if (failure.code !== 'EPERM') return false;
+    }
+    const remaining = end - now();
+    if (remaining <= 0) return false;
+    await pause(Math.min(25, remaining));
+  }
+}
+
 async function runPosixCommand({ command, cwd, env, timeoutMs, signal, onStarted }) {
   checkAbort(signal);
   const started = performance.now();
@@ -43,7 +63,10 @@ async function runPosixCommand({ command, cwd, env, timeoutMs, signal, onStarted
   const terminate = () => {
     if (!child.pid) return;
     try { process.kill(-child.pid, 'SIGKILL'); }
-    catch (error) { if (error.code !== 'ESRCH') killError = error; }
+    catch (error) {
+      // An unrelated signal error must not later become a recoverable EPERM.
+      if (error.code !== 'ESRCH' && (!killError || killError.code === 'EPERM')) killError = error;
+    }
   };
   for (const name of ['stdout', 'stderr']) child[name].on('data', bytes => {
     const remaining = COMMAND_LIMITS.outputBytes - sizes[name];
@@ -72,7 +95,9 @@ async function runPosixCommand({ command, cwd, env, timeoutMs, signal, onStarted
   const result = await new Promise(resolve => child.once('close', (exitCode, exitSignal) => resolve({ exitCode, signal: exitSignal })));
   clearTimeout(timer); signal?.removeEventListener('abort', abort);
   await callback;
-  if (killError) throw new CoreError('COMMAND_CLEANUP_FAILED', '命令进程组无法确认已停止；任务已停止，请检查本机进程。', 503);
+  if (killError && !await confirmDarwinCommandGroupGone(child.pid, killError, { deadline: started + timeoutMs })) {
+    throw new CoreError('COMMAND_CLEANUP_FAILED', '命令进程组无法确认已停止；任务已停止，请检查本机进程。', 503);
+  }
   if (spawnError) throw new CoreError('COMMAND_START_FAILED', '系统 shell 无法启动；命令未执行。', 503);
   if (startError && !signal?.aborted && !timedOut) throw startError;
   const text = name => Buffer.concat(buffers[name]).toString('utf8');

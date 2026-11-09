@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Exercises app.relaunch with owned test data. Never installs the application.
+// Exercises the production restart path with owned test data. Never installs the application.
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, readFile, rm, realpath, lstat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readSmokeRecord, isSmokeProcessAlive } from '../desktop/relaunch-smoke-state.mjs';
 import { stageDesktopExecutable } from './desktop-smoke-staging.mjs';
-import { validateSmokeFailure, parseSmokeStageDiagnostic } from '../desktop/smoke-diagnostics.mjs';
+import { validateSmokeFailure, parseSmokeStageDiagnostic, parseAppImageHandoffDiagnostic } from '../desktop/smoke-diagnostics.mjs';
 import { validateDraftRelaunchProofs, parseDraftUiDiagnostic } from '../desktop/draft-relaunch-proof.mjs';
 import { readAppImageFile, sameAppImageFile, sameAppImageProgram } from '../desktop/appimage-relaunch.mjs';
 
@@ -60,7 +60,18 @@ try {
   delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS;
   const launch = [...(args.includes('--source') ? [path.join(root, 'desktop/main.mjs')] : []), '--smoke-test', '--relaunch-smoke-test', '--smoke-phase=0', ...(args.includes('--software-rendering') ? ['--disable-gpu'] : [])];
   first = spawn(executable, launch, { cwd: path.dirname(executable), env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const receive = chunk => { output = (output + chunk).slice(-65536); };
+  let partial = '', handoffCount = 0;
+  const receive = chunk => {
+    output = (output + chunk).slice(-65536);
+    partial += chunk;
+    const lines = partial.split(/\r?\n/u); partial = lines.pop().slice(-65536);
+    for (const line of lines) {
+      const diagnostic = parseAppImageHandoffDiagnostic(line);
+      if (expectedAppImage !== null && diagnostic && handoffCount++ < 20) {
+        console.error('OPENASTER_APPIMAGE_HANDOFF_DIAGNOSTIC ' + JSON.stringify(diagnostic));
+      }
+    }
+  };
   first.stdout.on('data', receive); first.stderr.on('data', receive);
   first.once('exit', code => { firstExit = code; });
   first.once('close', () => { firstClosed = true; });

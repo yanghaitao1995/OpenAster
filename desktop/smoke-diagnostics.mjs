@@ -13,6 +13,7 @@ const CODES = new Set([
   'BACKUP_EXISTS', 'SOURCE_CHANGED', 'UNSAFE_BACKUP_PATH', 'UNSUPPORTED_BACKUP_FILE', 'BACKUP_LIMIT', 'INVALID_BACKUP', 'RESTORE_CLEANUP_INCOMPLETE',
   'RELAUNCH_SMOKE_INVALID', 'RELAUNCH_SMOKE_CHANGED', 'RELAUNCH_SMOKE_UNSAFE', 'RELAUNCH_SMOKE_OWNER', 'RELAUNCH_SMOKE_EXISTS',
   'RELAUNCH_SMOKE_FINISHED', 'RELAUNCH_SMOKE_PREVIOUS_ALIVE', 'RELAUNCH_SMOKE_PROCESS_UNKNOWN',
+  'APPIMAGE_HANDOFF_FAILED',
   'EACCES', 'EPERM', 'ENOENT', 'EEXIST', 'ENOSPC', 'EROFS', 'EIO', 'EBUSY', 'EBADF',
 ]);
 const invalid = () => Object.assign(new Error('Invalid bounded smoke diagnostic.'), { code: 'RELAUNCH_SMOKE_INVALID' });
@@ -28,6 +29,22 @@ const validPhase = phase => Number.isInteger(phase) && phase >= 0 && phase <= 4;
 const CHECK_STAGES = new Set(['page', 'workspace-menu', 'keychain', 'draft', 'relaunch', 'fixture', 'handoff', 'summary-draft',
   'cancel', 'backup', 'reopen-original', 'restore', 'reopen-restored']);
 const STAGE_PREFIX = 'OPENASTER_SMOKE_STAGE_DIAGNOSTIC ';
+const APPIMAGE_STAGES = new Set(['parent-spawn', 'parent-accepted', 'successor-ready', 'predecessor-exited', 'handoff-failed']);
+const APPIMAGE_PREFIX = 'OPENASTER_APPIMAGE_HANDOFF_DIAGNOSTIC ';
+
+export function createAppImageHandoffDiagnostic(stage, noNewPrivileges = null) {
+  if (!APPIMAGE_STAGES.has(stage) || !(noNewPrivileges === null || typeof noNewPrivileges === 'boolean')) throw invalid();
+  return { version: 1, stage, noNewPrivileges };
+}
+
+export function parseAppImageHandoffDiagnostic(line) {
+  try {
+    if (typeof line !== 'string' || line.length > 256 || /[\r\n]/u.test(line) || !line.startsWith(APPIMAGE_PREFIX)) return null;
+    const value = JSON.parse(line.slice(APPIMAGE_PREFIX.length));
+    if (!exact(value, ['version', 'stage', 'noNewPrivileges']) || value.version !== 1) return null;
+    return createAppImageHandoffDiagnostic(value.stage, value.noNewPrivileges);
+  } catch { return null; }
+}
 
 export function createSmokeStageDiagnostic(stage) {
   return { version: 1, stage: CHECK_STAGES.has(stage) ? stage : 'unknown', code: 'SMOKE_CHECK_FAILED' };
@@ -133,7 +150,7 @@ export function createSmokeController({ phase, record, close, output, exit, reco
       if (failure || completion) { await finish(); return false; }
       const next = prepare(selected);
       if (failure || completion) { await finish(); return false; }
-      launch(next);
+      await launch(next);
       return true;
     } catch (error) {
       capture(error, { action: 'relaunch', reason: 'relaunch-failed' });

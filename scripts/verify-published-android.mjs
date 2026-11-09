@@ -29,6 +29,58 @@ export function assertHostedAndroid(env, platform, arch) {
     && env.RUNNER_ENVIRONMENT === 'github-hosted' && env.GITHUB_REPOSITORY === 'yanghaitao1995/OpenAster',
   'Android acceptance requires this repository on an ephemeral Linux x64 GitHub-hosted runner');
 }
+export function assertKvmProcessIdentity(identity, expected) {
+  const validId = value => Number.isInteger(value) && value > 0 && value < 0xffffffff;
+  requireFact(validId(expected.uid) && validId(expected.gid)
+    && identity.uid === expected.uid && identity.euid === expected.uid
+    && identity.gid === expected.gid && identity.egid === expected.gid,
+  'KVM acceptance must retain the original non-root runner UID and use the existing KVM real/effective GID');
+  return { ...identity, scope: 'process-tree-primary-group', accountMembershipChanged: false };
+}
+export function assertKvmPrivilegeStatus(status, expected) {
+  requireFact(typeof status === 'string' && Buffer.byteLength(status) <= 64 * 1024, 'Invalid bounded Linux process status');
+  const field = name => {
+    const matches = [...status.matchAll(new RegExp(`^${name}:[\\t ]+([^\\r\\n]+)$`, 'gmu'))];
+    requireFact(matches.length === 1, `Missing or repeated process status field: ${name}`);
+    return matches[0][1].trim();
+  };
+  const ids = name => {
+    const value = field(name);
+    requireFact(/^\d+(?:[\t ]+\d+){3}$/u.test(value), `Invalid process ${name} fields`);
+    return value.split(/[\t ]+/u).map(Number);
+  };
+  const uids = ids('Uid'), gids = ids('Gid');
+  assertKvmProcessIdentity({ uid: uids[0], euid: uids[1], gid: gids[0], egid: gids[1] }, expected);
+  requireFact(uids.every(id => id === expected.uid) && gids.every(id => id === expected.gid),
+    'Real, effective, saved and filesystem IDs must retain the non-root KVM context');
+  for (const name of ['CapInh', 'CapPrm', 'CapEff', 'CapBnd', 'CapAmb']) {
+    requireFact(/^0{16}$/u.test(field(name)), 'KVM acceptance must have no retained Linux capabilities');
+  }
+  requireFact(field('NoNewPrivs') === '1', 'KVM acceptance must prohibit new privileges');
+  return { uids, gids, allCapabilitiesCleared: true, noNewPrivileges: true };
+}
+export function kvmDeviceIdentity(stat) {
+  requireFact(stat.isCharacterDevice() && !stat.isSymbolicLink() && stat.uid === 0,
+    'KVM must be an existing root-owned character device without links');
+  requireFact(typeof stat.rdev === 'bigint' || Number.isSafeInteger(stat.rdev), 'Invalid KVM device number');
+  const device = BigInt(stat.rdev);
+  requireFact(device >= 0n && device <= 0xffffffffffffffffn, 'Invalid KVM device number');
+  // Linux/glibc dev_t encoding, matching GNU stat's portable %t:%T fields.
+  const major = ((device >> 8n) & 0xfffn) | ((device >> 32n) & 0xfffff000n);
+  const minor = (device & 0xffn) | ((device >> 12n) & 0xffffff00n);
+  return `${stat.dev}:${stat.ino}:${major.toString(16)}:${minor.toString(16)}:${stat.uid}:${stat.gid}:${(stat.mode & 0o7777).toString(8)}`;
+}
+export async function prepareOfficialAndroidSdk(sdk, command) {
+  const bin = path.join(sdk, 'cmdline-tools', 'latest', 'bin'), emulator = path.join(sdk, 'emulator', 'emulator');
+  await command('sdk-licenses', path.join(bin, 'sdkmanager'), ['--licenses'], { timeout: 120000, stdin: 'y\n'.repeat(64) });
+  await command('sdk-image', path.join(bin, 'sdkmanager'), ['platform-tools', 'emulator', IMAGE], { timeout: 600000, stdin: 'y\n'.repeat(16) });
+  await command('emulator-version', emulator, ['-version']);
+  await command('adb-version', path.join(sdk, 'platform-tools', 'adb'), ['version']);
+  // Fresh hosted images may not contain emulator until sdkmanager completes.
+  const result = await command('hardware-acceleration', emulator, ['-accel-check']);
+  requireFact(/KVM[^\n]*(installed|usable)|KVM.*version/iu.test(result.text), 'Emulator did not confirm usable KVM');
+  return { image: IMAGE, officialComponents: ['platform-tools', 'emulator', IMAGE], kvmUsable: true };
+}
 export function acceptanceMode(args) {
   requireFact(Array.isArray(args) && (args.length === 0 || args.length === 1 && args[0] === '--candidate'),
     'Usage: verify-published-android.mjs [--candidate]');
@@ -68,8 +120,8 @@ export async function readCandidateArtifact(workspace) {
     return JSON.parse(await fs.readFile(file, 'utf8'));
   };
   const pkg = await json('package.json'), mobile = await json('mobile/package.json'), version = await json('mobile/android-version.json');
-  requireFact(pkg.version === '0.2.3' && mobile.version === pkg.version && version.versionCode === 13
-    && Object.keys(version).length === 1, 'Candidate must use the reviewed 0.2.3 version and Android code 13');
+  requireFact(pkg.version === '0.2.4' && mobile.version === pkg.version && version.versionCode === 14
+    && Object.keys(version).length === 1, 'Candidate must use the reviewed 0.2.4 version and Android code 14');
   const relative = 'mobile/android/app/build/outputs/apk/debug/app-debug.apk';
   const current = await ordinaryCandidatePath(root, relative);
   const identity = await verifyCandidateBytes(current), build = await sharedBuildInfo(root);
@@ -324,6 +376,16 @@ export async function main(args = process.argv.slice(2)) {
     requireFact(service.record.closed && service.record.processGroupGone, 'Owned service cleanup did not complete');
   }
   try {
+    if (candidate) await step('non-root-kvm-process-context', async () => {
+      try {
+        const identity = { uid: process.getuid(), euid: process.geteuid(), gid: process.getgid(), egid: process.getegid() };
+        const expected = { uid: Number(process.env.OPENASTER_KVM_RUNNER_UID), gid: Number(process.env.OPENASTER_KVM_GID) };
+        const processIdentity = assertKvmProcessIdentity(identity, expected);
+        const privileges = assertKvmPrivilegeStatus(await fs.readFile('/proc/self/status', 'utf8'), expected);
+        receipt.kvmAccessContext = { ...processIdentity, ...privileges };
+        return receipt.kvmAccessContext;
+      } catch (error) { receipt.environmentBlocked = true; throw error; }
+    });
     await step('isolated-runner-environment', async () => {
       const runnerTemp = await fs.realpath(process.env.RUNNER_TEMP); temporary = await fs.mkdtemp(path.join(runnerTemp, 'openaster-android-'));
       requireFact(within(runnerTemp, temporary), 'Invalid temporary directory');
@@ -356,18 +418,24 @@ export async function main(args = process.argv.slice(2)) {
           sourceUnchanged: true, generatedExclusions: ['mobile/android', 'mobile/ios', 'mobile/www'], ...artifact };
       });
     }
-    const checkKvm = () => step('kvm-access-precondition', async () => {
+    const checkKvmDevice = () => step('kvm-device-precondition', async () => {
       try {
+        requireFact(process.getuid() > 0 && process.getuid() === process.geteuid(), 'Android acceptance must run as a non-root runner');
+        if (candidate) {
+          const device = await fs.lstat('/dev/kvm');
+          requireFact(device.gid === receipt.kvmAccessContext.gid && kvmDeviceIdentity(device) === process.env.OPENASTER_KVM_DEVICE,
+            'KVM device identity, owner, group or mode changed before acceptance');
+          receipt.kvmAccessContext.device = process.env.OPENASTER_KVM_DEVICE;
+        }
         await fs.access('/dev/kvm', constants.R_OK | constants.W_OK);
-        const result = await command('hardware-acceleration', emulatorPath, ['-accel-check']);
-        requireFact(/KVM[^\n]*(installed|usable)|KVM.*version/iu.test(result.text), 'Emulator did not confirm usable KVM'); return { kvmUsable: true };
+        return { deviceReadableWritable: true };
       } catch (error) {
         receipt.environmentBlocked = true;
         throw new Error(`KVM precondition failed. No permissions or security settings were changed. ${error.code ?? clean(error.message)}`);
       }
     });
     if (!candidate) {
-      await checkKvm();
+      await checkKvmDevice();
       apkFile = path.join(temporary, APK.file);
       await step('download-published-apk', () => download(apkFile));
       receipt.observations.artifactVerified = true;
@@ -408,12 +476,10 @@ export async function main(args = process.argv.slice(2)) {
     });
     // Preserve static version/signature/UI identity evidence even when this
     // runner cannot grant access to KVM. Never count that evidence as a boot.
-    if (candidate) await checkKvm();
-    await step('official-sdk-and-fresh-avd', async () => {
+    if (candidate) await checkKvmDevice();
+    await step('official-sdk-and-hardware-acceleration', () => prepareOfficialAndroidSdk(env.ANDROID_HOME, command));
+    await step('fresh-isolated-avd', async () => {
       const bin = path.join(env.ANDROID_HOME, 'cmdline-tools', 'latest', 'bin');
-      await command('sdk-licenses', path.join(bin, 'sdkmanager'), ['--licenses'], { timeout: 120000, stdin: 'y\n'.repeat(64) });
-      await command('sdk-image', path.join(bin, 'sdkmanager'), ['platform-tools', 'emulator', IMAGE], { timeout: 600000, stdin: 'y\n'.repeat(16) });
-      await command('emulator-version', emulatorPath, ['-version']); await command('adb-version', adbPath, ['version']);
       await command('create-fresh-avd', path.join(bin, 'avdmanager'), ['create', 'avd', '-n', avdName, '-k', IMAGE, '-p', path.join(temporary, 'avds', `${avdName}.avd`)], { timeout: 90000, stdin: 'no\n' });
       const configFile = path.join(temporary, 'avds', `${avdName}.avd`, 'config.ini');
       const values = new Map((await fs.readFile(configFile, 'utf8')).split(/\r?\n/u).filter(line => line.includes('=')).map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]));
@@ -425,7 +491,9 @@ export async function main(args = process.argv.slice(2)) {
       for (const port of [5038, 5554, 5555, 8554]) {
         const probe = net.createServer(); await new Promise((resolve, reject) => { probe.once('error', reject); probe.listen({ host: '127.0.0.1', port, exclusive: true }, resolve); }); await new Promise(resolve => probe.close(resolve));
       }
-      adbService = await startService('adb-server', adbPath, ['-L', 'tcp:127.0.0.1:5038', '--one-device', 'openaster-no-usb', 'server', 'nodaemon']); await wait(1000);
+      // ADB accepts literal localhost for its loopback listener, not 127.0.0.1.
+      // Keep numeric client addresses above so clients cannot auto-start a replacement server.
+      adbService = await startService('adb-server', adbPath, ['-L', 'tcp:localhost:5038', '--one-device', 'openaster-no-usb', 'server', 'nodaemon']); await wait(1000);
       requireFact(!adbService.record.closed && !adbService.record.error, 'Owned ADB did not start');
       emulatorService = await startService('emulator', emulatorPath, ['-avd', avdName, '-port', '5554', '-accel', 'on', '-gpu', 'swiftshader', '-memory', '3072', '-cores', '2', '-no-window', '-no-audio', '-no-snapshot', '-no-boot-anim', '-camera-back', 'none', '-camera-front', 'none', '-no-metrics', '-no-direct-adb', '-adb-path', adbPath, '-grpc', '8554', '-grpc-use-jwt']);
       const deadline = Date.now() + 240000;
