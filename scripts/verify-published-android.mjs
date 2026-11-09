@@ -37,10 +37,38 @@ export function assertKvmProcessIdentity(identity, expected) {
   'KVM acceptance must retain the original non-root runner UID and use the existing KVM real/effective GID');
   return { ...identity, scope: 'process-tree-primary-group', accountMembershipChanged: false };
 }
+export function assertKvmPrivilegeStatus(status, expected) {
+  requireFact(typeof status === 'string' && Buffer.byteLength(status) <= 64 * 1024, 'Invalid bounded Linux process status');
+  const field = name => {
+    const matches = [...status.matchAll(new RegExp(`^${name}:[\\t ]+([^\\r\\n]+)$`, 'gmu'))];
+    requireFact(matches.length === 1, `Missing or repeated process status field: ${name}`);
+    return matches[0][1].trim();
+  };
+  const ids = name => {
+    const value = field(name);
+    requireFact(/^\d+(?:[\t ]+\d+){3}$/u.test(value), `Invalid process ${name} fields`);
+    return value.split(/[\t ]+/u).map(Number);
+  };
+  const uids = ids('Uid'), gids = ids('Gid');
+  assertKvmProcessIdentity({ uid: uids[0], euid: uids[1], gid: gids[0], egid: gids[1] }, expected);
+  requireFact(uids.every(id => id === expected.uid) && gids.every(id => id === expected.gid),
+    'Real, effective, saved and filesystem IDs must retain the non-root KVM context');
+  for (const name of ['CapInh', 'CapPrm', 'CapEff', 'CapBnd', 'CapAmb']) {
+    requireFact(/^0{16}$/u.test(field(name)), 'KVM acceptance must have no retained Linux capabilities');
+  }
+  requireFact(field('NoNewPrivs') === '1', 'KVM acceptance must prohibit new privileges');
+  return { uids, gids, allCapabilitiesCleared: true, noNewPrivileges: true };
+}
 export function kvmDeviceIdentity(stat) {
   requireFact(stat.isCharacterDevice() && !stat.isSymbolicLink() && stat.uid === 0,
     'KVM must be an existing root-owned character device without links');
-  return `${stat.dev}:${stat.ino}:${stat.rdev}:${stat.uid}:${stat.gid}:${(stat.mode & 0o7777).toString(8)}`;
+  requireFact(typeof stat.rdev === 'bigint' || Number.isSafeInteger(stat.rdev), 'Invalid KVM device number');
+  const device = BigInt(stat.rdev);
+  requireFact(device >= 0n && device <= 0xffffffffffffffffn, 'Invalid KVM device number');
+  // Linux/glibc dev_t encoding, matching GNU stat's portable %t:%T fields.
+  const major = ((device >> 8n) & 0xfffn) | ((device >> 32n) & 0xfffff000n);
+  const minor = (device & 0xffn) | ((device >> 12n) & 0xffffff00n);
+  return `${stat.dev}:${stat.ino}:${major.toString(16)}:${minor.toString(16)}:${stat.uid}:${stat.gid}:${(stat.mode & 0o7777).toString(8)}`;
 }
 export function acceptanceMode(args) {
   requireFact(Array.isArray(args) && (args.length === 0 || args.length === 1 && args[0] === '--candidate'),
@@ -337,6 +365,16 @@ export async function main(args = process.argv.slice(2)) {
     requireFact(service.record.closed && service.record.processGroupGone, 'Owned service cleanup did not complete');
   }
   try {
+    if (candidate) await step('non-root-kvm-process-context', async () => {
+      try {
+        const identity = { uid: process.getuid(), euid: process.geteuid(), gid: process.getgid(), egid: process.getegid() };
+        const expected = { uid: Number(process.env.OPENASTER_KVM_RUNNER_UID), gid: Number(process.env.OPENASTER_KVM_GID) };
+        const processIdentity = assertKvmProcessIdentity(identity, expected);
+        const privileges = assertKvmPrivilegeStatus(await fs.readFile('/proc/self/status', 'utf8'), expected);
+        receipt.kvmAccessContext = { ...processIdentity, ...privileges };
+        return receipt.kvmAccessContext;
+      } catch (error) { receipt.environmentBlocked = true; throw error; }
+    });
     await step('isolated-runner-environment', async () => {
       const runnerTemp = await fs.realpath(process.env.RUNNER_TEMP); temporary = await fs.mkdtemp(path.join(runnerTemp, 'openaster-android-'));
       requireFact(within(runnerTemp, temporary), 'Invalid temporary directory');
@@ -373,11 +411,8 @@ export async function main(args = process.argv.slice(2)) {
       try {
         requireFact(process.getuid() > 0 && process.getuid() === process.geteuid(), 'Android acceptance must run as a non-root runner');
         if (candidate) {
-          const identity = { uid: process.getuid(), euid: process.geteuid(), gid: process.getgid(), egid: process.getegid() };
-          const expected = { uid: Number(process.env.OPENASTER_KVM_RUNNER_UID), gid: Number(process.env.OPENASTER_KVM_GID) };
-          receipt.kvmAccessContext = assertKvmProcessIdentity(identity, expected);
           const device = await fs.lstat('/dev/kvm');
-          requireFact(device.gid === expected.gid && kvmDeviceIdentity(device) === process.env.OPENASTER_KVM_DEVICE,
+          requireFact(device.gid === receipt.kvmAccessContext.gid && kvmDeviceIdentity(device) === process.env.OPENASTER_KVM_DEVICE,
             'KVM device identity, owner, group or mode changed before acceptance');
           receipt.kvmAccessContext.device = process.env.OPENASTER_KVM_DEVICE;
         }

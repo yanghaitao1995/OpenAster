@@ -130,7 +130,11 @@ export async function verifyMacCandidateSignature(bundle, stage, command, expect
     return matches[0].slice(prefix.length);
   };
   const executable = field('Executable='), identifier = field('Identifier='), signature = field('Signature='), teamIdentifier = field('TeamIdentifier=');
-  const cdHash = field('CDHash='), designatedRequirement = field('designated => '), directory = field('CodeDirectory ');
+  // codesign prefixes its implicit (synthesized) designated requirement with
+  // "# ". Retain that form when comparing the mounted and copied identities.
+  const requirements = lines.filter(line => /^(?:# )?designated => /u.test(line));
+  if (requirements.length !== 1 || !requirements[0].replace(/^(?:# )?designated => /u, '').trim()) fail('Missing or ambiguous macOS designated requirement');
+  const cdHash = field('CDHash='), designatedRequirement = requirements[0], directory = field('CodeDirectory ');
   const flagMatch = /(?:^| )flags=0x([a-f0-9]{1,8})\([^\r\n]*?\)(?: |$)/iu.exec(directory);
   const flags = flagMatch ? Number.parseInt(flagMatch[1], 16) : 0;
   if (executable !== path.join(bundle, 'Contents', 'MacOS', 'OpenAster') || identifier !== 'org.openaster.preview'

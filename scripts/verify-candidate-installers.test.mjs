@@ -176,6 +176,18 @@ test('macOS candidate never reads identity after failed complete-code verificati
   assert.equal(calls.length, 1);
 });
 
+test('macOS candidate accepts codesign implicit ad hoc requirements from the actual candidate log', async () => {
+  const mounted = macBundle('mounted'), installed = macBundle('installed');
+  const cdHash = 'e702fccc8a20354a1efcac4695e67c5cc9ea023f', requirement = `# designated => cdhash H"${cdHash}"`;
+  const command = async (_name, _executable, args) => ({ outputText: args[0] !== '--display' ? '' : macSignatureOutput(args.at(-1))
+    .replace('size=500', 'size=438').replace('hashes=12+7', 'hashes=3+7').replace('a'.repeat(40), cdHash)
+    .replace('designated => identifier "org.openaster.preview"', `Runtime Version=26.5.0\n${requirement}`) });
+  const identity = await verifyMacCandidateSignature(mounted, 'dmg', command);
+  assert.equal(identity.designatedRequirement, requirement);
+  assert.equal(identity.cdHash, cdHash);
+  assert.deepEqual(await verifyMacCandidateSignature(installed, 'installed', command, identity), identity);
+});
+
 test('macOS candidate refuses incomplete, ambiguous or inappropriate signature identities', async () => {
   const bundle = macBundle('mounted'), valid = macSignatureOutput(bundle);
   const invalid = [
@@ -190,6 +202,10 @@ test('macOS candidate refuses incomplete, ambiguous or inappropriate signature i
     valid.replace(`CDHash=${'a'.repeat(40)}`, 'CDHash=invalid'),
     valid.replace('designated => identifier "org.openaster.preview"\n', ''),
     valid + 'designated => another requirement\n',
+    valid + '# designated => another requirement\n',
+    valid.replace('designated => identifier "org.openaster.preview"', '# designated => '),
+    valid.replace('designated => identifier "org.openaster.preview"', '#designated => unexpected format'),
+    valid.replace('designated => identifier "org.openaster.preview"', '## designated => unexpected format'),
     valid.replace('designated => identifier "org.openaster.preview"', 'designated => ' + 'x'.repeat(8193)),
     valid + '\0', valid + 'x'.repeat(65536), undefined,
   ];
@@ -203,6 +219,7 @@ test('macOS candidate rejects changed code or designated requirement after metad
   const mounted = macBundle('mounted'), installed = macBundle('installed');
   const identity = await verifyMacCandidateSignature(mounted, 'dmg', async () => ({ outputText: macSignatureOutput(mounted) }));
   for (const output of [macSignatureOutput(installed).replace('a'.repeat(40), 'b'.repeat(40)),
+    macSignatureOutput(installed).replace('designated => ', '# designated => '),
     macSignatureOutput(installed).replace('designated => identifier "org.openaster.preview"', 'designated => cdhash H"' + 'a'.repeat(40) + '"')]) {
     await assert.rejects(verifyMacCandidateSignature(installed, 'installed', async () => ({ outputText: output }), identity), /differs from the read-only DMG/u);
   }
