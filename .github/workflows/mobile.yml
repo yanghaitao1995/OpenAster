@@ -42,9 +42,7 @@ jobs:
       - name: Install and verify this checkout's Android candidate
         if: matrix.platform == 'android'
         shell: bash
-        run: |
-          export JAVA_HOME="$JAVA_HOME_21_X64"
-          node scripts/verify-published-android.mjs --candidate
+        run: bash scripts/android-candidate-acceptance.sh
       - name: Build iOS simulator application
         if: matrix.platform == 'ios'
         run: xcodebuild -project mobile/ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -derivedDataPath release/ios-simulator CODE_SIGNING_ALLOWED=NO build
