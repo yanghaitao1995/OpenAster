@@ -2,7 +2,7 @@
 
 在对话框里输入“帮我整理这个项目”，模型可以给出一份建议。但要让它真的查看目录、读取文件、修改代码，再把结果展示出来，还需要一套负责执行的程序。本文用 OpenAster 走一遍这条路径。
 
-OpenAster 是一个采用 **Vibe Coding** 方式开发的开源学习项目。这里的 Vibe Coding，指通过自然语言描述需求，由 AI 辅助编写和修改代码，再通过阅读源码、运行程序和测试来确认结果。它适合用于学习与探索，当前版本为 0.2.3 预览版。
+OpenAster 是一个采用 **Vibe Coding** 方式开发的开源学习项目。这里的 Vibe Coding，指通过自然语言描述需求，由 AI 辅助编写和修改代码，再通过阅读源码、运行程序和测试来确认结果。它适合用于学习与探索，当前源码版本为 0.2.4 预览版，安装包仍待候选验收。
 
 源码：[github.com/yanghaitao1995/OpenAster](https://github.com/yanghaitao1995/OpenAster)。本文的示例代码与讲解按这个项目重新编写，示例不会读取个人文件，也不需要模型账号。
 
@@ -408,7 +408,7 @@ OpenAster 的网页资源放在 `public/`。桌面端通过 Electron 打开工�
 | Android 工程 | `pnpm mobile:android` | JDK、Android SDK 和后续 Gradle 构建 |
 | iOS 工程 | `pnpm mobile:ios` | macOS、Xcode 和后续原生构建 |
 
-下载请以 [0.2.3 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 的实际附件和验证记录为准，核对版本、系统、架构、SHA-256 与签名。文件包括 Windows x64 EXE、macOS arm64 DMG、Linux x86_64 AppImage / amd64 DEB 和 Android 调试 APK。构建、内容核对、安装启动、备份恢复与重启检查各有独立结果，不能把一种平台或一项检查的通过结论扩展到全部环境。GitHub 自动附带的 Source code（ZIP / tar.gz）是源码，按第 2 节运行。各平台的条件和 Android 调试签名升级限制见 [PLATFORMS.md](https://github.com/yanghaitao1995/OpenAster/blob/main/docs/PLATFORMS.md)。当前不提供 iPhone 真机 IPA 或 TestFlight 邀请，模拟器应用不能替代真机签名与分发。
+0.2.4 正在进行候选安装验收，通过后将在 [0.2.4 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.4) 列出已验证的下载文件与逐项记录；下载时只选择该版本实际列出的附件，核对版本、系统、架构、SHA-256 与签名。候选文件格式为 Windows x64 EXE、macOS arm64 DMG、Linux x86_64 AppImage / amd64 DEB 和 Android 调试 APK，列出构建目标不代表这些包已经可下载。构建、内容核对、安装启动、备份恢复与重启检查各有独立结果，不能把一种平台或一项检查的通过结论扩展到全部环境。GitHub 自动附带的 Source code（ZIP / tar.gz）是源码，按第 2 节运行。各平台的条件和 Android 调试签名升级限制见 [PLATFORMS.md](https://github.com/yanghaitao1995/OpenAster/blob/main/docs/PLATFORMS.md)。当前不提供 iPhone 真机 IPA 或 TestFlight 邀请，模拟器应用不能替代真机签名与分发。
 
 ## 12. 如何证明刚才的改动有效
 

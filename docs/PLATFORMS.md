@@ -1,6 +1,6 @@
 # 平台与安装包
 
-应用版本为 **0.2.3 预览版**。安装包是否可下载，以及每个包的操作系统、架构、签名和验证状态，以 [0.2.3 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 中**对应版本的实际附件和逐项说明**为准。未列出的包表示该版本尚未提供；源码、构建入口或工作流存在，并不表示该平台已经完成安装验收或公开发布。
+当前源码版本为 **0.2.4 预览版**，安装包仍处于候选验收阶段。后续发布的包是否可下载，以及每个包的操作系统、架构、签名和验证状态，以 [0.2.4 Release](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.4) 中**对应版本的实际附件和逐项说明**为准。未列出的包表示该版本尚未提供；源码、构建入口或工作流存在，并不表示该平台已经完成安装验收或公开发布。
 
 ## 使用前说明
 
@@ -18,7 +18,7 @@ OpenAster 是采用 Vibe Coding 开发的学习与探索项目。软件依据 [A
 | --- | --- | --- |
 | 网页 | 本机启动 Node.js 服务，浏览器访问 `http://127.0.0.1:4317` | 默认仅回环监听，不是公开托管网站。跨设备访问需自己配置可信 TLS 证书、认证与允许的来源；不能把本机 HTTP 地址当作远程网关。 |
 | Windows 桌面包 | 核对包的处理器架构、支持的 Windows 版本及校验值 | 当前预览包未作发布者代码签名。系统出现来源或签名警告时先核对，不要求关闭防护或绕过警告安装。 |
-| macOS 桌面包 | 核对 Intel / Apple Silicon 架构与支持的 macOS 版本 | 当前预览构建未公证，不承诺已经过 Apple 的分发审核。实际签名状态以包说明为准，不通过关闭 Gatekeeper 或移除安全标记来代替核验。 |
+| macOS 桌面包 | 核对 Intel / Apple Silicon 架构与支持的 macOS 版本 | 当前构建使用 ad hoc 临时签名并保留强化运行时；这不是 Apple Developer ID 签名，也未公证，不表示经过 Apple 的分发审核。实际签名状态以包说明为准，不通过关闭 Gatekeeper 或移除安全标记来代替核验。 |
 | Linux 桌面包 | 核对发行版、处理器架构、包格式和所需桌面运行库 | 某一种架构或发行版的构建结果不能代表全部 Linux 环境。缺少依赖时按可信发行版与对应包说明处理，不直接执行来源不明的安装脚本。 |
 | Android APK | 使用与包说明兼容的设备，并准备可信 HTTPS 主机网关 | 当前调试 APK 用于学习测试，不是应用商店正式发行包；调试签名不代表商店审核。文件和命令在网关主机执行，不能忽略证书错误来连接。 |
 | iOS 模拟器 `.app` | 在 Mac 的 Xcode 模拟器中使用匹配的运行环境 | 即使提供此类构建，也只是模拟器应用，不能安装到 iPhone；将它压缩或改名为 `.ipa` 不会变成真机安装包。 |
@@ -26,15 +26,15 @@ OpenAster 是采用 Vibe Coding 开发的学习与探索项目。软件依据 [A
 
 下载后先核对**版本、系统要求、架构和 SHA-256**，再检查 Release 中该包的签名与安装说明。哈希一致用于核对文件完整性，不能替代来源与签名核验；出现安全或证书警告时，先停止并确认原因。
 
-0.2.3 使用以下安装文件命名，是否提供以 [Release 的实际附件](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 为准。该页面正文集中记录 SHA-256、签名和逐项验证结果。
+0.2.4 候选构建使用以下安装文件命名，验收后是否提供以 [Release 的实际附件](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.4) 为准。该页面正文集中记录 SHA-256、签名和逐项验证结果。
 
 | 文件 | 系统与架构 |
 | --- | --- |
-| `OpenAster-0.2.3-win-x64.exe` | Windows，x64 |
-| `OpenAster-0.2.3-mac-arm64.dmg` | macOS，Apple Silicon arm64 |
-| `OpenAster-0.2.3-linux-x86_64.AppImage` | Linux，x86_64 |
-| `OpenAster-0.2.3-linux-amd64.deb` | Debian / Ubuntu 类发行版，amd64 |
-| `OpenAster-0.2.3-android-vc13-debug.apk` | Android，Java / WebView 客户端 |
+| `OpenAster-0.2.4-win-x64.exe` | Windows，x64 |
+| `OpenAster-0.2.4-mac-arm64.dmg` | macOS，Apple Silicon arm64 |
+| `OpenAster-0.2.4-linux-x86_64.AppImage` | Linux，x86_64 |
+| `OpenAster-0.2.4-linux-amd64.deb` | Debian / Ubuntu 类发行版，amd64 |
+| `OpenAster-0.2.4-android-vc14-debug.apk` | Android，Java / WebView 客户端 |
 
 GitHub 自动提供的 Source code（ZIP / tar.gz）是源码，不是安装程序；运行方法见 [README](../README.md#在电脑上运行网页版)。
 
@@ -72,6 +72,6 @@ pnpm mobile:android
 
 桌面候选验收在本仓库的 GitHub 托管运行器上进行，核对同一提交的版本、安装文件哈希和完整包内清单，再分别记录安装、基础启动、原生备份恢复和五进程重启结果。后两项覆盖模拟任务、分支、历史附件、工作区及受保护的凭据和草稿状态；系统凭据存储不可用时，不能以基础启动结果代替扩展验收。
 
-Android 分别核对包内容、签名及模拟器安装启动；网关连接、真实模型任务和真机设备是否实测，以 [0.2.3 Release 的记录](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.3) 为准。上述流程说明验收范围，不代表每项检查都已通过，也不代表所有操作系统版本和设备。当前不提供 iPhone 可直接安装的 IPA。
+Android 分别核对包内容、签名及模拟器安装启动；网关连接、真实模型任务和真机设备是否实测，以 [0.2.4 Release 的记录](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.4) 为准。上述流程说明验收范围，不代表每项检查都已通过，也不代表所有操作系统版本和设备。当前不提供 iPhone 可直接安装的 IPA。
 
 Android 调试包用于学习测试，不是应用商店正式发行包。桌面包的签名状态在 Release 中明确标记；不要通过关闭系统安全检查或忽略 HTTPS 证书错误来解决安装与连接问题。
