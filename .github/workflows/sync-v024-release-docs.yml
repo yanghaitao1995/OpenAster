@@ -1,0 +1,206 @@
+name: Sync reviewed v0.2.4 release documentation
+on:
+  push:
+    branches: [ops/sync-v024-release-docs-20261111]
+    paths: [.github/workflows/sync-v024-release-docs.yml]
+permissions: {}
+concurrency:
+  group: sync-v024-release-docs
+  cancel-in-progress: false
+jobs:
+  update-description:
+    if: github.repository == 'yanghaitao1995/OpenAster' && github.ref == 'refs/heads/ops/sync-v024-release-docs-20261111'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Verify sources and attachments, update only the reviewed description
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          node --input-type=module <<'OPENASTER_RELEASE_DOC_SYNC'
+          import assert from 'node:assert/strict';
+          import { createHash } from 'node:crypto';
+          
+          // Fixed, reviewed documentation-only update. No checkout, package install or user input.
+          const expected = {
+            "repository": "yanghaitao1995/OpenAster",
+            "branch": "ops/sync-v024-release-docs-20261111",
+            "release": {
+              "id": 438775246,
+              "tag_name": "v0.2.4",
+              "target_commitish": "f206d5fd4d45274046a738ca591c2cbce4c4a20c",
+              "name": "OpenAster 0.2.4 预览版",
+              "draft": false,
+              "prerelease": true,
+              "created_at": "2026-11-09T05:12:07Z",
+              "published_at": "2026-11-09T07:04:15Z",
+              "immutable": false
+            },
+            "assets": [
+              {
+                "id": 726358797,
+                "name": "OpenAster-0.2.4-android-vc14-debug.apk",
+                "size": 4124501,
+                "digest": "sha256:05e766d97f3d80e2ff965ba31c141ffdf1468ebc943ea749fde04c88f3ab7484",
+                "state": "uploaded",
+                "content_type": "application/vnd.android.package-archive",
+                "created_at": "2026-11-09T05:34:11Z",
+                "updated_at": "2026-11-09T05:34:17Z",
+                "browser_download_url": "https://github.com/yanghaitao1995/OpenAster/releases/download/v0.2.4/OpenAster-0.2.4-android-vc14-debug.apk"
+              },
+              {
+                "id": 726392550,
+                "name": "OpenAster-0.2.4-win-x64.exe",
+                "size": 121669587,
+                "digest": "sha256:b2b8def5f2be9fbb0a321f4408e447a75ed16bf14b2b4e4122387c266bf0d022",
+                "state": "uploaded",
+                "content_type": "application/x-msdownload",
+                "created_at": "2026-11-09T05:53:01Z",
+                "updated_at": "2026-11-09T05:54:16Z",
+                "browser_download_url": "https://github.com/yanghaitao1995/OpenAster/releases/download/v0.2.4/OpenAster-0.2.4-win-x64.exe"
+              },
+              {
+                "id": 726394668,
+                "name": "OpenAster-0.2.4-mac-arm64.dmg",
+                "size": 119663392,
+                "digest": "sha256:2efe48d36f907564cf474cc6b1c3789cc26db7497d9d93a33203b8d58e25bed7",
+                "state": "uploaded",
+                "content_type": "application/octet-stream",
+                "created_at": "2026-11-09T05:54:16Z",
+                "updated_at": "2026-11-09T05:55:20Z",
+                "browser_download_url": "https://github.com/yanghaitao1995/OpenAster/releases/download/v0.2.4/OpenAster-0.2.4-mac-arm64.dmg"
+              },
+              {
+                "id": 726396590,
+                "name": "OpenAster-0.2.4-linux-amd64.deb",
+                "size": 101095068,
+                "digest": "sha256:402074cb773733018bfb79686f9d9ecd944b04c93715f8e7ed502e5f844ea3d1",
+                "state": "uploaded",
+                "content_type": "application/octet-stream",
+                "created_at": "2026-11-09T05:55:20Z",
+                "updated_at": "2026-11-09T05:56:08Z",
+                "browser_download_url": "https://github.com/yanghaitao1995/OpenAster/releases/download/v0.2.4/OpenAster-0.2.4-linux-amd64.deb"
+              },
+              {
+                "id": 726398013,
+                "name": "OpenAster-0.2.4-linux-x86_64.AppImage",
+                "size": 126128827,
+                "digest": "sha256:5a1800b390fd7654ac6841dba6be0aad8e45c1fe415299bb4b92a6790ebe12ee",
+                "state": "uploaded",
+                "content_type": "application/octet-stream",
+                "created_at": "2026-11-09T05:56:08Z",
+                "updated_at": "2026-11-09T05:57:13Z",
+                "browser_download_url": "https://github.com/yanghaitao1995/OpenAster/releases/download/v0.2.4/OpenAster-0.2.4-linux-x86_64.AppImage"
+              }
+            ],
+            "tag": "f206d5fd4d45274046a738ca591c2cbce4c4a20c",
+            "main": "71a56385f4ef76f0f7ac294c3199bd73c7c177d0",
+            "documentationCommit": "f7fdf34a3563ac1a9a9184c6e569503036c47079",
+            "documentationTree": "25fdb87b02d2a249531aad4a4f35a2e356b8d1f1",
+            "documentationBlobs": {
+              "README.md": "9886e4b87cb5adc1cb9805704aac7aea3aa801a3",
+              "docs/TUTORIAL.md": "935f384f24baac1c7a179cd2ab11021f59e891a1",
+              "docs/PLATFORMS.md": "daab263a8319a47958ae6cab090faaf9cc2b979b",
+              "docs/GETTING_STARTED.md": "facbfef7552888505572db2d8335025a0102ef5e"
+            },
+            "beforeBodySha256": "cf656f150cdd0301c80f39f289d328b1039604e5962033497b0e9668e6f000bd",
+            "afterBodySha256": "493e375d56f1f2ac94d020e5edfcad80399127f90eab2ac96d6e4be5d101f53b"
+          };
+          const sha256 = value => createHash('sha256').update(value).digest('hex');
+          const project = (value, keys) => Object.fromEntries(keys.map(key => [key, value[key]]));
+          assert.equal(process.env.GITHUB_REPOSITORY, expected.repository);
+          assert.equal(process.env.GITHUB_REF, 'refs/heads/' + expected.branch);
+          assert.equal(process.env.GITHUB_EVENT_NAME, 'push');
+          assert.ok(process.env.GH_TOKEN, 'Missing job token');
+          const base = 'https://api.github.com/repos/yanghaitao1995/OpenAster';
+          const releasePath = '/releases/438775246';
+          const tagPath = '/git/ref/tags/v0.2.4';
+          async function api(path, patchBody) {
+            assert.ok(path.startsWith('/'));
+            if (patchBody !== undefined) {
+              assert.equal(path, releasePath);
+              assert.deepEqual(Object.keys(patchBody), ['body']);
+              assert.equal(sha256(patchBody.body), expected.afterBodySha256);
+            }
+            const response = await fetch(base + path, {
+              method: patchBody === undefined ? 'GET' : 'PATCH',
+              redirect: 'error',
+              signal: AbortSignal.timeout(30000),
+              headers: {
+                Accept: 'application/vnd.github+json',
+                Authorization: 'Bearer ' + process.env.GH_TOKEN,
+                'Content-Type': 'application/json',
+                'X-GitHub-Api-Version': '2022-11-28'
+              },
+              ...(patchBody === undefined ? {} : { body: JSON.stringify(patchBody) })
+            });
+            assert.equal(response.status, 200, 'GitHub ' + path + ' returned HTTP ' + response.status);
+            return response.json();
+          }
+          function checkRelease(release) {
+            assert.deepEqual(project(release, Object.keys(expected.release)), expected.release);
+            assert.equal(release.assets.length, 5);
+            const assets = release.assets.map(a => project(a, Object.keys(expected.assets[0]))).sort((a,b) => a.id-b.id);
+            assert.deepEqual(assets, expected.assets, 'Release attachment manifest changed');
+          }
+          async function checkSources() {
+            const tag = await api(tagPath);
+            assert.equal(tag.object.type, 'commit');
+            assert.equal(tag.object.sha, expected.tag, 'Release tag changed');
+            const main = await api('/branches/main');
+            assert.equal(main.commit.sha, expected.main, 'Default branch changed; review again');
+            assert.equal(main.commit.commit.tree.sha, expected.documentationTree);
+          }
+          const documentation = await api('/git/commits/' + expected.documentationCommit);
+          assert.equal(documentation.sha, expected.documentationCommit);
+          assert.equal(documentation.tree.sha, expected.documentationTree);
+          const tree = await api('/git/trees/' + expected.documentationTree + '?recursive=1');
+          assert.equal(tree.truncated, false);
+          for (const [path, sha] of Object.entries(expected.documentationBlobs)) {
+            const entry = tree.tree.find(entry => entry.path === path);
+            assert.equal(entry?.type, 'blob', 'Missing documentation: ' + path);
+            assert.equal(entry.sha, sha, 'Documentation changed: ' + path);
+          }
+          await checkSources();
+          const before = await api(releasePath);
+          checkRelease(before);
+          const beforeHash = sha256(before.body);
+          assert.ok([expected.beforeBodySha256, expected.afterBodySha256].includes(beforeHash), 'Unexpected release description; review again');
+          if (beforeHash === expected.beforeBodySha256) {
+            let body = before.body;
+            for (const filename of ['GETTING_STARTED','TUTORIAL','PLATFORMS']) {
+              const original = 'https://github.com/yanghaitao1995/OpenAster/blob/v0.2.4/docs/' + filename + '.md';
+              assert.equal(body.split(original).length, 2, 'Expected exactly one link: ' + filename);
+              body = body.replace(original, original.replace('/v0.2.4/', '/' + expected.documentationCommit + '/'));
+            }
+            const note = "配套文档已与[已发表的技术博客](https://yanghaitao1995.blog.csdn.net/article/details/170192530)同步；上方文档链接固定到[文档同步提交](https://github.com/yanghaitao1995/OpenAster/commit/f7fdf34a3563ac1a9a9184c6e569503036c47079)。本次只修订 README、教程与平台说明，产品运行代码、版本和安装文件不变。`v0.2.4` 标签与 Source code 归档保留原始发布内容，下载后的旧版说明请对照上述修订文档阅读。\r\n\r\n";
+            assert.equal(body.split('## 验证范围与平台限制').length, 2);
+            body = body.replace('## 验证范围与平台限制', note + '## 验证范围与平台限制');
+            assert.equal(sha256(body), expected.afterBodySha256);
+            // Re-read immediately before the only write; reject concurrent edits.
+            const latest = await api(releasePath);
+            checkRelease(latest);
+            assert.equal(sha256(latest.body), expected.beforeBodySha256);
+            const updated = await api(releasePath, {body});
+            checkRelease(updated);
+            assert.equal(sha256(updated.body), expected.afterBodySha256);
+          }
+          const after = await api(releasePath);
+          checkRelease(after);
+          assert.equal(sha256(after.body), expected.afterBodySha256);
+          await checkSources();
+          console.log(JSON.stringify({
+            result: 'verified',
+            bodyChanged: beforeHash !== expected.afterBodySha256,
+            releaseId: after.id,
+            bodySha256: sha256(after.body),
+            documentationCommit: expected.documentationCommit,
+            mainCommit: expected.main,
+            tagCommit: expected.tag,
+            attachmentIds: expected.assets.map(asset => asset.id)
+          }, null, 2));
+          
+          OPENASTER_RELEASE_DOC_SYNC
