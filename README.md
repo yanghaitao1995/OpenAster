@@ -2,9 +2,9 @@
 
 一个可以连接自己的模型、读写项目文件并运行命令的开源智能体工作台。浏览器、桌面应用和移动客户端使用同一套任务界面。
 
-OpenAster 通过 **Vibe Coding** 开发：使用自然语言与 AI 编程工具迭代实现，再检查代码和运行测试。它是个人学习与探索项目，当前源码版本为 **0.2.4 预览版**，本版安装包正在候选验收。
+OpenAster 通过 **Vibe Coding** 开发：使用自然语言与 AI 编程工具迭代实现，再检查代码和运行测试。它是个人学习与探索项目，当前源码版本为 **0.2.4 预览版**，五个安装文件已发布，下载入口及验收范围见下方“安装包”。
 
-[上手教程](docs/TUTORIAL.md) · [使用说明](docs/GETTING_STARTED.md) · [下载与平台状态](docs/PLATFORMS.md) · [开发指南](docs/DEVELOPMENT.md)
+[上手教程](docs/TUTORIAL.md) · [CSDN 同步文章](https://yanghaitao1995.blog.csdn.net/article/details/170192530) · [使用说明](docs/GETTING_STARTED.md) · [下载与平台状态](docs/PLATFORMS.md) · [开发指南](docs/DEVELOPMENT.md)
 
 ![OpenAster 任务工作台](docs/assets/workbench.png)
 
@@ -119,7 +119,9 @@ PORT=4320 pnpm start
 
 ## 安装包
 
-0.2.4 正在进行候选构建和安装验收。通过验收的安装文件、SHA-256、签名状态和逐项结果将在 [版本下载页](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.4) 分别列出。目标文件格式为 Windows x64 EXE、macOS arm64 DMG、Linux x86_64 AppImage / amd64 DEB 和 Android 调试 APK；只有对应版本页实际列出的附件才可下载，未列出表示尚未提供。各平台条件及 Android 调试签名的升级限制见[平台说明](docs/PLATFORMS.md)。当前不提供可在 iPhone 上直接安装的 IPA 或 TestFlight 邀请。
+[0.2.4 版本下载页](https://github.com/yanghaitao1995/OpenAster/releases/tag/v0.2.4) 已发布五个安装文件：Windows x64 EXE、macOS arm64 DMG、Linux x86_64 AppImage / amd64 DEB 和 Android 调试 APK。下载前核对 Release 正文中的字节数、SHA-256、签名与逐项验收结果。各平台的实际验证范围、构建来源及 Android 调试签名升级限制见[平台说明](docs/PLATFORMS.md)和[教程第 11.1 节](docs/TUTORIAL.md#111-下载入口与各平台文件)。当前不提供可在 iPhone 上直接安装的 IPA 或 TestFlight 邀请。
+
+发布标签 `v0.2.4` 保留原始构建输入；配套教程与发布状态的后续修订同步到默认分支。文档修订不改变产品版本、运行代码或已发布安装文件。
 
 ## 仓库结构
 
